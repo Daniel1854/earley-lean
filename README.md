@@ -1,8 +1,12 @@
 # Lean Earley Parser
-A Earley Parser Formalization as part of a master thesis.
+An Earley Parser Formalization as part of my master thesis.
 
 ## General Plan
-- [ ] CFG Types+Macro
+- [x] Setup Repository for writing thesis/presentations
+- [x] Setup Repository with Mathlib+Testrunner
+- [ ] Establish CFG Types
+  - check mathlib stuff
+  - write a macro for EBNF -> struct
 - [ ] Recognizer
   - [ ] Implementation
   - [ ] Correctness Proofs
@@ -10,6 +14,7 @@ A Earley Parser Formalization as part of a master thesis.
   - [ ] Implementation
   - [ ] Correctness Proofs
 - [ ] Benchmark/Evaluation
+  - Benchrunner or main?
 - [ ] Performance Improvements
 
 Possible diffs to rau depending on my pace:
