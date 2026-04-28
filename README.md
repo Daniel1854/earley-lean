@@ -98,5 +98,5 @@ S → SS | (S) | ε
 
 Other example grammars
 - ambiguous O(n^3): S -> SS | a
-- unambiguous O(n^2): S -> aS | a
+- unambiguous O(n^2): S -> aS | a (which is regular)
 - bounded state, non-right rec O(n): S -> Sa | a
