@@ -1,3 +1,5 @@
--- This module serves as the root of the `Earley` library.
--- Import modules here that should be built as part of the library.
-import Earley.Basic
+module
+
+import Earley.Invariants
+import Earley.EarleyRecognizer
+import Earley.ContextFreeGrammars

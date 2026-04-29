@@ -1,6 +1,5 @@
 module
 public import Mathlib.Computability.ContextFreeGrammar
-import Lean
 
 /-!
 This module defines everything required to parse a context-free grammar.

@@ -1,4 +1,4 @@
-
+module
 /-!
 This module houses the proofs about the Earley Recognizer and Parser
 -/
