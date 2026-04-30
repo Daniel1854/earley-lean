@@ -46,17 +46,17 @@ open ContextFreeRule
 -- Im overlooking some good lemmas right? This shouldnt need that much unfolding.
 -- Maybe there are some mem_ lemmas? Or people dont think this is a noteworthy thing to prove
 theorem ex1Produces : ex1CFG.Produces [Symbol.nonterminal Ex1NT.S] [Symbol.terminal Ex1T.a] := by
-  simp [ex1CFG]
-  simp [Produces]
+  unfold ex1CFG
+  unfold Produces
   simp [ex1Rules]
   apply Or.inl
   apply Rewrites.head
 
 theorem ex1Generates (h : ex1CFG.Produces [Symbol.nonterminal Ex1NT.S] [Symbol.terminal Ex1T.a]) : ex1CFG.Generates [Symbol.terminal Ex1T.a] := by
-  simp [Generates]
-  simp [Derives]
+  unfold Generates
+  unfold Derives
   apply @Relation.ReflTransGen.tail (b:= [Symbol.nonterminal Ex1NT.S])
-  . simp [ex1CFG]
+  . unfold ex1CFG
     apply Relation.ReflTransGen.refl
   . exact h
 
