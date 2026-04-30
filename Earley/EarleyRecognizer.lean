@@ -17,7 +17,7 @@ prob should have some sanity check tests for that though
 
 TODO: write Tests for these functions
 -/
-structure EarleyItem (T N: Type) where
+structure EarleyItem (T N : Type) where
   /--
   The rule the item describes
   -/
@@ -34,6 +34,24 @@ structure EarleyItem (T N: Type) where
   (Exclusive) Endindex for the word w, which this rule accepts
   -/
   endItem : Nat
+
+-- TODO: I think these instances make sense?
+instance {T N : Type} [BEq T] [BEq N] : BEq (Symbol T N) where
+  beq := fun fst snd => match fst,snd with
+  | Symbol.terminal t₁, Symbol.terminal t₂ => t₁ == t₂
+  | Symbol.terminal _, Symbol.nonterminal _ => False
+  | Symbol.nonterminal _, Symbol.terminal _ => False
+  | Symbol.nonterminal t₁, Symbol.nonterminal t₂ => t₁ == t₂
+
+instance {T N : Type} [BEq T] [BEq N] : BEq (ContextFreeRule T N) where
+  beq := fun fst snd => fst.input == snd.input && fst.output == snd.output
+
+-- TODO: I could derive this one if I wanted to restrict EarleyItems to BEq Types in general
+instance {T N : Type} [BEq T] [BEq N] : BEq (EarleyItem T N) where
+  beq := fun fst snd => fst.rule == snd.rule
+    && fst.position == snd.position
+    && fst.startItem == snd.startItem
+    && fst.endItem == snd.endItem
 
 /--
 Returns the rhs of given rule split at some index `i`
@@ -60,6 +78,7 @@ Returns the next symbol of the production of the item if there is one
 - A → ·α returns some α
 - A → α· returns none
 -/
+@[inline]
 def nextSymbol {T N : Type} (item : EarleyItem T N) : Option (Symbol T N):=
   item.rule.output[item.position]?
 
@@ -69,9 +88,13 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the item is complete
 - the entire word has been recognized
 -/
-def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq G.NT] (w : String) (item : EarleyItem T G.NT) : Bool :=
-  item.rule.input == G.initial &&
-  isComplete item && item.startItem == 0 && item.endItem == w.length + 1
+@[inline]
+def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq G.NT]
+    (item : EarleyItem T G.NT) (w : String) : Bool :=
+  item.rule.input == G.initial
+  && isComplete item
+  && item.startItem == 0
+  && item.endItem == w.length + 1
   -- TODO: this could very well be off by one
 
 -- the item dot must be within the length of the item’s right-hand side,
@@ -82,8 +105,11 @@ An item is well-formed, if
 - the rule belongs to given grammar G
 - the position is within the length of the rhs
 -/
-def wfItem {T N : Type} (item : EarleyItem T N) : Prop :=
-  sorry
+def isWellFormed {T : Type} [BEq T]
+    (G : ContextFreeGrammar T) [BEq G.NT]
+    (item : EarleyItem T G.NT) : Bool :=
+  G.rules.toList.contains item.rule
+  && sorry
 
 /--
 tail recursive helper

@@ -98,6 +98,10 @@ def parseCFG (s : String) : Option (ContextFreeGrammar T) :=
   }
   some { NT := NT, initial := NT.S, rules := rules }
 
+def String.toNT : String → Option NT
+  | "S" => some NT.S
+  | _ => none
+
 instance : CoeDep String "S" NT where
   coe := NT.S
 
@@ -108,8 +112,6 @@ def ex2CFG' : String := "\
 S ::= aS;
 S ::= a;"
 def ex2CFG'' : String := "S ::= 'a'S | 'a'"
-#eval ex2CFG'
-#eval ex2CFG''
 
 end ContextFreeGrammars
 end Earley
