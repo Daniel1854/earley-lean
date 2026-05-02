@@ -1,70 +1,150 @@
 import Mathlib.Computability.ContextFreeGrammar
-
-example (n : Nat) : n = n := by simp
-
-/--
-error: `simp` made no progress
--/
-#guard_msgs in
-example (n m : Nat) : n = m := by simp
+import Earley.EarleyRecognizer
 
 /-
-Testing out mathlib API with the example Grammar G
-  G = ({S, a}, {a}, {S -> aS | a}, S)
-  L(G) = a⁺
+This suite tests the basic functionality around EarleyItems
+
+It tests the general mathlib API and basic usage of the functions for the example Grammar G
+  G = ({S, a}, {a}, {S -> aS | a}, S) with L(G) = a⁺
+
+TODO: write Tests for Repr
 -/
-inductive Ex1NT where
-| S : Ex1NT
+
+/- Simple Usage Examples for Mathlib Types -/
+inductive NT where
+| S : NT
 deriving Repr
 
-inductive Ex1T where
-| a : Ex1T
+inductive T where
+| a : T
 deriving Repr
+
+def exRule1 : ContextFreeRule T NT where
+  input := NT.S
+  output := [Symbol.terminal T.a]
+
+def exRule2 : ContextFreeRule T NT where
+  input := NT.S
+  output := [Symbol.terminal T.a, Symbol.nonterminal NT.S]
 
 /--
-info: ContextFreeRule Ex1T Ex1NT : Type
+info: NT.S → [T.a, NT.S]
 -/
 #guard_msgs in
-#check ContextFreeRule Ex1T Ex1NT
+#eval exRule2
 
-def ex1Rules : Finset (ContextFreeRule Ex1T Ex1NT) :=
-  {
-    val := {
-      { input := Ex1NT.S, output := [Symbol.terminal Ex1T.a] },
-      { input := Ex1NT.S, output := [Symbol.nonterminal Ex1NT.S, Symbol.terminal Ex1T.a]}
-    },
-    nodup := by simp
-  }
+set_option trace.Meta.synthInstance true in
+#eval exRule2.output
 
-def ex1CFG : ContextFreeGrammar Ex1T :=
-  -- Why can't NT be derived from initial?
-  { NT := Ex1NT, initial := Ex1NT.S, rules := ex1Rules }
+def exRules : Finset (ContextFreeRule T NT) where
+  val := { exRule1, exRule2 }
+  nodup := by simp [exRule1, exRule2]
 
-open ContextFreeGrammar
-open ContextFreeRule
+-- TODO: understand the design decision to not have NT as a parameter
+-- (or atleast implicit from the `initial` field!)
+def G : ContextFreeGrammar T :=
+  { NT := NT, initial := NT.S, rules := exRules }
 
--- Im overlooking some good lemmas right? This shouldnt need that much unfolding.
--- Maybe there are some mem_ lemmas? Or people dont think this is a noteworthy thing to prove
-theorem ex1Produces : ex1CFG.Produces [Symbol.nonterminal Ex1NT.S] [Symbol.terminal Ex1T.a] := by
-  unfold ex1CFG
-  unfold Produces
-  simp [ex1Rules]
+/-
+Example theorems that the grammar can generate a certain word.
+
+TODO: Im overlooking some good lemmas right? This shouldnt need that much unfolding.
+Maybe the idea would be some mem_ lemmas?
+Or people dont think this is a noteworthy thing to prove.
+-/
+theorem exProduces : G.Produces [Symbol.nonterminal NT.S] [Symbol.terminal T.a] := by
+  unfold G
+  unfold ContextFreeGrammar.Produces
+  simp [exRules]
   apply Or.inl
-  apply Rewrites.head
+  apply ContextFreeRule.Rewrites.head
 
-theorem ex1Generates (h : ex1CFG.Produces [Symbol.nonterminal Ex1NT.S] [Symbol.terminal Ex1T.a]) : ex1CFG.Generates [Symbol.terminal Ex1T.a] := by
-  unfold Generates
-  unfold Derives
-  apply @Relation.ReflTransGen.tail (b:= [Symbol.nonterminal Ex1NT.S])
-  . unfold ex1CFG
+theorem exGenerates (h : G.Produces [Symbol.nonterminal NT.S] [Symbol.terminal T.a]) : G.Generates [Symbol.terminal T.a] := by
+  unfold ContextFreeGrammar.Generates
+  unfold ContextFreeGrammar.Derives
+  apply @Relation.ReflTransGen.tail (b:= [Symbol.nonterminal NT.S])
+  . unfold G
     apply Relation.ReflTransGen.refl
   . exact h
 
--- Sets in Mathlib are Prop, and thus you cannot get its item,
--- but you can reason if its part of that set
-def ex1Language : Language Ex1T := ex1CFG.language
+-- Reminder:
+-- Sets in Mathlib are Prop. It is only about reasoning if an item is a part of that set
+def exLanguage : Language T := G.language
+
 /--
-info: {w | ex1CFG.Generates (List.map Symbol.terminal w)} : Set (List Ex1T)
+info: {w | G.Generates (List.map Symbol.terminal w)} : Set (List T)
 -/
 #guard_msgs in
-#check { w : List Ex1T | ex1CFG.Generates (w.map Symbol.terminal) }
+#check { w : List T | G.Generates (w.map Symbol.terminal) }
+
+/- Simple Unit Tests -/
+
+open Earley.EarleyRecognizer
+
+/--
+info: ([], [T.a, NT.S])
+-/
+#guard_msgs in
+#eval splitRuleAt exRule2 0
+
+/--
+info: ([T.a], [NT.S])
+-/
+#guard_msgs in
+#eval splitRuleAt exRule2 1
+
+/--
+info: ([T.a, NT.S], [])
+-/
+#guard_msgs in
+#eval splitRuleAt exRule2 2
+
+/--
+info: ([T.a, NT.S], [])
+-/
+#guard_msgs in
+#eval splitRuleAt exRule2 3
+
+def exItem1 : EarleyItem T NT where
+  rule := exRule2
+  position := 0
+  startItem := 0
+  endItem := 0
+
+def exItem2 : EarleyItem T NT :=
+  { exItem1 with position := 1 }
+
+def exItem3 : EarleyItem T NT :=
+  { exItem1 with position := 2, startItem := 1 }
+
+/--
+info: NT.S → T.a @ NT.S w/ (0, 0)
+-/
+#guard_msgs in
+#eval exItem2
+
+/--
+info: some T.a
+-/
+#guard_msgs in
+#eval nextSymbol exItem1
+
+/--
+info: some NT.S
+-/
+#guard_msgs in
+#eval nextSymbol exItem2
+
+/--
+info: none
+-/
+#guard_msgs in
+#eval nextSymbol exItem3
+
+def exW : String := "aaa"
+
+#check isComplete
+
+#check isFinished
+
+#check isWellFormed

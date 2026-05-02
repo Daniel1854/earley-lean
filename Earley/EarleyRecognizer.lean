@@ -5,21 +5,27 @@ namespace Earley
 namespace EarleyRecognizer
 
 /--
-An EarleyItem
+An EarleyItem represents one the possible states the derivation could be in
+while parsing the word.
+
+The rule and the position jointly pinpoint what can be accepted next in this state,
+while the startItem and endItem point back to the input index where this rule derivation started from.
+
+TODO: Im not sure what the endItem really does yet. Its not really part of the original algorithm idea
 
 We've got sets of EarleyItems for every input position
 
 Maybe missing:
 - the rule has to be part of the grammar G: do I need to sync it up like that?
 
-I want to be able to see the dotted (maybe use @?) notation in my repr for an EarleyItem
-prob should have some sanity check tests for that though
-
-TODO: write Tests for these functions
+TODO: implement Repr by hand to see dotted notation (maybe use @?)
+      (should have some sanity checks though, else I debug the wrong thing :D)
+      or do I want ToString? I want that notation anywhere right?
+TODO: everything public now since I want to unit test it. There should be a way around that
 -/
-structure EarleyItem (T N : Type) where
+public structure EarleyItem (T N : Type) where
   /--
-  The rule the item describes
+  The rule the item is representing
   -/
   rule : ContextFreeRule T N
   /--
@@ -53,15 +59,47 @@ instance {T N : Type} [BEq T] [BEq N] : BEq (EarleyItem T N) where
     && fst.startItem == snd.startItem
     && fst.endItem == snd.endItem
 
+/- TODO: I want Repr over ToString, so I can read the output everywhere right? -/
+instance {T N : Type} [Repr T] [Repr N] : Repr (Symbol T N) where
+  reprPrec sym _ := match sym with
+    | Symbol.terminal t => reprStr t
+    | Symbol.nonterminal nt => reprStr nt
+
+instance {T N : Type} [Repr T] [Repr N] : Repr (List (Symbol T N)) where
+  reprPrec xs _ := match xs with
+    | .nil => ""
+    -- This case is required since the .nil somehow never hits
+    -- Somehow the default List Repr instance gets called for the empty List
+    | List.cons x [] => s!"{reprStr x}"
+    | List.cons x ys => s!"{reprStr x} {reprStr ys}"
+
+instance {T N : Type} [Repr T] [Repr N] : Repr (ContextFreeRule T N) where
+  reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
+
+instance {T N : Type} [Repr T] [Repr N] : Repr (EarleyItem T N) where
+  reprPrec item _ :=
+    have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
+    s!"{reprStr item.rule.input} → {reprStr lhs} @ {reprStr rhs} w/ ({item.startItem}, {item.endItem})"
+
 /--
 Returns the rhs of given rule split at some index `i`
 - rule=(A → α β) and i=1 returns ([α], [β])
-- rule=(A → α β) and i=2 returns ([], [α, β])
+- rule=(A → α β) and i=2 returns ([α, β], [])
+- rule=(A → α β) and i=3 returns ([α, β], [])
 -/
 @[inline]
-def splitRuleAt {T N : Type} (rule : ContextFreeRule T N) (i : Nat) :
+public def splitRuleAt {T N : Type} (rule : ContextFreeRule T N) (i : Nat) :
     List (Symbol T N) × List (Symbol T N) :=
   rule.output.splitAt i
+
+/--
+Returns the next symbol of the production of the item if there is one
+- A → ·α returns some α
+- A → α· returns none
+-/
+@[inline]
+public def nextSymbol {T N : Type} (item : EarleyItem T N) : Option (Symbol T N):=
+  item.rule.output[item.position]?
 
 /--
 Returns whether the rule of the EarleyItem is completed,
@@ -70,17 +108,8 @@ concretely if the position/dot is at the end of the production rule
 - A → ·α returns false
 -/
 @[inline]
-def isComplete {T N : Type} (item : EarleyItem T N) : Bool :=
+public def isComplete {T N : Type} (item : EarleyItem T N) : Bool :=
   item.position == item.rule.output.length
-
-/--
-Returns the next symbol of the production of the item if there is one
-- A → ·α returns some α
-- A → α· returns none
--/
-@[inline]
-def nextSymbol {T N : Type} (item : EarleyItem T N) : Option (Symbol T N):=
-  item.rule.output[item.position]?
 
 /--
 An item is finished w.r.t. a certain grammar G and the input word w, if
@@ -89,7 +118,7 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the entire word has been recognized
 -/
 @[inline]
-def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq G.NT]
+public def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq G.NT]
     (item : EarleyItem T G.NT) (w : String) : Bool :=
   item.rule.input == G.initial
   && isComplete item
@@ -97,24 +126,25 @@ def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq G.NT]
   && item.endItem == w.length + 1
   -- TODO: this could very well be off by one
 
--- the item dot must be within the length of the item’s right-hand side,
--- the item start does not exceed the item end,
--- and finally, the item end must be at most the length of the input ω.
 /--
 An item is well-formed, if
 - the rule belongs to given grammar G
 - the position is within the length of the rhs
+- the start is not bigger than the end
+- the end is not bigger than the length of the input w
 -/
-def isWellFormed {T : Type} [BEq T]
+public def isWellFormed {T : Type} [BEq T]
     (G : ContextFreeGrammar T) [BEq G.NT]
-    (item : EarleyItem T G.NT) : Bool :=
+    (item : EarleyItem T G.NT) (w : String) : Prop :=
   G.rules.toList.contains item.rule
-  && sorry
+  ∧ item.position <= item.rule.output.length
+  ∧ item.startItem <= item.endItem
+  ∧ item.endItem <= w.length
 
 /--
 tail recursive helper
 -/
-def reconizeAux : Bool := sorry
+public def reconizeAux : Bool := sorry
 
 /--
 Checks whether the input w is in the language defined by the grammar.
@@ -122,7 +152,7 @@ Process:
 - Generate the Earley Items for the full input
 - Check if there is a finished Item in the Set
 -/
-def earleyRecognize {N T : Type} (w : Symbol T N) (cfg : ContextFreeGrammar T) : Bool := sorry
+public def earleyRecognize {N T : Type} (w : Symbol T N) (G : ContextFreeGrammar T) : Bool := sorry
 
 
 end EarleyRecognizer
