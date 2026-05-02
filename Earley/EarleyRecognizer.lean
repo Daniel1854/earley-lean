@@ -11,16 +11,14 @@ while parsing the word.
 The rule and the position jointly pinpoint what can be accepted next in this state,
 while the startItem and endItem point back to the input index where this rule derivation started from.
 
-TODO: Im not sure what the endItem really does yet. Its not really part of the original algorithm idea
+TODO: Im not sure what the endItem really does yet. check `isFinished` after I do
+Its not really part of the original algorithm idea
 
 We've got sets of EarleyItems for every input position
 
 Maybe missing:
 - the rule has to be part of the grammar G: do I need to sync it up like that?
 
-TODO: implement Repr by hand to see dotted notation (maybe use @?)
-      (should have some sanity checks though, else I debug the wrong thing :D)
-      or do I want ToString? I want that notation anywhere right?
 TODO: everything public now since I want to unit test it. There should be a way around that
 -/
 public structure EarleyItem (T N : Type) where
@@ -110,13 +108,12 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the entire word has been recognized
 -/
 @[inline]
-public def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq G.NT]
+public def isFinished {T : Type} (G : ContextFreeGrammar T) [BEq (G.NT)]
     (item : EarleyItem T G.NT) (w : String) : Bool :=
   item.rule.input == G.initial
   && isComplete item
   && item.startItem == 0
-  && item.endItem == w.length + 1
-  -- TODO: this could very well be off by one
+  && item.endItem == w.length
 
 /--
 An item is well-formed, if
