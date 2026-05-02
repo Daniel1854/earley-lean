@@ -59,19 +59,11 @@ instance {T N : Type} [BEq T] [BEq N] : BEq (EarleyItem T N) where
     && fst.startItem == snd.startItem
     && fst.endItem == snd.endItem
 
-/- TODO: I want Repr over ToString, so I can read the output everywhere right? -/
+/- TODO: I want Repr over ToString, so I can read the output in proof states right? -/
 instance {T N : Type} [Repr T] [Repr N] : Repr (Symbol T N) where
   reprPrec sym _ := match sym with
     | Symbol.terminal t => reprStr t
     | Symbol.nonterminal nt => reprStr nt
-
-instance {T N : Type} [Repr T] [Repr N] : Repr (List (Symbol T N)) where
-  reprPrec xs _ := match xs with
-    | .nil => ""
-    -- This case is required since the .nil somehow never hits
-    -- Somehow the default List Repr instance gets called for the empty List
-    | List.cons x [] => s!"{reprStr x}"
-    | List.cons x ys => s!"{reprStr x} {reprStr ys}"
 
 instance {T N : Type} [Repr T] [Repr N] : Repr (ContextFreeRule T N) where
   reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"

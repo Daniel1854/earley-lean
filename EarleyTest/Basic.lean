@@ -33,9 +33,6 @@ info: NT.S → [T.a, NT.S]
 #guard_msgs in
 #eval exRule2
 
-set_option trace.Meta.synthInstance true in
-#eval exRule2.output
-
 def exRules : Finset (ContextFreeRule T NT) where
   val := { exRule1, exRule2 }
   nodup := by simp [exRule1, exRule2]
@@ -118,7 +115,7 @@ def exItem3 : EarleyItem T NT :=
   { exItem1 with position := 2, startItem := 1 }
 
 /--
-info: NT.S → T.a @ NT.S w/ (0, 0)
+info: NT.S → [T.a] @ [NT.S] w/ (0, 0)
 -/
 #guard_msgs in
 #eval exItem2
