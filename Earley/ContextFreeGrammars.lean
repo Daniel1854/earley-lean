@@ -2,6 +2,8 @@ module
 public import Mathlib.Computability.ContextFreeGrammar
 
 /-!
+FIXME: this is just a stub, and its unclear if I want to throw my attention at that or throw it away yet
+
 This module defines everything required to parse a context-free grammar.
 Basicly a wrapper around the `ContextFreeGrammar` definition within Mathlib,
 but also includes a metaprogram to parse a String of EBNF into such a structure directly.

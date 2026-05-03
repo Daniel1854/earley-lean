@@ -4,12 +4,17 @@ An Earley Parser Formalization as part of my master thesis.
 ## General Plan
 - [x] Setup Repository for writing thesis/presentations
 - [x] Setup Repository with Mathlib+Testrunner
-- [ ] Establish CFG Types
-  - check mathlib stuff
-  - write a macro for EBNF -> struct
+- [?] Establish CFG Types
+  - [x] use mathlib types for now
+  - [?] write a metaprogram for `EBNF String -> CFG`
+- [ ] Typing Judgements
+  - [x] EarleyItem
+  - [x] EarleySet
+  - [x] State Correctness Proofs
+  - [ ] Prove it
 - [ ] Recognizer
-  - [ ] Implementation
-  - [ ] Correctness Proofs
+  - Implement
+  - Refinement Proof for Correctness
 - [ ] Parser
   - [ ] Implementation
   - [ ] Correctness Proofs
@@ -79,10 +84,6 @@ TODO: go through that example (4,1,0)
   - bad at nullables/optional things: `A -> ε`
 
 - TODO: understand rau's O(n^4) better
-
-- Mathlib ContextFreeGrammar
-  - I can surely start with these defintions. Rewrites as an inductive wouldnt have been my choice
-  - probably better to not have them as abstract
 
 ## Evaluation
 Benchmark:

@@ -1,5 +1,5 @@
 module
 
-import Earley.Invariants
-import Earley.EarleyRecognizer
 import Earley.ContextFreeGrammars
+import Earley.Earley
+import Earley.Invariants

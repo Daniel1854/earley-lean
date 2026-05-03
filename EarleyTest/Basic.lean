@@ -1,5 +1,5 @@
 import Mathlib.Computability.ContextFreeGrammar
-import Earley.EarleyRecognizer
+import Earley.Earley
 
 /-
 This suite tests the basic functionality around EarleyItems
@@ -73,8 +73,7 @@ info: {w | G.Generates (List.map Symbol.terminal w)} : Set (List T)
 #check { w : List T | G.Generates (w.map Symbol.terminal) }
 
 /- Simple Unit Tests -/
-
-open Earley.EarleyRecognizer
+open Earley
 
 theorem split0 :
     splitRuleAt exRule2 0 = ⟨[], [Symbol.terminal T.a, Symbol.nonterminal N.S]⟩
@@ -117,7 +116,7 @@ info: N.S → [] @ [T.a, N.S] w/ (0, 0)
 #eval exItem1
 
 /--
-info: N.S → [T.a] @ [NT.S] w/ (1, 2)
+info: N.S → [T.a] @ [N.S] w/ (1, 2)
 -/
 #guard_msgs in
 #eval exItem2
@@ -153,8 +152,8 @@ instance : BEq G.NT where
   beq fst snd := match fst,snd with
     | N.S, N.S => true
 
-def exW1 : String := "a"
-def exW2 : String := "aaa"
+def exW1 : List (Symbol T N) := [Symbol.terminal T.a]
+def exW2 : List (Symbol T N) := [Symbol.terminal T.a, Symbol.terminal T.a, Symbol.terminal T.a]
 theorem finished1 : isFinished G exItem1 exW1 = false := rfl
 theorem finished2 : isFinished G exItem2 exW1 = false := rfl
 theorem finished3 : isFinished G exItem3 exW1 = false := rfl
@@ -172,7 +171,7 @@ theorem wf1 : isWellFormed G exItem1 exW1 := by
 
 theorem wf2 : ¬isWellFormed G exItem2 exW1 := by
   rw [isWellFormed, exItem2, exW1]
-  simp [String.length]
+  simp [List.length]
 
 theorem wf3 : ¬isWellFormed G exItem3 exW2 := by
   rw [isWellFormed, exItem3]
@@ -186,5 +185,5 @@ theorem wf5 : isWellFormed G exItem5 exW2 := by
   rw [isWellFormed, exItem5, exW2]
   unfold G
   unfold exRules
-  simp [String.length, List.length]
+  simp [List.length]
   sorry
