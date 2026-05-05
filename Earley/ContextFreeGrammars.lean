@@ -2,8 +2,6 @@ module
 public import Mathlib.Computability.ContextFreeGrammar
 
 /-!
-FIXME: this is just a stub, and its unclear if I want to throw my attention at that or throw it away yet
-
 This module defines everything required to parse a context-free grammar.
 Basicly a wrapper around the `ContextFreeGrammar` definition within Mathlib,
 but also includes a metaprogram to parse a String of EBNF into such a structure directly.
@@ -12,16 +10,16 @@ It doesn't handle epsilon rules.
 Simple EBNF.
 Usage         | Notation
 --------------+----------------
-definition	  | ::=
-concatenation	| ,
-termination	  | ;\n
-alternation	  | |
+definition    | ::=
+concatenation | ,
+termination   | ';\n'
+alternation   | |
 terminals     | '<x>'
 
 We cannot handle epsilon rules, so more syntactic sugar seems to not be worthwhile (yet)
 Maybe add Regex + and * when we can handle epsilon rules?
-optional	    | [ ... ]  (none or once)
-repetition	  | { ... }  (none or more)
+optional      | [ ... ]  (none or once)
+repetition    | { ... }  (none or more)
 +             | at least once
 *             | none or more
 
@@ -30,6 +28,7 @@ How to even state this as a one-pass? The return type doesnt exist before it wou
 I would very much like to directly return the list of that type as well,
 but this doesnt seem possible?
 inductive types are some syntactic sugar right? Not sure how to add that type in a metaprogram
+
 ⟨T,NT⟩ ← collectTypes
 addDecl T ?
 addDecl NT ?
@@ -38,25 +37,43 @@ parseCFG T NT s
 def parseCFG (T NT : Type) (s : String) : ContextFreeGrammar T :=
   sorry
 
+EBNF Parsing:
+- bit difficult with this type setup since you need to declare types
+  for the (non-)terminals, which can't exist before you parse the grammar
+- it makes sense for them to be an inductive, so I would need to create those two types
+  and return them as the first pass?
+- on the second pass just coerce the String into that inductive type?
+- Probably am overthinking it by wanting a String to be parsed,
+  but could be an easy problem if I just use predefined types and notations
+
+ref Algebra.adjoin for macro stuff
+
+addDecl <|
+.inductDecl [] [] [\<inductName, .sort 1, [\<ctorName1, .const inductName []\>, ...]\>] false
+
+infixr:50 " – " => Score.vs
+notation (priority := high) "⟦" S "⟧" => denote S
+addDecl (.axiomDecl {
+  name := `Exists, levelParams := [`u],
+  type := mkForall `α .implicit sortu $ ← mkArrow (← mkArrow (mkBVar 0) prop) prop,
+  isUnsafe := false
+})
 -/
 
 namespace Earley
 namespace ContextFreeGrammars
 
-#check ContextFreeGrammar
-#check Language
-#check Language.IsContextFree
-#check Symbol
-#check ContextFreeRule
--- These are all about Prop so you can reason whether something multisteps to another thing,
--- so I need my own `step` version
-#check ContextFreeGrammar.Produces  -- s -> u
-#check ContextFreeGrammar.Derives   -- s ->^* u
-#check ContextFreeGrammar.Generates -- S ->^* u
--- A little unclear on how this fits into the rest. Not sure if I can use it for something
--- (besides proofs)
-#check ContextFreeRule.Rewrites
-#check ContextFreeGrammar.mem_language_iff
+--#check Language.IsContextFree
+--#check Symbol
+---- These are all about Prop so you can reason whether something multisteps to another thing,
+---- so I need my own `step` version
+--#check ContextFreeGrammar.Produces  -- s -> u
+--#check ContextFreeGrammar.Derives   -- s ->^* u
+--#check ContextFreeGrammar.Generates -- S ->^* u
+---- A little unclear on how this fits into the rest. Not sure if I can use it for something
+---- (besides proofs)
+--#check ContextFreeRule.Rewrites
+--#check ContextFreeGrammar.mem_language_iff
 
 inductive NT where
   | A : NT
@@ -76,12 +93,12 @@ inductive T where
 -- A metaprogram could check the type of A if its NT or T and match accordingly
 -- but how to handle if there are multiple terms?
 notation (priority := high) E "::=" A ";" => ContextFreeRule.mk E [Symbol.terminal A]
-#check [NT.S ::= T.a;, NT.S ::= T.a;]
+--#check [NT.S ::= T.a;, NT.S ::= T.a;]
 
 -- how to coerce the string into the inductive type
 -- how to coerce 'a' S into [T.a, NT.S]
-def parseLine (s : String) : ContextFreeRule T NT:=
-  sorry
+--def parseLine (s : String) : ContextFreeRule T NT:=
+--  sorry
 
 --  G = ({S, a}, {a}, {S -> aS | a}, S)
 -- TODO: this splitting style is ugly.

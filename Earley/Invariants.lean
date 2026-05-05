@@ -1,5 +1,7 @@
 module
-import Earley.Earley
+public import Earley.Earley
+
+@[expose] public section
 
 /-!
 This module houses the correctness proofs for
@@ -30,7 +32,7 @@ theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (x : EarleyItem T G.NT)
   sorry
 
 /--
-The soundess criteria for the EarleySet:
+The soundness criteria for the EarleySet:
 Given a finished item for a word within the set,
 the grammar has to be able to generate that word.
 -/
@@ -58,9 +60,9 @@ there exists a finished item within the corresponding EarleySet.
 theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] {w : List (Symbol T G.NT)} :
     G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G x w := by
   constructor
-  . intro hgen
+  · intro hgen
     apply completenessEarley hgen
-  . intro hex
+  · intro hex
     rcases hex with ⟨hw,h⟩
     apply soundnessEarley h.left h.right
 

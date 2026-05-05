@@ -5,6 +5,7 @@ testRunner = "EarleyTest"
 
 [leanOptions]
 autoImplicit = false
+weak.linter.mathlibStandardSet = true
 
 [[require]]
 name = "mathlib"

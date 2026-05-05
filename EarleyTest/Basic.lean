@@ -35,8 +35,6 @@ def exRules : Finset (ContextFreeRule T N) where
   val := { exRule1, exRule2 }
   nodup := by simp [exRule1, exRule2]
 
--- TODO: understand the design decision to not have N as a parameter
--- (or atleast implicit from the `initial` field!)
 def G : ContextFreeGrammar T :=
   { NT := N, initial := N.S, rules := exRules }
 
@@ -50,17 +48,20 @@ Or people dont think this is a noteworthy thing to prove.
 theorem exProduces : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.a] := by
   unfold G
   unfold ContextFreeGrammar.Produces
-  simp [exRules]
-  apply Or.inl
+  unfold exRules
+  use exRule1
+  simp only [Multiset.insert_eq_cons, Finset.mk_cons, Finset.mem_cons, Finset.mem_mk,
+    Multiset.mem_singleton, true_or, true_and]
   apply ContextFreeRule.Rewrites.head
 
-theorem exGenerates (h : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.a]) : G.Generates [Symbol.terminal T.a] := by
+theorem exGenerates (h : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.a]) :
+    G.Generates [Symbol.terminal T.a] := by
   unfold ContextFreeGrammar.Generates
   unfold ContextFreeGrammar.Derives
-  apply @Relation.ReflTransGen.tail (b:= [Symbol.nonterminal N.S])
-  . unfold G
+  apply @Relation.ReflTransGen.tail (b := [Symbol.nonterminal N.S])
+  · unfold G
     apply Relation.ReflTransGen.refl
-  . exact h
+  · exact h
 
 -- Reminder:
 -- Sets in Mathlib are Prop. It is only about reasoning if an item is a part of that set

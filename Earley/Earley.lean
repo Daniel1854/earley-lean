@@ -3,7 +3,8 @@ public import Mathlib.Computability.ContextFreeGrammar
 
 namespace Earley
 /--
-This module represents the general Earley parsing algorithm in a way which lends itself nicely to proofs.
+This module represents the general Earley parsing algorithm in a way
+which lends itself nicely to proofs.
 Concretely the main definition is an inductively built set of the typing judgements from Earley.
 The set consists of EarleyItems, which represent one the possible states the derivation could be in
 while parsing the word or more concretely it's a state of a partial parse.
@@ -14,11 +15,15 @@ An EarleyItem got four fields:
 - the start- and endindex of the word which the rule handles
 
 The rule and the position jointly pinpoint what can be accepted next in this state,
-while the startItem enables pointing back to the input index where this rule derivation started from.
-The endIndex exists since it is not a List of Sets, where each item of the List represents the EarleySet for a specific input position and thus we need to keep track of it another way.
+while the startItem enables pointing back to the input index
+where this rule derivation started from.
+The endIndex exists since this inductive definition is not a List of Sets,
+where each item of the List represents the EarleySet for a specific input position.
+Thus we need to keep track of it another way.
 
 The general idea of the algorithm is to built sets of EarleyItems for every input position,
-and check at the end whether there is an item which showcases that the whole input got parsed from the initial Nonterminal.
+and check at the end whether there is an item which showcases
+that the whole input got parsed from the initial Nonterminal.
 -/
 public structure EarleyItem (T N : Type) where
   /--
@@ -68,11 +73,12 @@ instance : Repr (ContextFreeRule T N) where
 instance : Repr (EarleyItem T N) where
   reprPrec item _ :=
     have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
-    s!"{reprStr item.rule.input} → {reprStr lhs} @ {reprStr rhs} w/ ({item.startItem}, {item.endItem})"
+    have input := reprStr item.rule.input
+    s!"{input} → {reprStr lhs} @ {reprStr rhs} w/ ({item.startItem}, {item.endItem})"
 
 /--
 Returns the rhs of given rule split at some index `i`
-- rule=(A → α β) and i=1 returns ([α], [β])
+- rule=(A → α β) and i=1 returns ([], [β])
 - rule=(A → α β) and i=2 returns ([α, β], [])
 - rule=(A → α β) and i=3 returns ([α, β], [])
 -/
@@ -136,14 +142,16 @@ public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (item : EarleyItem
 This the inductive definition of the Earley Set.
 Its purpose is only to prove correctness for the general judgement/ideas.
 -/
-public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Set (EarleyItem T G.NT) where
+public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) :
+    Set (EarleyItem T G.NT) where
   /--
-  Any rule, which has the initial NT as its lhs, gets an EarleyItem with initial values included.
+  Every rule with the LHS matching the initial NT introduces an EarleyItem at the starting position.
   -/
   | init {rule : ContextFreeRule T G.NT}
       (hmem : rule ∈ G.rules) (hstart : rule.input = G.initial) : EarleySet G w ⟨rule,0,0,0⟩
   /--
-  Any EarleyItem part of the set, which next symbol matches with the next input symbol, gets an EarleyItem parsing that extra symbol.
+  Every EarleyItem part of the set, where the next symbol matches the next input symbol,
+  introduces an EarleyItem parsing that extra symbol.
   -/
   | scan {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT}
       {pos i j : Nat} {a : Symbol T G.NT}
@@ -152,7 +160,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
       (hnext : nextSymbol x = some a)
       : EarleySet G w ⟨rule,pos+1,i,j+1⟩
   /--
-  Any EarleyItem part of the set, which next symbol matches the NT of another rule, gets an EarleyItem where that rule gets followed through.
+  Every EarleyItem part of set, where the next symbol matches the NT of another rule,
+  introduces an EarleyItem where that rule gets followed through.
   -/
   | predict {x : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT}
       {pos i j : Nat} {a : Symbol T G.NT}
@@ -161,7 +170,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
       (hbounds : j < w.length) (hw : w[j] = a)
       : EarleySet G w ⟨rule2,0,j,j⟩
   /-
-  Any EarleyItem part of the set, which is completed, gets an EarleyItem where that rule could have come from.
+  Every completed EarleyItem part of the set introduces EarleyItems for where
+  the rule could have originated from.
   -/
   | complete {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT}
       {posx posy ix iy jx jy : Nat}
