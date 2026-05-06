@@ -1,6 +1,8 @@
 module
 public import Mathlib.Computability.ContextFreeGrammar
 
+@[expose] public section
+
 namespace Earley
 /--
 This module represents the general Earley parsing algorithm in a way
@@ -128,12 +130,10 @@ An item is well-formed, if
 - the position is within the length of the rhs
 - the start is not bigger than the end
 - the end is not bigger than the length of the input w
-
-TODO: I dont see why the endIdx doesnt have to be strictly bigger than the startIdx
 -/
 public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (item : EarleyItem T G.NT)
     (w : List (Symbol T G.NT)) : Prop :=
-  G.rules.toList.contains item.rule
+  item.rule ∈ G.rules
   ∧ item.position <= item.rule.output.length
   ∧ item.startItem <= item.endItem
   ∧ item.endItem <= w.length
@@ -147,15 +147,14 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   /--
   Every rule with the LHS matching the initial NT introduces an EarleyItem at the starting position.
   -/
-  | init {rule : ContextFreeRule T G.NT}
-      (hmem : rule ∈ G.rules) (hstart : rule.input = G.initial) : EarleySet G w ⟨rule,0,0,0⟩
+  | init (rule : ContextFreeRule T G.NT) (hmem : rule ∈ G.rules) (hstart : rule.input = G.initial) :
+      EarleySet G w ⟨rule,0,0,0⟩
   /--
   Every EarleyItem part of the set, where the next symbol matches the next input symbol,
   introduces an EarleyItem parsing that extra symbol.
   -/
-  | scan {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT}
-      {pos i j : Nat} {a : Symbol T G.NT}
-      (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
+  | scan (x : EarleyItem T G.NT) (rule : ContextFreeRule T G.NT) (pos i j : Nat)
+      (a : Symbol T G.NT) (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
       (hbounds : j < w.length) (hw : w[j] = a)
       (hnext : nextSymbol x = some a)
       : EarleySet G w ⟨rule,pos+1,i,j+1⟩
@@ -163,9 +162,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   Every EarleyItem part of set, where the next symbol matches the NT of another rule,
   introduces an EarleyItem where that rule gets followed through.
   -/
-  | predict {x : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT}
-      {pos i j : Nat} {a : Symbol T G.NT}
-      (hx : x = ⟨rule1,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
+  | predict (x : EarleyItem T G.NT) (rule1 rule2 : ContextFreeRule T G.NT) (pos i j : Nat)
+      (a : Symbol T G.NT) (hx : x = ⟨rule1,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
       (hr2 : rule2 ∈ G.rules) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
       (hbounds : j < w.length) (hw : w[j] = a)
       : EarleySet G w ⟨rule2,0,j,j⟩
@@ -173,11 +171,11 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   Every completed EarleyItem part of the set introduces EarleyItems for where
   the rule could have originated from.
   -/
-  | complete {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT}
-      {posx posy ix iy jx jy : Nat}
-      (hx : x = ⟨rule1,posx,ix,jx⟩) (hmemx : x ∈ EarleySet G w)
-      (hy : y = ⟨rule2,posy,iy,jy⟩) (hmemy : y ∈ EarleySet G w)
+  | complete (x y : EarleyItem T G.NT) (rule1 rule2 : ContextFreeRule T G.NT)
+      (posx posy i j k : Nat)
+      (hx : x = ⟨rule1,posx,i,j⟩) (hmemx : x ∈ EarleySet G w)
+      (hy : y = ⟨rule2,posy,j,k⟩) (hmemy : y ∈ EarleySet G w)
       (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
-      : EarleySet G w ⟨rule1,posx+1,ix,jy⟩
+      : EarleySet G w ⟨rule1,posx+1,i,k⟩
 
 end Earley
