@@ -41,7 +41,7 @@ lemma betaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.out
 
 omit [BEq T] in
 /--
-If there is a next symbol, then the position pos+1 <= length
+If there is a next symbol, then the position `pos+1` is still in bounds of the rhs of the rule.
 -/
 lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T G.NT}
     {a : Symbol T G.NT} (h : nextSymbol x = some a) : x.position + 1 ≤ x.rule.output.length := by
@@ -53,8 +53,8 @@ omit [BEq T] in
 /--
 Any EarleyItem within an EarleySet is well-formed.
 -/
-public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (x : EarleyItem T G.NT)
-    (w : List (Symbol T G.NT)) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
+public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
   unfold isWellFormed
   induction hmem with
   | init rule hmem hstart => simp [hmem]
@@ -96,8 +96,8 @@ omit [BEq T] in
 Any EarleyItem within an EarleySet is sound.
 TODO: Maybe it makes sense to split these into separate lemmas for reuse.
 -/
-public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (x : EarleyItem T G.NT)
-    (w : List (Symbol T G.NT)) (hmem : x ∈ EarleySet G w) : isSound G w x := by
+public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isSound G w x := by
   unfold isSound
   induction hmem with
   | init rule hmem hstart =>
@@ -145,17 +145,21 @@ public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (x : Earley
     --refine ⟨ihx.left,this, by omega⟩
     sorry
 
+omit [BEq T] in
 /--
 The soundness criteria for the EarleySet:
 Given a finished item for a word within the set,
 the grammar has to be able to generate that word.
 -/
-public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] {x : EarleyItem T G.NT}
-    {w : List (Symbol T G.NT)} (hmem : x ∈ EarleySet G w) (hfin : isFinished G w x) :
-    G.Generates w := by
-  simp [Generates]
-  simp [Derives]
-  sorry
+public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : x ∈ EarleySet G w)
+    (hfin : isFinished G w x) : G.Generates w := by
+  unfold Generates
+  have := soundItemEarley G w x hmem
+  simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq] at hfin
+  simp only [isSound, hfin, List.extract_eq_take_drop, Nat.sub_zero, List.drop_zero,
+    List.take_length, betaItem, List.drop_length, List.append_nil] at this
+  exact this
 
 /--
 The completeness criteria for the EarleySet:
@@ -173,8 +177,8 @@ A word can be generated from the grammar
 iff
 there exists a finished item within the corresponding EarleySet.
 -/
-public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] {w : List (Symbol T G.NT)} :
-    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
+public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    {w : List (Symbol T G.NT)} : G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
   constructor
   · intro hgen
     apply completenessEarley hgen
