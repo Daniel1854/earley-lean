@@ -95,8 +95,26 @@ Returns the next symbol of the production of the item if there is one
 - A → α· returns none
 -/
 @[inline]
-public def nextSymbol (item : EarleyItem T N) : Option (Symbol T N):=
+public def nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
   item.rule.output[item.position]?
+
+/--
+Returns the rhs of the rule of the item up to the dot.
+- A → · β   returns []
+- A → α · β returns [α]
+-/
+@[inline]
+public def alphaItem (item : EarleyItem T N) : List (Symbol T N) :=
+  item.rule.output.take item.position
+
+/--
+Returns the rhs of the item after the dot.
+- A → α ·   returns []
+- A → α · β returns [β]
+-/
+@[inline]
+public def betaItem (item : EarleyItem T N) : List (Symbol T N) :=
+  item.rule.output.drop item.position
 
 /--
 Returns whether the rule of the EarleyItem is completed,
@@ -137,6 +155,17 @@ public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
   ∧ item.position <= item.rule.output.length
   ∧ item.startItem <= item.endItem
   ∧ item.endItem <= w.length
+
+/--
+An item (A → α · β, i, j) for a word w is sound, if
+by starting the grammar at the input of the rule of the item (A)
+you can derive the i'th up to but exluding the j'th symbol of the word
+followed by the remaining beta.
+-/
+public def isSound (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (item : EarleyItem T G.NT) : Prop :=
+  let parsedAlpha := w.extract item.startItem item.endItem
+  G.Derives [Symbol.nonterminal item.rule.input] <| parsedAlpha ++ betaItem item
 
 /--
 This the inductive definition of the Earley Set.
