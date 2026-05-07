@@ -46,23 +46,7 @@ public structure EarleyItem (T N : Type) where
   endItem : Nat
 
 -- TODO: I want Repr over ToString, so I can read the output in proof states right?
-variable {T N : Type} [BEq T] [BEq N] [Repr T] [Repr N]
-
-instance : BEq (Symbol T N) where
-  beq := fun fst snd => match fst,snd with
-  | Symbol.terminal t₁, Symbol.terminal t₂ => t₁ == t₂
-  | Symbol.terminal _, Symbol.nonterminal _ => False
-  | Symbol.nonterminal _, Symbol.terminal _ => False
-  | Symbol.nonterminal t₁, Symbol.nonterminal t₂ => t₁ == t₂
-
-instance : BEq (ContextFreeRule T N) where
-  beq := fun fst snd => fst.input == snd.input && fst.output == snd.output
-
-instance : BEq (EarleyItem T N) where
-  beq := fun fst snd => fst.rule == snd.rule
-    && fst.position == snd.position
-    && fst.startItem == snd.startItem
-    && fst.endItem == snd.endItem
+variable {T N : Type} [BEq N] [Repr T] [Repr N]
 
 instance : Repr (Symbol T N) where
   reprPrec sym _ := match sym with
