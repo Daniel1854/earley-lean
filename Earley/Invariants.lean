@@ -37,7 +37,7 @@ omit [BEq T] in
 Any EarleyItem within an EarleySet is well-formed.
 -/
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (x : EarleyItem T G.NT)
-    (w : List (Symbol T G.NT)) (hmem : x ∈ EarleySet G w) : isWellFormed G x w := by
+    (w : List (Symbol T G.NT)) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
   unfold isWellFormed
   induction hmem with
   | init rule hmem hstart => simp [hmem]
@@ -63,7 +63,7 @@ Given a finished item for a word within the set,
 the grammar has to be able to generate that word.
 -/
 public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] {x : EarleyItem T G.NT}
-    {w : List (Symbol T G.NT)} (hmem : x ∈ EarleySet G w) (hfin : isFinished G x w) :
+    {w : List (Symbol T G.NT)} (hmem : x ∈ EarleySet G w) (hfin : isFinished G w x) :
     G.Generates w := by
   sorry
 
@@ -73,7 +73,7 @@ Given a word the grammar can generate,
 there has to be a finished item within the corresponding EarleySet.
 -/
 public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] {w : List (Symbol T G.NT)}
-    (hgen : G.Generates w) : ∃ x ∈ EarleySet G w, isFinished G x w:= by
+    (hgen : G.Generates w) : ∃ x ∈ EarleySet G w, isFinished G w x := by
   sorry
 
 /--
@@ -84,7 +84,7 @@ iff
 there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] {w : List (Symbol T G.NT)} :
-    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G x w := by
+    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
   constructor
   · intro hgen
     apply completenessEarley hgen

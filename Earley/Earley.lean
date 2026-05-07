@@ -117,8 +117,8 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the entire word has been recognized
 -/
 @[inline]
-public def isFinished (G : ContextFreeGrammar T) [BEq (G.NT)] (item : EarleyItem T G.NT)
-    (w : List (Symbol T G.NT)) : Bool :=
+public def isFinished (G : ContextFreeGrammar T) [BEq (G.NT)] (w : List (Symbol T G.NT))
+    (item : EarleyItem T G.NT) : Bool :=
   item.rule.input == G.initial
   && isComplete item
   && item.startItem == 0
@@ -131,8 +131,8 @@ An item is well-formed, if
 - the start is not bigger than the end
 - the end is not bigger than the length of the input w
 -/
-public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (item : EarleyItem T G.NT)
-    (w : List (Symbol T G.NT)) : Prop :=
+public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (item : EarleyItem T G.NT) : Prop :=
   item.rule ∈ G.rules
   ∧ item.position <= item.rule.output.length
   ∧ item.startItem <= item.endItem
