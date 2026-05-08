@@ -88,51 +88,89 @@ public theorem soundItemPosZero (G : ContextFreeGrammar T) [BEq G.NT] (w : List 
   simp [hmem, Rewrites.input_output]
 
 /--
+TODO: check out how this exists for drop take
+Rau does his own slice
+-/
+lemma extract_succ_right {α : Type} (xs : List α) {i j : ℕ} (hle : i ≤ j) (hb : j < xs.length) :
+    xs.extract i (j + 1) = (xs.extract i j) ++ [xs[j]] := by
+  ext l h
+  grind
+
+lemma extract_nth {α : Type} (xs : List α) {i : ℕ} (h : i < xs.length) :
+    xs.extract i (i+1) = [xs[i]] := by
+  sorry
+
+#check List.take_add
+#check List.take_eq_append_getElem_of_pos
+
+-- slice xs a b @ slice xs b c = slice xs a c"
+lemma extract_concat {α : Type} (xs : List α) {i j k : ℕ} (hij : i ≤ j) (hjk : j ≤ k) :
+    xs.extract i j ++ xs.extract j k = xs.extract i k := by
+  simp
+  sorry
+
+/--
 Any EarleyItem within an EarleySet produced through the .scan constructor is sound.
-Deriving the new item `A → α a • β, i, j+1` from `A → α • a β, i, j`:
-Since we know that the next symbol is `a`, which matches the next symbol in our rule (β) as well,
-we can simply construct a β' from β = a β' and showcase that the production holds
+Given item `A → α • a β, i, j` we can derive `A → α a • β, i, j+1`:
+To prove soundness of the new item, we need to show A deriving w_i/j+1 ++ β
+from A deriving w_i/j ++ (a :: β).
+Since we know that the next symbol is `a`, we can simply construct β' from β = a β'.
 -/
 public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat} {a : Symbol T G.NT}
     (hx : x = ⟨rule, pos, i, j⟩) (hmem : x ∈ EarleySet G w) (hbounds : j < w.length)
     (hw : w[j] = a) (hnext : nextSymbol x = some a) (hsound : isSound G w x) :
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
-  unfold isSound
-  simp only
-  --simp only [hx] at ih
-  let y : EarleyItem T G.NT := ⟨rule,pos+1,i,j+1⟩
-  have : a :: betaItem y = betaItem x :=  by
-    simp only [betaItem]
+  simp only [isSound, betaItem]
+  simp only [isSound, betaItem, hx] at hsound
+  have : (w.extract i (j + 1) ++ List.drop (pos + 1) rule.output)
+      = (w.extract i j ++ List.drop pos rule.output) := by
+    have wfx := wfEarley G w x hmem
+    simp [isWellFormed, hx] at wfx
+    have hbounds2 := bounds_of_nextSymbol_eq_some hnext
+    simp [hx] at hbounds2
+    have := @extract_succ_right _ w i j (by omega) hbounds
+    simp only [this, hw]
+    have := @List.getElem_cons_drop _ rule.output pos (by omega)
     simp only [nextSymbol, hx] at hnext
-    have := List.getElem_of_getElem? hnext
+    have := getElem_of_getElem? hnext
     rcases this with ⟨w,hpos⟩
+    rw [← hpos]
     have := @List.getElem_cons_drop _ rule.output pos w
-    rw [hpos] at this
-    simp [this,hx,y]
-  have : w.extract i (j+1) = w.extract i j ++ [w[j]] := by
-    simp
-    sorry
-  -- ⊢ List.take (j + 1 - i) (List.drop i w) = List.take (j - i) (List.drop i w) ++ [w[j]]
-  -- List.take (x+1) hl = List.take (x) hl ++ hl[x]
-  --have := List.take_succ_cons
-  simp [betaItem]
-  simp at this
-  have := @List.take_add  _ (List.drop i w) (j-i) 1
-  -- have "slice \<omega> i j @ \<beta>_item x = slice \<omega> i (j+1) @ \<beta>_item'"
-  simp [Derives]
-  simp_all
-  sorry
+    simp [this]
+  rw [this]
+  exact hsound
+
+  --let y : EarleyItem T G.NT := ⟨rule,pos+1,i,j+1⟩
+  --simp [betaItem]
+  --have : a :: betaItem y = betaItem x :=  by
+  --  simp only [betaItem]
+  --  simp only [nextSymbol, hx] at hnext
+  --  have := List.getElem_of_getElem? hnext
+  --  rcases this with ⟨w,hpos⟩
+  --  have := @List.getElem_cons_drop _ rule.output pos w
+  --  rw [hpos] at this
+  --  simp [this,hx,y]
+  --have : w.extract i (j+1) = w.extract i j ++ [w[j]] := by
+  --  simp
+  --  sorry
+  ----have := List.take_succ_cons
+  --simp at this
+  --have := @List.take_add  _ (List.drop i w) (j-i) 1
+  --sorry
 
 /--
 Any EarleyItem within an EarleySet produced through the .complete constructor is sound.
-TODO
+Given item x `A → α • B β` and item y `B → γ •`, we can derive the item `A → α B • β`
+with approriate indices. This proof operates like the one for .scan, but we have to chain
+two substrings together: the one for α and the one for γ.
 -/
 public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {posx posy i j k : Nat}
     (hx : x = ⟨rule1, posx, i, j⟩) (hmemx : x ∈ EarleySet G w)
     (hy : y = ⟨rule2, posy, j, k⟩) (hmemy : y ∈ EarleySet G w)
-    (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
+    (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
+    (hsoundx : isSound G w x) (hsoundy : isSound G w y) :
     isSound G w ⟨rule1,posx+1,i,k⟩ := by
   unfold isSound
   simp only
@@ -153,7 +191,7 @@ public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (
   | predict _ _ _ _ _ _ _ hx hmemx hmemr2 hnext hbounds hw =>
     exact soundItemPosZero _ _ hmemr2
   | complete x y rule1 rule2 posx posy i j k hx hmemx hy hmemy hcomp hnext ihx ihy =>
-    exact soundItemComplete _ _ hx hmemx hy hmemy hcomp hnext
+    exact soundItemComplete _ _ hx hmemx hy hmemy hcomp hnext ihx ihy
 
 /--
 The soundness criteria for the EarleySet:
