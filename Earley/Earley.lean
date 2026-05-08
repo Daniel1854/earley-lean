@@ -75,8 +75,8 @@ public def splitRuleAt (rule : ContextFreeRule T N) (i : Nat) :
 
 /--
 Returns the next symbol of the production of the item if there is one
-- A → ·α returns some α
-- A → α· returns none
+- A → •α returns some α
+- A → α• returns none
 -/
 @[inline]
 public def nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
@@ -84,8 +84,8 @@ public def nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
 
 /--
 Returns the rhs of the rule of the item up to the dot.
-- A → · β   returns []
-- A → α · β returns [α]
+- A → • β   returns []
+- A → α • β returns [α]
 -/
 @[inline]
 public def alphaItem (item : EarleyItem T N) : List (Symbol T N) :=
@@ -93,8 +93,8 @@ public def alphaItem (item : EarleyItem T N) : List (Symbol T N) :=
 
 /--
 Returns the rhs of the item after the dot.
-- A → α ·   returns []
-- A → α · β returns [β]
+- A → α •   returns []
+- A → α • β returns [β]
 -/
 @[inline]
 public def betaItem (item : EarleyItem T N) : List (Symbol T N) :=
@@ -103,8 +103,8 @@ public def betaItem (item : EarleyItem T N) : List (Symbol T N) :=
 /--
 Returns whether the rule of the EarleyItem is completed,
 concretely if the position/dot is at the end of the production rule
-- A → α· returns true
-- A → ·α returns false
+- A → α• returns true
+- A → •α returns false
 
 TODO: rau thinks it should be >=, but really no reason for?
 -/
@@ -141,7 +141,7 @@ public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
   ∧ item.endItem <= w.length
 
 /--
-An item (A → α · β, i, j) for a word w is sound, if
+An item (A → α • β, i, j) for a word w is sound, if
 by starting the grammar at the input of the rule of the item (A)
 you can derive the i'th up to but exluding the j'th symbol of the word
 followed by the remaining beta.
