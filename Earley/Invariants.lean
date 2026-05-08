@@ -73,12 +73,14 @@ open ContextFreeRule
 open ContextFreeGrammar
 
 /--
-Any EarleyItem within an EarleySet produced through the .init constructor is sound.
-Since we are the beginning of the rule, we only need to show that the initial NT
-derives its α which is exactly the rule
+Any well-formed EarleyItem within an EarleySet, where the position is zero, is sound
+This is the case for the .init and .predict constructor.
+Since the new item `A → •α, j, j` is at the beginning of the rule and w_j/j = [],
+we only need to show that A derives α, which is exactly the rule.
 -/
-public theorem soundItemInit (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (rule : ContextFreeRule T G.NT) (hmem : rule ∈ G.rules) : isSound G w ⟨rule,0,0,0⟩ := by
+public theorem soundItemPosZero (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    {rule : ContextFreeRule T G.NT} {j : Nat} (hmem : rule ∈ G.rules) :
+    isSound G w ⟨rule,0,j,j⟩ := by
   unfold isSound
   simp only
   apply Produces.single
@@ -87,13 +89,15 @@ public theorem soundItemInit (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
 
 /--
 Any EarleyItem within an EarleySet produced through the .scan constructor is sound.
+Deriving the new item `A → α a • β, i, j+1` from `A → α • a β, i, j`:
 Since we know that the next symbol is `a`, which matches the next symbol in our rule (β) as well,
 we can simply construct a β' from β = a β' and showcase that the production holds
 -/
 public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat} {a : Symbol T G.NT}
     (hx : x = ⟨rule, pos, i, j⟩) (hmem : x ∈ EarleySet G w) (hbounds : j < w.length)
-    (hw : w[j] = a) (hnext : nextSymbol x = some a) : isSound G w ⟨rule,pos+1,i,j+1⟩ := by
+    (hw : w[j] = a) (hnext : nextSymbol x = some a) (hsound : isSound G w x) :
+    isSound G w ⟨rule,pos+1,i,j+1⟩ := by
   unfold isSound
   simp only
   --simp only [hx] at ih
@@ -121,23 +125,6 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
   sorry
 
 /--
-Any EarleyItem within an EarleySet produced through the .predict constructor is sound.
-Since the new item `A → •α, j, j` is at the beginning of the rule and w_j/j = [],
-we only need to show that A derives α, which is exactly the rule.
-TODO: maybe delete the unneccessary hypothesis?
--/
-public theorem soundItemPredict (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    {x : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {pos i j : Nat}
-    (_hx : x = ⟨rule1, pos, i, j⟩) (_hmemx : x ∈ EarleySet G w) (hmemr2 : rule2 ∈ G.rules)
-    (_hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) {a : Symbol T G.NT}
-    (hbounds : j < w.length) (_hw : w[j] = a) : isSound G w ⟨rule2,0,j,j⟩ := by
-  unfold isSound
-  simp only [List.extract, Nat.sub_self, List.take_zero, betaItem_of_zero, List.nil_append]
-  apply Produces.single
-  use rule2
-  simp [hmemr2, Rewrites.input_output]
-
-/--
 Any EarleyItem within an EarleySet produced through the .complete constructor is sound.
 TODO
 -/
@@ -158,14 +145,13 @@ Any EarleyItem within an EarleySet is sound.
 -/
 public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isSound G w x := by
-  unfold isSound
   induction hmem with
   | init _ hmem =>
-    exact soundItemInit _ _ _ hmem
-  | scan _ _ _ _ _ _ hx hmem hbounds hw hnext =>
-    exact soundItemScan _ _ hx hmem hbounds hw hnext
+    exact soundItemPosZero _ _ hmem
+  | scan _ _ _ _ _ _ hx hmem hbounds hw hnext ih =>
+    exact soundItemScan _ _ hx hmem hbounds hw hnext ih
   | predict _ _ _ _ _ _ _ hx hmemx hmemr2 hnext hbounds hw =>
-    exact soundItemPredict _ _ hx hmemx hmemr2 hnext hbounds hw
+    exact soundItemPosZero _ _ hmemr2
   | complete x y rule1 rule2 posx posy i j k hx hmemx hy hmemy hcomp hnext ihx ihy =>
     exact soundItemComplete _ _ hx hmemx hy hmemy hcomp hnext
 
