@@ -122,16 +122,20 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
 
 /--
 Any EarleyItem within an EarleySet produced through the .predict constructor is sound.
-TODO
+Since the new item `A → •α, j, j` is at the beginning of the rule and w_j/j = [],
+we only need to show that A derives α, which is exactly the rule.
+TODO: maybe delete the unneccessary hypothesis?
 -/
 public theorem soundItemPredict (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {pos i j : Nat}
-    (hx : x = ⟨rule1, pos, i, j⟩) (hmemx : x ∈ EarleySet G w) (hmemr2 : rule2 ∈ G.rules)
-    (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) {a : Symbol T G.NT}
-    (hbounds : j < w.length) (hw : w[j] = a) : isSound G w ⟨rule2,0,j,j⟩ := by
+    (_hx : x = ⟨rule1, pos, i, j⟩) (_hmemx : x ∈ EarleySet G w) (hmemr2 : rule2 ∈ G.rules)
+    (_hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) {a : Symbol T G.NT}
+    (hbounds : j < w.length) (_hw : w[j] = a) : isSound G w ⟨rule2,0,j,j⟩ := by
   unfold isSound
-  simp only
-  sorry
+  simp only [List.extract, Nat.sub_self, List.take_zero, betaItem_of_zero, List.nil_append]
+  apply Produces.single
+  use rule2
+  simp [hmemr2, Rewrites.input_output]
 
 /--
 Any EarleyItem within an EarleySet produced through the .complete constructor is sound.
