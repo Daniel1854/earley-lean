@@ -51,36 +51,18 @@ lemma slice_aux {α : Type} (x : α) {i j : Nat} (xs : List α) (h : i + 1 ≤ j
   simp [slice_eq_extract]
   omega
 
--- TODO: unclear if I will need this
 lemma slice_concat {α : Type} (xs : List α) {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) :
     slice xs i j ++ slice xs j k = slice xs i k := by
-  induction xs, i, j using slice.induct with
-  | case1 => simp
-  | case2 => simp_all
-  | case3 x xs m ih =>
-    have : 0 < k := by omega
-    have ih := ih (by omega) (by omega)
-    have aux := slice_aux x xs hjk
-    simp only [Nat.succ_eq_add_one]
-    simp only [slice]
-    rw [aux]
-    simp [slice_eq_extract, List.take_drop]
-    sorry
-  | case4 x xs n m ih =>
-    have : 0 < k := by omega
-    have := slice_aux x xs hjk
-    sorry
-
-set_option trace.profiler true
-lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
-    slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
   simp only [slice_eq_extract, List.extract_eq_take_drop]
   ext l h
   grind
-  --have := @slice_concat _ xs i j (j+1) (by omega) (by omega)
-  --rw [← this]
-  --have := slice_one xs hb
-  --simp [this]
+
+lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
+    slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
+  have := @slice_concat _ xs i j (j+1) (by omega) (by omega)
+  rw [← this]
+  have := slice_one xs hb
+  simp [this]
 
 end Slice
 
