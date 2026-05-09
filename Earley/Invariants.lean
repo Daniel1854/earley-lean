@@ -154,21 +154,18 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
   simp only [isSound, betaItem]
   simp only [isSound, betaItem, hx] at hsound
-  have : (slice w i (j + 1) ++ List.drop (pos + 1) rule.output)
-      = (slice w i j ++ List.drop pos rule.output) := by
-    have wfx := wfEarley G w x hmem
-    simp [isWellFormed, hx] at wfx
-    have hbounds2 := bounds_of_nextSymbol_eq_some hnext
-    simp [hx] at hbounds2
-    have := slice_succ_right w wfx.right.right.left hbounds
-    simp only [this, hw]
-    have := @List.getElem_cons_drop _ rule.output pos (by omega)
-    simp only [nextSymbol, hx] at hnext
-    have := getElem_of_getElem? hnext
-    rcases this with ⟨w,hpos⟩
-    rw [← hpos]
-    have := @List.getElem_cons_drop _ rule.output pos w
-    simp [this]
+  simp only [nextSymbol, hx] at hnext
+  -- Split the expected parse into w_i/j ++ [a]
+  have wfx := wfEarley G w x hmem
+  simp [isWellFormed, hx] at wfx
+  have := slice_succ_right w wfx.right.right.left hbounds
+  simp only [this, hw]
+  -- Use the trailing [a] to get rid of the off by one
+  have := getElem_of_getElem? hnext
+  rcases this with ⟨hbounds,hpos⟩
+  have := @List.getElem_cons_drop _ rule.output pos hbounds
+  rw [hpos] at this
+  simp only [List.append_assoc, List.cons_append, List.nil_append]
   rw [this]
   exact hsound
 
@@ -185,11 +182,32 @@ public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List
     (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
     (hsoundx : isSound G w x) (hsoundy : isSound G w y) :
     isSound G w ⟨rule1,posx+1,i,k⟩ := by
-  unfold isSound
-  simp only
-  have := bounds_of_nextSymbol_eq_some hnext
-  simp only [hx] at this
-  sorry
+  simp only [isSound, betaItem]
+  simp only [isSound, betaItem, hx, hy] at hsoundx hsoundy
+  simp [isComplete, hy] at hcomp
+  simp only [hcomp, List.drop_length, List.append_nil] at hsoundy
+  -- Derive using the first rule
+  apply Derives.trans hsoundx
+  have wfx := wfEarley G w x hmemx
+  have wfy := wfEarley G w y hmemy
+  simp [isWellFormed, hx, hy] at wfx wfy
+  have : slice w i j ++ slice w j k = slice w i k := by
+    exact @slice_concat _ w i j k (by omega) (by omega)
+  rw [← this]
+  -- Remove matching Prefix
+  rw [List.append_assoc]
+  apply Derives.append_left _ (slice w i j)
+  -- Pop out the non-terminal for rule2/y
+  simp only [nextSymbol, hx] at hnext
+  have := getElem_of_getElem? hnext
+  rcases this with ⟨hbounds,hpos⟩
+  have := @List.getElem_cons_drop _ rule1.output posx hbounds
+  rw [← this]
+  -- Remove matching Postfix
+  rw [hpos]
+  rw [← List.singleton_append]
+  apply Derives.append_right _ (List.drop (posx + 1) rule1.output)
+  exact hsoundy
 
 /--
 Any EarleyItem within an EarleySet is sound.
