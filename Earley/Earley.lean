@@ -1,16 +1,38 @@
 module
 public import Mathlib.Computability.ContextFreeGrammar
-
 @[expose] public section
 
-namespace Earley
-/--
+/-!
 This module represents the general Earley parsing algorithm in a way
 which lends itself nicely to proofs.
 Concretely the main definition is an inductively built set of the typing judgements from Earley.
 The set consists of EarleyItems, which represent one the possible states the derivation could be in
 while parsing the word or more concretely it's a state of a partial parse.
 
+The general idea of the algorithm is to built sets of EarleyItems for every input position,
+and check at the end whether there is an item which showcases
+that the whole input got parsed from the initial Nonterminal.
+-/
+
+namespace Earley
+
+/--
+An inductive definition of `List.extract`, which lends itself easier to proofs.
+The first parameter is the List, which is to be sliced.
+The second is the start index, and the third is the (exclusive) end index
+
+Examples from the List.extract docstring:
+* [0, 1, 2, 3, 4, 5].slice 1 2 = [1]
+* [0, 1, 2, 3, 4, 5].slice 2 2 = []
+* [0, 1, 2, 3, 4, 5].slice 2 4 = [2, 3]
+-/
+public def slice {α : Type} : List α → Nat → Nat → List α
+  | [], _, _ => []
+  | _::_, _, 0 => []
+  | x::xs, 0, (m+1) => x :: slice xs 0 m
+  | _::xs, (n+1), (m+1) => slice xs n m
+
+/--
 An EarleyItem got four fields:
 - a rule of the grammar
 - a position within that rule
@@ -22,10 +44,6 @@ where this rule derivation started from.
 The endIndex exists since this inductive definition is not a List of Sets,
 where each item of the List represents the EarleySet for a specific input position.
 Thus we need to keep track of it another way.
-
-The general idea of the algorithm is to built sets of EarleyItems for every input position,
-and check at the end whether there is an item which showcases
-that the whole input got parsed from the initial Nonterminal.
 -/
 public structure EarleyItem (T N : Type) where
   /--
@@ -148,7 +166,7 @@ followed by the remaining beta.
 -/
 public def isSound (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Prop :=
-  let parsedAlpha := w.extract item.startItem item.endItem
+  let parsedAlpha := slice w item.startItem item.endItem
   G.Derives [Symbol.nonterminal item.rule.input] <| parsedAlpha ++ betaItem item
 
 /--

@@ -13,6 +13,77 @@ namespace Invariants
 
 section EarleySet
 
+section Slice
+
+@[simp]
+lemma slice_nil {α : Type} (i j : Nat) : slice ([] : List α) i j = [] := by
+  simp [slice]
+
+lemma slice_eq_extract {α : Type} (xs : List α) (i j : Nat) :
+    slice xs i j = xs.extract i j := by
+  induction xs, i, j using slice.induct with
+  | case1 => simp
+  | case2 => simp [slice]
+  | case3 x xs m ih => simp [slice, ih]
+  | case4 x xs n m ih => simp [slice, ih]
+
+lemma slice_eq_droptake {α : Type} (xs : List α) (i j : Nat) :
+    slice xs i j = List.drop i (List.take j xs) := by
+  simp [slice_eq_extract, List.drop_take]
+
+@[simp]
+lemma slice_zero {α : Type} (xs : List α) (i : Nat) : slice xs i i = [] := by
+  simp [slice_eq_extract]
+
+@[simp]
+lemma slice_one {α : Type} (xs : List α) {i : Nat} (h : i < xs.length) :
+    slice xs i (i + 1) = [xs[i]] := by
+  simp only [slice_eq_extract, List.extract_eq_take_drop, Nat.add_sub_cancel_left]
+  apply List.take_one_drop_eq_of_lt_length
+
+@[simp]
+lemma slice_length {α : Type} (xs : List α) : slice xs 0 xs.length = xs := by
+  simp [slice_eq_extract]
+
+lemma slice_aux {α : Type} (x : α) {i j : Nat} (xs : List α) (h : i + 1 ≤ j) :
+    slice (x :: xs) (i+1) j = slice xs i (j-1) := by
+  have : 0 < j := by omega
+  simp [slice_eq_extract]
+  omega
+
+-- TODO: unclear if I will need this
+lemma slice_concat {α : Type} (xs : List α) {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) :
+    slice xs i j ++ slice xs j k = slice xs i k := by
+  induction xs, i, j using slice.induct with
+  | case1 => simp
+  | case2 => simp_all
+  | case3 x xs m ih =>
+    have : 0 < k := by omega
+    have ih := ih (by omega) (by omega)
+    have aux := slice_aux x xs hjk
+    simp only [Nat.succ_eq_add_one]
+    simp only [slice]
+    rw [aux]
+    simp [slice_eq_extract, List.take_drop]
+    sorry
+  | case4 x xs n m ih =>
+    have : 0 < k := by omega
+    have := slice_aux x xs hjk
+    sorry
+
+set_option trace.profiler true
+lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
+    slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
+  simp only [slice_eq_extract, List.extract_eq_take_drop]
+  ext l h
+  grind
+  --have := @slice_concat _ xs i j (j+1) (by omega) (by omega)
+  --rw [← this]
+  --have := slice_one xs hb
+  --simp [this]
+
+end Slice
+
 variable {T : Type} {N : Type}
 
 @[simp]
@@ -46,7 +117,7 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
 
 /--
 Any EarleyItem within an EarleySet is well-formed.
-TODO: maybe split these up like I did with `soundItemEarley`?
+TODO: maybe split these up like I did with `soundItemEarley`? only if I need them somewhere else
 -/
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
@@ -88,33 +159,11 @@ public theorem soundItemPosZero (G : ContextFreeGrammar T) [BEq G.NT] (w : List 
   simp [hmem, Rewrites.input_output]
 
 /--
-TODO: check out how this exists for drop take
-Rau does his own slice
--/
-lemma extract_succ_right {α : Type} (xs : List α) {i j : ℕ} (hle : i ≤ j) (hb : j < xs.length) :
-    xs.extract i (j + 1) = (xs.extract i j) ++ [xs[j]] := by
-  ext l h
-  grind
-
-lemma extract_nth {α : Type} (xs : List α) {i : ℕ} (h : i < xs.length) :
-    xs.extract i (i+1) = [xs[i]] := by
-  sorry
-
-#check List.take_add
-#check List.take_eq_append_getElem_of_pos
-
--- slice xs a b @ slice xs b c = slice xs a c"
-lemma extract_concat {α : Type} (xs : List α) {i j k : ℕ} (hij : i ≤ j) (hjk : j ≤ k) :
-    xs.extract i j ++ xs.extract j k = xs.extract i k := by
-  simp
-  sorry
-
-/--
 Any EarleyItem within an EarleySet produced through the .scan constructor is sound.
 Given item `A → α • a β, i, j` we can derive `A → α a • β, i, j+1`:
 To prove soundness of the new item, we need to show A deriving w_i/j+1 ++ β
 from A deriving w_i/j ++ (a :: β).
-Since we know that the next symbol is `a`, we can simply construct β' from β = a β'.
+Since we know that the next symbol is `a`, this is mostly reasoning with slice/drop.
 -/
 public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat} {a : Symbol T G.NT}
@@ -123,13 +172,13 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
   simp only [isSound, betaItem]
   simp only [isSound, betaItem, hx] at hsound
-  have : (w.extract i (j + 1) ++ List.drop (pos + 1) rule.output)
-      = (w.extract i j ++ List.drop pos rule.output) := by
+  have : (slice w i (j + 1) ++ List.drop (pos + 1) rule.output)
+      = (slice w i j ++ List.drop pos rule.output) := by
     have wfx := wfEarley G w x hmem
     simp [isWellFormed, hx] at wfx
     have hbounds2 := bounds_of_nextSymbol_eq_some hnext
     simp [hx] at hbounds2
-    have := @extract_succ_right _ w i j (by omega) hbounds
+    have := slice_succ_right w wfx.right.right.left hbounds
     simp only [this, hw]
     have := @List.getElem_cons_drop _ rule.output pos (by omega)
     simp only [nextSymbol, hx] at hnext
@@ -140,24 +189,6 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
     simp [this]
   rw [this]
   exact hsound
-
-  --let y : EarleyItem T G.NT := ⟨rule,pos+1,i,j+1⟩
-  --simp [betaItem]
-  --have : a :: betaItem y = betaItem x :=  by
-  --  simp only [betaItem]
-  --  simp only [nextSymbol, hx] at hnext
-  --  have := List.getElem_of_getElem? hnext
-  --  rcases this with ⟨w,hpos⟩
-  --  have := @List.getElem_cons_drop _ rule.output pos w
-  --  rw [hpos] at this
-  --  simp [this,hx,y]
-  --have : w.extract i (j+1) = w.extract i j ++ [w[j]] := by
-  --  simp
-  --  sorry
-  ----have := List.take_succ_cons
-  --simp at this
-  --have := @List.take_add  _ (List.drop i w) (j-i) 1
-  --sorry
 
 /--
 Any EarleyItem within an EarleySet produced through the .complete constructor is sound.
@@ -204,8 +235,7 @@ public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq 
   unfold Generates
   have := soundItemEarley G w x hmem
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq] at hfin
-  simp only [isSound, hfin, List.extract_eq_take_drop, Nat.sub_zero, List.drop_zero,
-    List.take_length, betaItem, List.drop_length, List.append_nil] at this
+  simp only [isSound, hfin, slice_length, betaItem, List.drop_length, List.append_nil] at this
   exact this
 
 /--
@@ -235,7 +265,7 @@ public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
 
 /--
 The EarleySet only has a finite number of element.
-TODO: seem to need this for the recognizer impl
+TODO: seem to need this for the completeness proof already
 --have := Fintype.ofFinite α
 -/
 public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
