@@ -1,5 +1,6 @@
 module
 public import Earley.Earley
+@[expose] public section
 
 /-!
 This module houses the correctness proofs for
@@ -68,6 +69,86 @@ end Slice
 
 variable {T : Type} {N : Type}
 
+section Derivation
+open ContextFreeRule
+open ContextFreeGrammar
+
+/--
+A derivation for a CFG `G` states that `u` can be rewritten to `v` via rewriting using the
+given rule list in sequence (List is of finite length)
+I am not sure if there is a cleaner way to state it yet.
+Rau also got the index at which he rewrites u, thus the total length of what he rewrites
+
+hmem is new as well since rewrites is decoupled, its way more typey
+-/
+def Derivation (G : ContextFreeGrammar T) :
+    List (Symbol T G.NT) → List (ContextFreeRule T G.NT) → List (Symbol T G.NT) → Prop
+  | u, [], v => u = v
+  | u, x::xs, v => ∃u', x ∈ G.rules ∧ x.Rewrites u u' ∧ Derivation G u' xs v
+
+/--
+TODO: name? Its some trans thing
+-/
+lemma Derivation_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.NT)}
+    {rules : List (ContextFreeRule T G.NT)} (hu : Derivation G u rules v)
+    (hv : G.Produces v w) : ∃ D, Derivation G u (rules ++ D) w := by
+  induction rules generalizing u v w with
+  | nil =>
+    rcases hv with ⟨r, hr⟩
+    rw [hu]
+    use [r]
+    simp [Derivation, hr]
+  | cons x xs ih =>
+    rcases hu with ⟨u',hu⟩
+    have := ih hu.right.right hv
+    rcases this with ⟨D,hD⟩
+    simp only [List.cons_append, Derivation, hu, true_and]
+    use D, u'
+    simp [hu, hD]
+
+/--
+A given Derivation for rewriting `u` to `v` implies that you can derive `v` from `u`.
+-/
+lemma Derivation_implies_derives {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
+    (hex : ∃ D, Derivation G u D v) : G.Derives u v := by
+  rcases hex with ⟨D,hD⟩
+  induction D generalizing u with
+  | nil => rw [hD]
+  | cons x xs ih =>
+    rcases hD with ⟨u',hu⟩
+    apply Derives.trans (u := u) (v := u') (w := v)
+    · apply Produces.single
+      use x
+      simp [hu]
+    · exact ih hu.right.right
+
+/--
+Given that you can derive `v` from `u`, there is a Derivation that rewrites `u` to `v`.
+-/
+lemma derives_implies_Derivation {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
+    (h : G.Derives u v) : ∃ D, Derivation G u D v  := by
+  simp only [Derives] at h
+  induction h with
+  | refl =>
+    use []
+    simp [Derivation]
+  | tail h ih hex =>
+    rcases hex with ⟨r, hr⟩
+    have := Derivation_produces G hr ih
+    rcases this with ⟨D, hD⟩
+    use r++D
+
+/--
+G derives `u` from `v` if and only if there is a Derivation that rewrites `u` to `v`.
+-/
+lemma derives_iff_Derivation (G : ContextFreeGrammar T) (u v : List (Symbol T G.NT)) :
+    G.Derives u v ↔ ∃ D, Derivation G u D v  := by
+  constructor
+  · apply derives_implies_Derivation
+  · apply Derivation_implies_derives
+
+end Derivation
+
 @[simp]
 lemma alphaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     alphaItem item = [] := by
@@ -98,6 +179,20 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
   omega
 
 /--
+An item is well-formed, if
+- the rule belongs to given grammar G
+- the position is within the length of the rhs
+- the start is not bigger than the end
+- the end is not bigger than the length of the input w
+-/
+public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (item : EarleyItem T G.NT) : Prop :=
+  item.rule ∈ G.rules
+  ∧ item.position <= item.rule.output.length
+  ∧ item.startItem <= item.endItem
+  ∧ item.endItem <= w.length
+
+/--
 Any EarleyItem within an EarleySet is well-formed.
 TODO: maybe split these up like I did with `soundItemEarley`? only if I need them somewhere else
 -/
@@ -124,6 +219,17 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
 
 open ContextFreeRule
 open ContextFreeGrammar
+
+/--
+An item (A → α • β, i, j) for a word w is sound, if
+by starting the grammar at the input of the rule of the item (A)
+you can derive the i'th up to but exluding the j'th symbol of the word
+followed by the remaining beta.
+-/
+public def isSound (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (item : EarleyItem T G.NT) : Prop :=
+  let parsedAlpha := slice w item.startItem item.endItem
+  G.Derives [Symbol.nonterminal item.rule.input] <| parsedAlpha ++ betaItem item
 
 /--
 Any well-formed EarleyItem within an EarleySet, where the position is zero, is sound
@@ -239,12 +345,88 @@ public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq 
   exact this
 
 /--
+Returns the set of all nonterminals of a given grammar.
+
+TODO: We cast it to Symbol for usage in `isWord` below. (I think I wont need it anywhere else?)
+      Rau's Implementation of `isWord`, but with the types it is way easier
+      `nonterminals G ∩ { x | x ∈ w } = ∅`
+TODO: most likely should live somewhere else
+TODO: very interesting to me that the type was not inferable
+-/
+public def nonterminals (G : ContextFreeGrammar T) : Set (Symbol T G.NT) :=
+  { Symbol.nonterminal G.initial } ∪ Set.image
+    (fun rule => Symbol.nonterminal rule.input : ContextFreeRule T G.NT → Symbol T G.NT) G.rules
+
+/--
+Returns if a list of symbols doesn't include any nonterminals of given grammar.
+-/
+public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :=
+  List.isEmpty (w.filter (fun s => match s with
+    | Symbol.terminal _ => false
+    | Symbol.nonterminal _ => true
+  ))
+
+/--
+A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
+
+every possible derivation the grammar provides is within the set?
+
+This is not for the full set of EarleyItems
+
+Rau introduces `Derivation` which mainly limits the length of the derivation itself
+Im not sure if Derives is enough or I actually need that wrapper as well
+-/
+public def isPartiallyComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (n : Nat) (I : Set (EarleyItem T G.NT)) : Prop :=
+  ∀ (rule : ContextFreeRule T G.NT) (pos i i' j : Nat) (x : EarleyItem T G.NT) (a : Symbol T G.NT),
+    i ≤ j ∧ j ≤ n ∧ n ≤ w.length ∧ x = ⟨rule, pos, i, i'⟩ ∧ x ∈ I ∧ nextSymbol x = some a ∧
+    G.Derives [a] (slice w i j) → ⟨rule, pos+1, i', j⟩ ∈ I
+
+/--
+A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
+every possible derivation the grammar provides is within the set?
+TODO
+-/
+lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (n : Nat) (I : Set (EarleyItem T G.NT))
+    {pos i j k : Nat} {A : G.NT} {α : List (Symbol T G.NT)}
+    (hjn : j ≤ n) (hlen : n ≤ w.length)
+    (x : EarleyItem T G.NT) (hx : x = ⟨⟨A, α⟩, pos, i, k⟩)
+    (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G w x)
+  -- betaItem should just be alpha? right
+    (hd : G.Derives α (slice w j n))
+    (hcomp : isPartiallyComplete G w n I)--(λD' => length D' <= length D))
+    : ⟨⟨A, α⟩, α.length, i, k⟩ ∈ I :=
+  sorry
+
+/--
+TODO
+-/
+lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (n : Nat) : isPartiallyComplete G w n (EarleySet G w) := by
+  sorry
+
+/--
 The completeness criteria for the EarleySet:
 Given a word the grammar can generate,
 there has to be a finished item within the corresponding EarleySet.
 -/
-public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] {w : List (Symbol T G.NT)}
-    (hgen : G.Generates w) : ∃ x ∈ EarleySet G w, isFinished G w x := by
+public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    {w : List (Symbol T G.NT)} (hw : isWord G w) (hgen : G.Generates w) :
+    ∃ x ∈ EarleySet G w, isFinished G w x := by
+  simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq]
+  have partComp := partiallyCompleteEarley G w w.length
+  simp [isPartiallyComplete] at partComp
+
+  simp only [Generates] at hgen
+  have := derives_implies_Derivation hgen
+  rcases this with ⟨D,hD⟩
+
+  -- need to case on the length of the word. if it is zero, then its trivial
+  have rule := D.getLast sorry
+  let x : EarleyItem T G.NT := ⟨⟨G.initial, rule.output⟩, rule.output.length, 0, w.length⟩
+  use x
+  simp [x]
   sorry
 
 /--
@@ -255,10 +437,11 @@ iff
 there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    {w : List (Symbol T G.NT)} : G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
+    {w : List (Symbol T G.NT)} (hw : isWord G w) :
+    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
   constructor
   · intro hgen
-    apply completenessEarley hgen
+    apply completenessEarley hw hgen
   · intro hex
     rcases hex with ⟨hw,h⟩
     apply soundnessEarley h.left h.right

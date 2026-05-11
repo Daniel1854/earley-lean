@@ -145,31 +145,6 @@ public def isFinished (G : ContextFreeGrammar T) [BEq (G.NT)] (w : List (Symbol 
   && item.endItem == w.length
 
 /--
-An item is well-formed, if
-- the rule belongs to given grammar G
-- the position is within the length of the rhs
-- the start is not bigger than the end
-- the end is not bigger than the length of the input w
--/
-public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (item : EarleyItem T G.NT) : Prop :=
-  item.rule ∈ G.rules
-  ∧ item.position <= item.rule.output.length
-  ∧ item.startItem <= item.endItem
-  ∧ item.endItem <= w.length
-
-/--
-An item (A → α • β, i, j) for a word w is sound, if
-by starting the grammar at the input of the rule of the item (A)
-you can derive the i'th up to but exluding the j'th symbol of the word
-followed by the remaining beta.
--/
-public def isSound (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (item : EarleyItem T G.NT) : Prop :=
-  let parsedAlpha := slice w item.startItem item.endItem
-  G.Derives [Symbol.nonterminal item.rule.input] <| parsedAlpha ++ betaItem item
-
-/--
 This the inductive definition of the Earley Set.
 Its purpose is only to prove correctness for the general judgement/ideas.
 -/

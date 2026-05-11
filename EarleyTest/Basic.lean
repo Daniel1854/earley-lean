@@ -1,5 +1,6 @@
 import Mathlib.Computability.ContextFreeGrammar
 import Earley.Earley
+import Earley.Invariants
 
 /-
 This suite tests the basic functionality around EarleyItems
@@ -155,12 +156,14 @@ instance : BEq G.NT where
 
 def exW1 : List (Symbol T N) := [Symbol.terminal T.a]
 def exW2 : List (Symbol T N) := [Symbol.terminal T.a, Symbol.terminal T.a, Symbol.terminal T.a]
+def exW3 : List (Symbol T N) := [Symbol.nonterminal N.S, Symbol.terminal T.a, Symbol.terminal T.a]
 theorem finished1 : isFinished G exW1 exItem1 = false := rfl
 theorem finished2 : isFinished G exW1 exItem2 = false := rfl
 theorem finished3 : isFinished G exW1 exItem3 = false := rfl
 theorem finished4 : isFinished G exW1 exItem4 = false := rfl
 theorem finished5 : isFinished G exW1 exItem5 = true := rfl
 
+open Invariants
 -- These just wait for lemmas, which I will require anyway for the proofs right?
   -- [Finset.mem_toList]
 theorem wf1 : isWellFormed G exW1 exItem1 := by
@@ -186,3 +189,17 @@ theorem wf5 : isWellFormed G exW2 exItem5 := by
   unfold G
   unfold exRules
   simp [List.length, exRule1]
+
+-- TODO: refer to some material in MIL with sets? I am a bit surprised how bad these are to handle
+theorem ntsG : nonterminals G = { Symbol.nonterminal N.S } := by
+  simp [nonterminals, G, exRules, exRule1, exRule2]
+  grind
+
+theorem isWord1 : isWord G exW1 := by
+  simp [isWord, G, exRules, exRule1, exRule2, exW1]
+
+theorem isWord2 : isWord G exW2 := by
+  simp [isWord, G, exRules, exRule1, exRule2, exW2]
+
+theorem isWord3 : ¬isWord G exW3 := by
+  simp [isWord, G, exRules, exRule1, exRule2, exW3]
