@@ -1,12 +1,12 @@
 module
 public import Earley.Earley
+public import Earley.Slice
+public import Earley.Derivation
 @[expose] public section
 
 /-!
-This module houses the correctness proofs for
-- Earley Typing Judgements / EarleySet
-- Earley Recognizer
-- Earley Parser
+TODO: maybe rename this file/see how it develops
+This module houses the correctness proofs for the EarleySet and maybe more?
 -/
 
 namespace Earley
@@ -14,140 +14,7 @@ namespace Invariants
 
 section EarleySet
 
-section Slice
-
-@[simp]
-lemma slice_nil {α : Type} (i j : Nat) : slice ([] : List α) i j = [] := by
-  simp [slice]
-
-lemma slice_eq_extract {α : Type} (xs : List α) (i j : Nat) :
-    slice xs i j = xs.extract i j := by
-  induction xs, i, j using slice.induct with
-  | case1 => simp
-  | case2 => simp [slice]
-  | case3 x xs m ih => simp [slice, ih]
-  | case4 x xs n m ih => simp [slice, ih]
-
-lemma slice_eq_droptake {α : Type} (xs : List α) (i j : Nat) :
-    slice xs i j = List.drop i (List.take j xs) := by
-  simp [slice_eq_extract, List.drop_take]
-
-@[simp]
-lemma slice_zero {α : Type} (xs : List α) (i : Nat) : slice xs i i = [] := by
-  simp [slice_eq_extract]
-
-@[simp]
-lemma slice_one {α : Type} (xs : List α) {i : Nat} (h : i < xs.length) :
-    slice xs i (i + 1) = [xs[i]] := by
-  simp only [slice_eq_extract, List.extract_eq_take_drop, Nat.add_sub_cancel_left]
-  apply List.take_one_drop_eq_of_lt_length
-
-@[simp]
-lemma slice_length {α : Type} (xs : List α) : slice xs 0 xs.length = xs := by
-  simp [slice_eq_extract]
-
-lemma slice_aux {α : Type} (x : α) {i j : Nat} (xs : List α) (h : i + 1 ≤ j) :
-    slice (x :: xs) (i+1) j = slice xs i (j-1) := by
-  have : 0 < j := by omega
-  simp [slice_eq_extract]
-  omega
-
-lemma slice_concat {α : Type} (xs : List α) {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) :
-    slice xs i j ++ slice xs j k = slice xs i k := by
-  simp only [slice_eq_extract, List.extract_eq_take_drop]
-  ext l h
-  grind
-
-lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
-    slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
-  have := @slice_concat _ xs i j (j+1) (by omega) (by omega)
-  rw [← this]
-  have := slice_one xs hb
-  simp [this]
-
-end Slice
-
 variable {T : Type} {N : Type}
-
-section Derivation
-open ContextFreeRule
-open ContextFreeGrammar
-
-/--
-A derivation for a CFG `G` states that `u` can be rewritten to `v` via rewriting using the
-given rule list in sequence (List is of finite length)
-I am not sure if there is a cleaner way to state it yet.
-Rau also got the index at which he rewrites u, thus the total length of what he rewrites
-
-hmem is new as well since rewrites is decoupled, its way more typey
--/
-def Derivation (G : ContextFreeGrammar T) :
-    List (Symbol T G.NT) → List (ContextFreeRule T G.NT) → List (Symbol T G.NT) → Prop
-  | u, [], v => u = v
-  | u, x::xs, v => ∃u', x ∈ G.rules ∧ x.Rewrites u u' ∧ Derivation G u' xs v
-
-/--
-TODO: name? Its some trans thing
--/
-lemma Derivation_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.NT)}
-    {rules : List (ContextFreeRule T G.NT)} (hu : Derivation G u rules v)
-    (hv : G.Produces v w) : ∃ D, Derivation G u (rules ++ D) w := by
-  induction rules generalizing u v w with
-  | nil =>
-    rcases hv with ⟨r, hr⟩
-    rw [hu]
-    use [r]
-    simp [Derivation, hr]
-  | cons x xs ih =>
-    rcases hu with ⟨u',hu⟩
-    have := ih hu.right.right hv
-    rcases this with ⟨D,hD⟩
-    simp only [List.cons_append, Derivation, hu, true_and]
-    use D, u'
-    simp [hu, hD]
-
-/--
-A given Derivation for rewriting `u` to `v` implies that you can derive `v` from `u`.
--/
-lemma Derivation_implies_derives {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
-    (hex : ∃ D, Derivation G u D v) : G.Derives u v := by
-  rcases hex with ⟨D,hD⟩
-  induction D generalizing u with
-  | nil => rw [hD]
-  | cons x xs ih =>
-    rcases hD with ⟨u',hu⟩
-    apply Derives.trans (u := u) (v := u') (w := v)
-    · apply Produces.single
-      use x
-      simp [hu]
-    · exact ih hu.right.right
-
-/--
-Given that you can derive `v` from `u`, there is a Derivation that rewrites `u` to `v`.
--/
-lemma derives_implies_Derivation {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
-    (h : G.Derives u v) : ∃ D, Derivation G u D v  := by
-  simp only [Derives] at h
-  induction h with
-  | refl =>
-    use []
-    simp [Derivation]
-  | tail h ih hex =>
-    rcases hex with ⟨r, hr⟩
-    have := Derivation_produces G hr ih
-    rcases this with ⟨D, hD⟩
-    use r++D
-
-/--
-G derives `u` from `v` if and only if there is a Derivation that rewrites `u` to `v`.
--/
-lemma derives_iff_Derivation (G : ContextFreeGrammar T) (u v : List (Symbol T G.NT)) :
-    G.Derives u v ↔ ∃ D, Derivation G u D v  := by
-  constructor
-  · apply derives_implies_Derivation
-  · apply Derivation_implies_derives
-
-end Derivation
 
 @[simp]
 lemma alphaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
@@ -169,14 +36,7 @@ lemma betaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.out
     betaItem item = [] := by
   simp [betaItem, h]
 
-/--
-If there is a next symbol, then the position `pos+1` is still in bounds of the rhs of the rule.
--/
-lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T G.NT}
-    {a : Symbol T G.NT} (h : nextSymbol x = some a) : x.position + 1 ≤ x.rule.output.length := by
-  rw [nextSymbol] at h
-  have := of_getElem?_eq_some h
-  omega
+section WellFormed
 
 /--
 An item is well-formed, if
@@ -191,6 +51,15 @@ public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
   ∧ item.position <= item.rule.output.length
   ∧ item.startItem <= item.endItem
   ∧ item.endItem <= w.length
+
+/--
+If there is a next symbol, then the position `pos+1` is still in bounds of the rhs of the rule.
+-/
+lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T G.NT}
+    {a : Symbol T G.NT} (h : nextSymbol x = some a) : x.position + 1 ≤ x.rule.output.length := by
+  rw [nextSymbol] at h
+  have := of_getElem?_eq_some h
+  omega
 
 /--
 Any EarleyItem within an EarleySet is well-formed.
@@ -217,6 +86,9 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
     simp only [hy] at ihy
     refine ⟨ihx.left,this, by omega⟩
 
+end WellFormed
+
+section Soundness
 open ContextFreeRule
 open ContextFreeGrammar
 
@@ -344,27 +216,11 @@ public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq 
   simp only [isSound, hfin, slice_length, betaItem, List.drop_length, List.append_nil] at this
   exact this
 
-/--
-Returns the set of all nonterminals of a given grammar.
+end Soundness
 
-TODO: We cast it to Symbol for usage in `isWord` below. (I think I wont need it anywhere else?)
-      Rau's Implementation of `isWord`, but with the types it is way easier
-      `nonterminals G ∩ { x | x ∈ w } = ∅`
-TODO: most likely should live somewhere else
-TODO: very interesting to me that the type was not inferable
--/
-public def nonterminals (G : ContextFreeGrammar T) : Set (Symbol T G.NT) :=
-  { Symbol.nonterminal G.initial } ∪ Set.image
-    (fun rule => Symbol.nonterminal rule.input : ContextFreeRule T G.NT → Symbol T G.NT) G.rules
-
-/--
-Returns if a list of symbols doesn't include any nonterminals of given grammar.
--/
-public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :=
-  List.isEmpty (w.filter (fun s => match s with
-    | Symbol.terminal _ => false
-    | Symbol.nonterminal _ => true
-  ))
+section Completeness
+open ContextFreeRule
+open ContextFreeGrammar
 
 /--
 A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
@@ -428,6 +284,8 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
   use x
   simp [x]
   sorry
+
+end Completeness
 
 /--
 The correctness criteria for the EarleySet.

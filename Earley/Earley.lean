@@ -17,22 +17,6 @@ that the whole input got parsed from the initial Nonterminal.
 namespace Earley
 
 /--
-An inductive definition of `List.extract`, which lends itself easier to proofs.
-The first parameter is the List, which is to be sliced.
-The second is the start index, and the third is the (exclusive) end index
-
-Examples from the List.extract docstring:
-* [0, 1, 2, 3, 4, 5].slice 1 2 = [1]
-* [0, 1, 2, 3, 4, 5].slice 2 2 = []
-* [0, 1, 2, 3, 4, 5].slice 2 4 = [2, 3]
--/
-public def slice {α : Type} : List α → Nat → Nat → List α
-  | [], _, _ => []
-  | _::_, _, 0 => []
-  | x::xs, 0, (m+1) => x :: slice xs 0 m
-  | _::xs, (n+1), (m+1) => slice xs n m
-
-/--
 An EarleyItem got four fields:
 - a rule of the grammar
 - a position within that rule
