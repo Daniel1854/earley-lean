@@ -88,7 +88,18 @@ inductive T where
   | c : T
   | d : T
   | s : T
+/--
+Metaprogram to parse an EBNF-style String into a `ContextFreeGrammar`
 
+  let cmd ← `(command|
+    inductive $name : Type where
+    $[| $ctorNames:ident : $ctorTypes:term]*
+
+inductDecl (lparams : List Name) (nparams : Nat)
+(types : List InductiveType) (isUnsafe : Bool) : Declaration
+addDecl <| .inductDecl [] []
+[\<inductName, .sort 1, [\<ctorName1, .const inductName []\>, ...]\>] false
+-/
 -- this has the most important things.
 -- A metaprogram could check the type of A if its NT or T and match accordingly
 -- but how to handle if there are multiple terms?
