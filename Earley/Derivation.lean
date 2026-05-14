@@ -50,6 +50,20 @@ def Derivation (G : ContextFreeGrammar T) :
   | u, x::xs, v => ∃u', x ∈ G.rules ∧ x.Rewrites u u' ∧ Derivation G u' xs v
 
 /--
+If the input word of a Derivation is the empty list, then the output list has to be empty as well.
+-/
+lemma Derivation_from_empty (G : ContextFreeGrammar T) {v : List (Symbol T G.NT)}
+    {rules : List (ContextFreeRule T G.NT)} (h : Derivation G [] rules v) : v = [] := by
+  induction rules with
+  | nil =>
+    rw [Derivation] at h
+    simp [h]
+  | cons x xs ih =>
+    simp [Derivation] at h
+    rcases h.right with ⟨u,hu⟩
+    cases hu.left
+
+/--
 TODO: name? Its some trans thing
 -/
 lemma Derivation_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.NT)}
@@ -127,7 +141,7 @@ lemma rule_from_derives (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (h
     rcases hD.right with ⟨u, hu⟩
     use u, xs
     simp only [hu, true_and]
-    -- TODO: maybe write a lemma that r.Rewrites u v means ⟨u,v⟩ iff length u = 1
+    -- TODO: maybe write a lemma that r.Rewrites u v means r=⟨u,v⟩ iff length u = 1
     -- since this technicality turned out surprisingly annoying
     have := Rewrites.nonterminal_input_mem hu.left
     have hin : x.input = G.initial := by simp_all
@@ -139,5 +153,34 @@ lemma rule_from_derives (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (h
       cases p <;> cases q <;> simp at hpqIn
       simp [hpqOut]
     simp [← hin, ← hout, hD]
+
+
+/--
+Given a Derivation, which consists of multiple
+-/
+lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G.NT)}
+    {D : List (ContextFreeRule T G.NT)} (hD : Derivation G (a ++ b) D c) :
+    ∃ a' b' E F, Derivation G a E a'  ∧ Derivation G b F b'  ∧ c = a' ++ b' ∧
+      E.length ≤ D.length ∧ F.length ≤ D.length := by
+  induction D generalizing a b with
+  | nil => simp_all [Derivation]
+  | cons d D ih =>
+    simp only [Derivation, exists_and_left] at hD
+    rcases hD with ⟨hmemh,⟨c',hc'⟩⟩
+    --cases hlen : as.length ≤
+    -- I basicly have to split c' up, dont I ?
+    let a' : List (Symbol T G.NT) := []
+    let b' : List (Symbol T G.NT) := []
+    have heq : a' ++ b' = c' := by sorry
+
+    have := @ih a' b'
+    rw [heq] at this
+    have := this hc'.right
+    rcases this with ⟨a'',b'',E,F,h⟩
+    clear this
+    use a'', b'', E, F
+    simp [h]
+
+    sorry
 
 end Earley

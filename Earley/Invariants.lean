@@ -223,44 +223,108 @@ open ContextFreeRule
 open ContextFreeGrammar
 
 /--
-A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
+A set of EarleyItems {(A → α • β, i, j)} w.r.t to a word `w` is partially complete up to `n`, if
+for i ≤ j ≤ n every item in the set `(A → α • a β, i, j)` and
+every derivation from `a` to w_j/n,
+the set also contains the item `(A → α a • β, i, k)`.
 
-every possible derivation the grammar provides is within the set?
+Basicly if there is Derivation within the indices that progresses the word,
+the corresponding progressed item has to be within the set as well.
 
-This is not for the full set of EarleyItems
-
-Rau introduces `Derivation` which mainly limits the length of the derivation itself
-Im not sure if Derives is enough or I actually need that wrapper as well
+Crucially, there exists a predicate `P` which the Derivation has to uphold.
+This is to limit the length of the Derivation. TODO
 -/
 public def isPartiallyComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (n : Nat) (I : Set (EarleyItem T G.NT)) : Prop :=
-  ∀ (rule : ContextFreeRule T G.NT) (pos i i' j : Nat) (x : EarleyItem T G.NT) (a : Symbol T G.NT),
-    i ≤ j ∧ j ≤ n ∧ n ≤ w.length ∧ x = ⟨rule, pos, i, i'⟩ ∧ x ∈ I ∧ nextSymbol x = some a ∧
-    G.Derives [a] (slice w i j) → ⟨rule, pos+1, i', j⟩ ∈ I
+    (n : Nat) (I : Set (EarleyItem T G.NT)) (P : List (ContextFreeRule T G.NT) → Bool) : Prop :=
+  ∀ (rule : ContextFreeRule T G.NT) (pos i i' j : Nat) (x : EarleyItem T G.NT) (a : Symbol T G.NT)
+    (D : List (ContextFreeRule T G.NT)),
+    i ≤ j ∧ j ≤ n ∧ n ≤ w.length ∧ x = ⟨rule, pos, i, i'⟩ ∧ x ∈ I ∧
+    nextSymbol x = some a ∧ Derivation G [a] D (slice w i j) ∧ P D
+    → ⟨rule, pos+1, i', j⟩ ∈ I
 
 /--
 A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
 every possible derivation the grammar provides is within the set?
-TODO
+n = k, A = N
 -/
 lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (n : Nat) (I : Set (EarleyItem T G.NT))
-    {pos i j k : Nat} {A : G.NT} {α : List (Symbol T G.NT)}
-    (hjn : j ≤ n) (hlen : n ≤ w.length)
-    (x : EarleyItem T G.NT) (hx : x = ⟨⟨A, α⟩, pos, i, k⟩)
+    {pos i j : Nat} {A : G.NT} {α : List (Symbol T G.NT)} {D : List (ContextFreeRule T G.NT)}
+    (hjn : j ≤ n) (hlen : n ≤ w.length) (x : EarleyItem T G.NT) (hx : x = ⟨⟨A, α⟩, pos, i, j⟩)
     (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G w x)
-  -- betaItem should just be alpha? right
-    (hd : G.Derives α (slice w j n))
-    (hcomp : isPartiallyComplete G w n I)--(λD' => length D' <= length D))
-    : ⟨⟨A, α⟩, α.length, i, k⟩ ∈ I :=
-  sorry
+    (hd : Derivation G (betaItem x) D (slice w j n))
+    (hcomp : isPartiallyComplete G w n I (fun D' => D'.length ≤ D.length)) :
+    ⟨⟨A, α⟩, α.length, i, n⟩ ∈ I := by
+  induction hbeta : betaItem x generalizing pos i j n A α x with
+  | nil =>
+    -- A → α • []
+    -- The position is given and the item is already complete.
+    have hpos : pos = α.length := by
+      simp [betaItem, hx] at hbeta
+      have := wfI x hmem
+      simp [isWellFormed, hx] at this
+      omega
+    simp only [betaItem, hx, hpos, List.drop_length] at hd
+    have : slice w j n = [] := Derivation_from_empty G hd
+    have heq : j = n := by
+      simp [slice_eq_droptake] at this
+      omega
+    rw [heq, hpos] at hx
+    rw [hx] at hmem
+    apply hmem
+  -- A → α • a β
+  | cons r rs ih =>
+    rw [hbeta] at hd
+    rw [← List.singleton_append] at hd
+    -- Split the Derivation into a single step and the rest
+    have := Derivation_cons_split G hd
+    rcases this with ⟨a', b', E, F, h⟩
+    have : ∃ j', a' = slice w j j' ∧ b' = slice w j' n:= by
+      sorry
+    rcases this with ⟨j',hj'⟩
+    -- Construct an EarleyItem part of the Set, where the next symbol has been parsed
+    have : nextSymbol x = some r := by
+      have wfX := wfI x hmem
+      simp [isWellFormed, hx] at wfX
+      simp [nextSymbol, hx]
+      simp only [betaItem, hx] at hbeta
+      have := @List.getElem_cons_drop _ α pos (by grind)
+      grind
+    let y : EarleyItem T G.NT :=  ⟨⟨A,α⟩, pos+1, i, j'⟩
+    have : ⟨⟨A,α⟩, pos+1, i, j'⟩ ∈ I := by
+      sorry
+
+    --have : isPartiallyComplete G w n I (fun D' => D'.length ≤ F.length) := by sorry
+
+    --have : rs = betaItem ⟨⟨A,α⟩, pos+1, i, j'⟩ := by sorry
+
+    sorry
 
 /--
-TODO
+The EarleySet is partially complete.
 -/
 lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (n : Nat) : isPartiallyComplete G w n (EarleySet G w) := by
-  sorry
+    (n : Nat) : isPartiallyComplete G w n (EarleySet G w) (fun _ => true) := by
+  intro rule pos i i' j x a D ⟨hij, hjn, hlen, hx, hmemx, hnext, hD, hP⟩
+  induction hDlen : D.length generalizing rule pos i i' j x a D with
+  | zero =>
+      simp at hDlen
+      simp only [hDlen, Derivation] at hD
+      have : j ≤ w.length := by omega
+      have : j = i + 1 := by
+        have : [a].length = 1 := by simp
+        rw [hD] at this
+        -- lemma this
+        sorry
+      have : i < w.length := by omega
+      have : w[i] = a := by sorry
+      --have := EarleySet.scan _ _ _ _ _ _
+      sorry
+  | succ m ih => sorry
+
+  -- nat_less_induct
+  --induction D.length using Nat.strong_induction_on generalizing rule pos i i' j x a D with
+  --| h m ih => sorry
 
 /--
 The completeness criteria for the EarleySet:
@@ -271,19 +335,32 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
     {w : List (Symbol T G.NT)} (hw : isWord G w) (hgen : G.Generates w) :
     ∃ x ∈ EarleySet G w, isFinished G w x := by
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq]
-  have partComp := partiallyCompleteEarley G w w.length
-  simp [isPartiallyComplete] at partComp
-
-  simp only [Generates] at hgen
+  -- Fetch the first rule that has to have been applied
   have := derives_implies_Derivation hgen
   rcases this with ⟨D,hD⟩
-
-  -- need to case on the length of the word. if it is zero, then its trivial
-  have rule := D.getLast sorry
-  let x : EarleyItem T G.NT := ⟨⟨G.initial, rule.output⟩, rule.output.length, 0, w.length⟩
-  use x
-  simp [x]
-  sorry
+  have := rule_from_derives G w hw D hD
+  rcases this with ⟨u,D',hu⟩
+  -- Create the initial EarleyItem, which is on the critical path
+  let x : EarleyItem T G.NT := ⟨⟨G.initial, u⟩, 0, 0, 0⟩
+  have hx : x = ⟨⟨G.initial, u⟩, 0, 0, 0⟩ := by simp [x]
+  have hmemx : x ∈ EarleySet G w := by
+    apply EarleySet.init x.rule hu.right
+    simp [hx]
+  -- The remaining Derivation links the initial item with the final item via partial completeness
+  have hD' : Derivation G u D' (slice w 0 w.length) := by simp [hu.left]
+  -- This is only a restricted version of `partiallyCompleteEarley`,
+  -- where there are less possible input combinations, and thus trivially correct.
+  have partCompShorter :
+      isPartiallyComplete G w w.length (EarleySet G w) (fun D => D.length ≤ D'.length) := by
+    unfold isPartiallyComplete
+    have partComp := partiallyCompleteEarley G w w.length
+    simp only [isPartiallyComplete, Std.le_refl, true_and, and_imp] at partComp
+    grind
+  -- Prove a finished EarleyItem exists by fully leaning on EarleySet being partially completed
+  have : ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩ ∈ EarleySet G w := by
+    exact partiallyCompleteUpTo G w w.length (EarleySet G w)
+      (by omega) (by omega) x hx hmemx (wfEarley G w) hD' partCompShorter
+  use ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩
 
 end Completeness
 
@@ -298,8 +375,7 @@ public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
     {w : List (Symbol T G.NT)} (hw : isWord G w) :
     G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
   constructor
-  · intro hgen
-    apply completenessEarley hw hgen
+  · apply completenessEarley hw
   · intro hex
     rcases hex with ⟨hw,h⟩
     apply soundnessEarley h.left h.right
