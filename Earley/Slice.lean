@@ -76,4 +76,9 @@ lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (h
   have := slice_one xs hb
   simp [this]
 
+lemma succ_of_len {α : Type} (xs : List α) (i j : Nat) (h : (slice xs i j).length = 1)
+    (hb : j ≤ xs.length) : j = i + 1 := by
+  simp [slice_eq_extract] at h
+  grind
+
 end Earley

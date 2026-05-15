@@ -232,7 +232,7 @@ Basicly if there is Derivation within the indices that progresses the word,
 the corresponding progressed item has to be within the set as well.
 
 Crucially, there exists a predicate `P` which the Derivation has to uphold.
-This is to limit the length of the Derivation. TODO
+This is to limit the length of the Derivation.
 -/
 public def isPartiallyComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (n : Nat) (I : Set (EarleyItem T G.NT)) (P : List (ContextFreeRule T G.NT) → Bool) : Prop :=
@@ -243,9 +243,9 @@ public def isPartiallyComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (
     → ⟨rule, pos+1, i, k⟩ ∈ I
 
 /--
-A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
-every possible derivation the grammar provides is within the set?
-n = k, A = N
+If a set of EarleyItems is partially complete up to `n`, then given a progressable item,
+the progressed item is also within the set.
+See `isPartiallyComplete`.
 -/
 lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (n : Nat) (I : Set (EarleyItem T G.NT))
@@ -282,8 +282,8 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     -- Split the Derivation into a single step and the rest
     have := Derivation_cons_split G hD
     rcases this with ⟨a',b',E,F,⟨hE,hF,hab,hlenE,hlenF⟩⟩
+    -- XXX: think about the API of the lemma and what I even prove here
     have : ∃ k, a' = slice w j k ∧ b' = slice w k n ∧ j ≤ k ∧ k ≤ n:= by
-      --use j + a'.length
       sorry
     rcases this with ⟨k,⟨ha',hb',hjk,hkn⟩⟩
     simp only [ha', hb'] at hE hF
@@ -323,16 +323,18 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
   | zero =>
       simp at hDlen
       simp only [hDlen, Derivation] at hD
-      have : j ≤ w.length := by omega
-      have : j = i + 1 := by
+      have hjw : j ≤ w.length := by omega
+      have hji : j = i' + 1 := by
         have : [a].length = 1 := by simp
         rw [hD] at this
-        -- lemma this
-        sorry
-      have : i < w.length := by omega
-      have : w[i] = a := by sorry
-      --have := EarleySet.scan _ _ _ _ _ _
-      sorry
+        exact succ_of_len w i' j this hjw
+      have hi'len : i' < w.length := by omega
+      have hw : w[i'] = a := by
+        have := @slice_one _ w i' (by omega)
+        simp [hji, this] at hD
+        simp [hD]
+      rw [hji]
+      apply EarleySet.scan x rule pos i i' a hx hmemx hi'len hw hnext
   | succ m ih => sorry
 
   -- nat_less_induct
@@ -395,7 +397,7 @@ public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
 
 /--
 The EarleySet only has a finite number of element.
-TODO: seem to need this for the completeness proof already
+TODO: seem to need this for the recognizer proof
 --have := Fintype.ofFinite α
 -/
 public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
