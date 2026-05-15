@@ -236,11 +236,11 @@ This is to limit the length of the Derivation. TODO
 -/
 public def isPartiallyComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (n : Nat) (I : Set (EarleyItem T G.NT)) (P : List (ContextFreeRule T G.NT) → Bool) : Prop :=
-  ∀ (rule : ContextFreeRule T G.NT) (pos i i' j : Nat) (x : EarleyItem T G.NT) (a : Symbol T G.NT)
-    (D : List (ContextFreeRule T G.NT)),
-    i ≤ j ∧ j ≤ n ∧ n ≤ w.length ∧ x = ⟨rule, pos, i, i'⟩ ∧ x ∈ I ∧
-    nextSymbol x = some a ∧ Derivation G [a] D (slice w i j) ∧ P D
-    → ⟨rule, pos+1, i', j⟩ ∈ I
+  ∀ (rule : ContextFreeRule T G.NT) (pos i j k : Nat) {x : EarleyItem T G.NT} {a : Symbol T G.NT}
+    {D : List (ContextFreeRule T G.NT)},
+    j ≤ k ∧ k ≤ n ∧ n ≤ w.length ∧ x = ⟨rule, pos, i, j⟩ ∧ x ∈ I ∧
+    nextSymbol x = some a ∧ Derivation G [a] D (slice w j k) ∧ P D
+    → ⟨rule, pos+1, i, k⟩ ∈ I
 
 /--
 A set of Items {(A → α • β, i, j)} is partially complete up to `n`, if
@@ -252,10 +252,10 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     {pos i j : Nat} {A : G.NT} {α : List (Symbol T G.NT)} {D : List (ContextFreeRule T G.NT)}
     (hjn : j ≤ n) (hlen : n ≤ w.length) (x : EarleyItem T G.NT) (hx : x = ⟨⟨A, α⟩, pos, i, j⟩)
     (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G w x)
-    (hd : Derivation G (betaItem x) D (slice w j n))
+    (hD : Derivation G (betaItem x) D (slice w j n))
     (hcomp : isPartiallyComplete G w n I (fun D' => D'.length ≤ D.length)) :
     ⟨⟨A, α⟩, α.length, i, n⟩ ∈ I := by
-  induction hbeta : betaItem x generalizing pos i j n A α x with
+  induction hbeta : betaItem x generalizing pos i j n A D α x with
   | nil =>
     -- A → α • []
     -- The position is given and the item is already complete.
@@ -264,8 +264,8 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
       have := wfI x hmem
       simp [isWellFormed, hx] at this
       omega
-    simp only [betaItem, hx, hpos, List.drop_length] at hd
-    have : slice w j n = [] := Derivation_from_empty G hd
+    simp only [betaItem, hx, hpos, List.drop_length] at hD
+    have : slice w j n = [] := Derivation_from_empty G hD
     have heq : j = n := by
       simp [slice_eq_droptake] at this
       omega
@@ -274,31 +274,44 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     apply hmem
   -- A → α • a β
   | cons r rs ih =>
-    rw [hbeta] at hd
-    rw [← List.singleton_append] at hd
+    rw [hbeta] at hD
+    simp only [betaItem, hx] at hbeta
+    have wfX := wfI x hmem
+    simp [isWellFormed, hx] at wfX
+    rw [← List.singleton_append] at hD
     -- Split the Derivation into a single step and the rest
-    have := Derivation_cons_split G hd
-    rcases this with ⟨a', b', E, F, h⟩
-    have : ∃ j', a' = slice w j j' ∧ b' = slice w j' n:= by
+    have := Derivation_cons_split G hD
+    rcases this with ⟨a',b',E,F,⟨hE,hF,hab,hlenE,hlenF⟩⟩
+    have : ∃ k, a' = slice w j k ∧ b' = slice w k n ∧ j ≤ k ∧ k ≤ n:= by
+      --use j + a'.length
       sorry
-    rcases this with ⟨j',hj'⟩
+    rcases this with ⟨k,⟨ha',hb',hjk,hkn⟩⟩
+    simp only [ha', hb'] at hE hF
     -- Construct an EarleyItem part of the Set, where the next symbol has been parsed
-    have : nextSymbol x = some r := by
-      have wfX := wfI x hmem
-      simp [isWellFormed, hx] at wfX
+    let y : EarleyItem T G.NT :=  ⟨⟨A,α⟩, pos+1, i, k⟩
+    have hnextx : nextSymbol x = some r := by
       simp [nextSymbol, hx]
-      simp only [betaItem, hx] at hbeta
       have := @List.getElem_cons_drop _ α pos (by grind)
       grind
-    let y : EarleyItem T G.NT :=  ⟨⟨A,α⟩, pos+1, i, j'⟩
-    have : ⟨⟨A,α⟩, pos+1, i, j'⟩ ∈ I := by
-      sorry
-
-    --have : isPartiallyComplete G w n I (fun D' => D'.length ≤ F.length) := by sorry
-
-    --have : rs = betaItem ⟨⟨A,α⟩, pos+1, i, j'⟩ := by sorry
-
-    sorry
+    have hmemy : y ∈ I := by
+      simp only [isPartiallyComplete, decide_eq_true_eq, and_imp] at hcomp
+      apply hcomp ⟨A,α⟩ pos i j k (by omega) (by omega) (by omega) hx hmem hnextx hE hlenE
+    have hrs : betaItem y = rs := by
+      simp only [betaItem, y]
+      have := @List.drop_add_one_eq_tail_drop _ pos α
+      simp [this, hbeta]
+    have wfY := wfI y hmemy
+    simp [isWellFormed, y] at wfY
+    -- Apply the IH for that Item
+    have ih := @ih n (pos+1) i k A α F hkn hlen y (by simp [y]) hmemy
+    apply ih
+    · simp [hrs, hF]
+    -- This is only a more restricted version of `hcomp`
+    -- where there are less possible input combinations, and thus trivially correct.
+    · simp [isPartiallyComplete] at hcomp
+      simp [isPartiallyComplete]
+      grind
+    · simp [hrs]
 
 /--
 The EarleySet is partially complete.
@@ -348,7 +361,7 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
     simp [hx]
   -- The remaining Derivation links the initial item with the final item via partial completeness
   have hD' : Derivation G u D' (slice w 0 w.length) := by simp [hu.left]
-  -- This is only a restricted version of `partiallyCompleteEarley`,
+  -- this is only a restricted version of `partiallyCompleteEarley`,
   -- where there are less possible input combinations, and thus trivially correct.
   have partCompShorter :
       isPartiallyComplete G w w.length (EarleySet G w) (fun D => D.length ≤ D'.length) := by
