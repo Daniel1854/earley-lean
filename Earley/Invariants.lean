@@ -317,29 +317,25 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
 The EarleySet is partially complete.
 -/
 lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (n : Nat) : isPartiallyComplete G w n (EarleySet G w) (fun _ => true) := by
-  intro rule pos i i' j x a D ⟨hij, hjn, hlen, hx, hmemx, hnext, hD, hP⟩
-  induction hDlen : D.length generalizing rule pos i i' j x a D with
+    (n : Nat) (hw : isWord G w) : isPartiallyComplete G w n (EarleySet G w) (fun _ => true) := by
+  intro rule pos i j k x a D ⟨hjk, hkn, hlen, hx, hmemx, hnext, hD, hP⟩
+  induction hDlen : D.length generalizing rule pos i j k x a D with
   | zero =>
       simp at hDlen
       simp only [hDlen, Derivation] at hD
-      have hjw : j ≤ w.length := by omega
-      have hji : j = i' + 1 := by
+      have hkw : k ≤ w.length := by omega
+      have hkj : k = j + 1 := by
         have : [a].length = 1 := by simp
         rw [hD] at this
-        exact succ_of_len w i' j this hjw
-      have hi'len : i' < w.length := by omega
-      have hw : w[i'] = a := by
-        have := @slice_one _ w i' (by omega)
-        simp [hji, this] at hD
+        exact succ_of_len w j k this hkw
+      have hlenj : j < w.length := by omega
+      have : w[j] = a := by
+        have := @slice_one _ w j (by omega)
+        simp [hkj, this] at hD
         simp [hD]
-      rw [hji]
-      apply EarleySet.scan x rule pos i i' a hx hmemx hi'len hw hnext
+      rw [hkj]
+      apply EarleySet.scan x rule pos i j a hx hmemx hlenj this hnext
   | succ m ih => sorry
-
-  -- nat_less_induct
-  --induction D.length using Nat.strong_induction_on generalizing rule pos i i' j x a D with
-  --| h m ih => sorry
 
 /--
 The completeness criteria for the EarleySet:
@@ -353,7 +349,7 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
   -- Fetch the first rule that has to have been applied
   have := derives_implies_Derivation hgen
   rcases this with ⟨D,hD⟩
-  have := rule_from_derives G w hw D hD
+  have := Derivation_step G w hw D hD
   rcases this with ⟨u,D',hu⟩
   -- Create the initial EarleyItem, which is on the critical path
   let x : EarleyItem T G.NT := ⟨⟨G.initial, u⟩, 0, 0, 0⟩
@@ -368,7 +364,7 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
   have partCompShorter :
       isPartiallyComplete G w w.length (EarleySet G w) (fun D => D.length ≤ D'.length) := by
     unfold isPartiallyComplete
-    have partComp := partiallyCompleteEarley G w w.length
+    have partComp := partiallyCompleteEarley G w w.length hw
     simp only [isPartiallyComplete, Std.le_refl, true_and, and_imp] at partComp
     grind
   -- Prove a finished EarleyItem exists by fully leaning on EarleySet being partially completed

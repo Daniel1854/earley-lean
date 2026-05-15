@@ -87,8 +87,7 @@ lemma Derivation_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.N
 A given Derivation for rewriting `u` to `v` implies that you can derive `v` from `u`.
 -/
 lemma Derivation_implies_derives {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
-    (hex : ∃ D, Derivation G u D v) : G.Derives u v := by
-  rcases hex with ⟨D,hD⟩
+    (D : List (ContextFreeRule T G.NT)) (hD : Derivation G u D v) : G.Derives u v := by
   induction D generalizing u with
   | nil => rw [hD]
   | cons x xs ih =>
@@ -122,15 +121,34 @@ lemma derives_iff_Derivation (G : ContextFreeGrammar T) (u v : List (Symbol T G.
     G.Derives u v ↔ ∃ D, Derivation G u D v  := by
   constructor
   · apply derives_implies_Derivation
-  · apply Derivation_implies_derives
+  · intro hex
+    rcases hex with ⟨D,hD⟩
+    apply Derivation_implies_derives D hD
 
 /--
-Given a Derivation from the starting symbol of a grammar to the word,
-we can extract the first rule that has been applied.
+Given `r.Rewrites u v` with `length u = 1`, we know that the only meaningful rule could be r=⟨u,v⟩
 -/
-lemma rule_from_derives (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hword : isWord G w)
-    (D : List (ContextFreeRule T G.NT)) (hD : Derivation G [Symbol.nonterminal G.initial] D w) :
-    ∃ α D', Derivation G α D' w  ∧ ⟨G.initial, α⟩ ∈ G.rules  := by
+lemma rule_of_rewrite_step (G : ContextFreeGrammar T) (r : ContextFreeRule T G.NT)
+    {v : List (Symbol T G.NT)} {u : G.NT} (hr : r.Rewrites [Symbol.nonterminal u] v) :
+    r = ⟨u,v⟩ := by
+  have := Rewrites.nonterminal_input_mem hr
+  have hin : u = r.input := by simp_all
+  have hout : v = r.output := by
+    have := rewrites_iff.mp hr
+    rcases this with ⟨p,q,⟨hpqIn,hpqOut⟩⟩
+    rw [hin] at hpqIn
+    have := (@List.self_eq_append_right _ [Symbol.nonterminal G.initial] q)
+    cases p <;> cases q <;> simp at hpqIn
+    simp [hpqOut]
+  rw [hin, hout]
+
+/--
+Given a Derivation starting from a single non terminal symbol to the word,
+we can extract the first rule that has been applied and construct the derivation for the rest.
+-/
+lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hword : isWord G w)
+    {u : G.NT} (D : List (ContextFreeRule T G.NT)) (hD : Derivation G [Symbol.nonterminal u] D w) :
+    ∃ v D', Derivation G v D' w  ∧ ⟨u, v⟩ ∈ G.rules  := by
   cases D with
   | nil =>
     -- Unreachable since there would be no rewrite and we impose w to be terminals only
@@ -138,22 +156,12 @@ lemma rule_from_derives (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (h
     simp [isWord,← hD] at hword
   | cons x xs =>
     simp only [Derivation, exists_and_left] at hD
-    rcases hD.right with ⟨u, hu⟩
-    use u, xs
-    simp only [hu, true_and]
-    -- TODO: maybe write a lemma that r.Rewrites u v means r=⟨u,v⟩ iff length u = 1
-    -- since this technicality turned out surprisingly annoying
-    have := Rewrites.nonterminal_input_mem hu.left
-    have hin : x.input = G.initial := by simp_all
-    have hout : x.output = u := by
-      have := rewrites_iff.mp hu.left
-      rcases this with ⟨p,q,⟨hpqIn,hpqOut⟩⟩
-      rw [hin] at hpqIn
-      have := (@List.self_eq_append_right _ [Symbol.nonterminal G.initial] q)
-      cases p <;> cases q <;> simp at hpqIn
-      simp [hpqOut]
-    simp [← hin, ← hout, hD]
-
+    rcases hD.right with ⟨v, hv⟩
+    use v, xs
+    simp only [hv, true_and]
+    have := rule_of_rewrite_step G x hv.left
+    rw [← this]
+    exact hD.left
 
 /--
 Given a Derivation, which consists of multiple
