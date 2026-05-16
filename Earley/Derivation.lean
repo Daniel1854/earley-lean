@@ -15,19 +15,6 @@ open ContextFreeRule
 variable {T : Type} {N : Type}
 
 /--
-Returns the set of all nonterminals of a given grammar.
-
-TODO: We cast it to Symbol for usage in `isWord` below. (I think I wont need it anywhere else?)
-      Rau's Implementation of `isWord`, but with the types it is way easier
-      `nonterminals G ∩ { x | x ∈ w } = ∅`
-TODO: most likely should live somewhere else or simply remove it
-TODO: very interesting to me that the type was not inferable
--/
-public def nonterminals (G : ContextFreeGrammar T) : Set (Symbol T G.NT) :=
-  { Symbol.nonterminal G.initial } ∪ Set.image
-    (fun rule => Symbol.nonterminal rule.input : ContextFreeRule T G.NT → Symbol T G.NT) G.rules
-
-/--
 Returns if a list of symbols includes only terminals of given grammar.
 -/
 public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :=
@@ -52,6 +39,7 @@ def Derivation (G : ContextFreeGrammar T) :
 /--
 If the input word of a Derivation is the empty list, then the output list has to be empty as well.
 -/
+@[grind →]
 lemma Derivation_from_empty (G : ContextFreeGrammar T) {v : List (Symbol T G.NT)}
     {rules : List (ContextFreeRule T G.NT)} (h : Derivation G [] rules v) : v = [] := by
   induction rules with
@@ -64,8 +52,18 @@ lemma Derivation_from_empty (G : ContextFreeGrammar T) {v : List (Symbol T G.NT)
     cases hu.left
 
 /--
+If the list of rules contains of multiple elements, then we can unfold the first application.
+-/
+@[simp, grind =]
+lemma Derivation_succ (G : ContextFreeGrammar T) {u v : List (Symbol T G.NT)}
+    {d : ContextFreeRule T G.NT} {D : List (ContextFreeRule T G.NT)} :
+    Derivation G u (d :: D) v = (d ∈ G.rules ∧ ∃ x, d.Rewrites u x ∧ Derivation G x D v) := by
+  simp [Derivation]
+
+/--
 TODO: name? Its some trans thing
 -/
+@[grind →]
 lemma Derivation_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.NT)}
     {rules : List (ContextFreeRule T G.NT)} (hu : Derivation G u rules v)
     (hv : G.Produces v w) : ∃ D, Derivation G u (rules ++ D) w := by
@@ -164,7 +162,8 @@ lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hwo
     exact hD.left
 
 /--
-Given a Derivation, which consists of multiple
+Given a Derivation from multiple inputs, we can split up the inputs and
+derive their output separetely.
 -/
 lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G.NT)}
     {D : List (ContextFreeRule T G.NT)} (hD : Derivation G (a ++ b) D c) :
@@ -174,21 +173,65 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
   | nil => simp_all [Derivation]
   | cons d D ih =>
     simp only [Derivation, exists_and_left] at hD
-    rcases hD with ⟨hmemh,⟨c',hc'⟩⟩
-    --cases hlen : as.length ≤
-    -- I basicly have to split c' up, dont I ?
-    let a' : List (Symbol T G.NT) := []
-    let b' : List (Symbol T G.NT) := []
-    have heq : a' ++ b' = c' := by sorry
-
-    have := @ih a' b'
-    rw [heq] at this
-    have := this hc'.right
-    rcases this with ⟨a'',b'',E,F,h⟩
-    clear this
-    use a'', b'', E, F
-    simp [h]
-
-    sorry
+    rcases hD with ⟨hmemh,⟨ab,⟨hd,hD⟩⟩⟩
+    have := Rewrites.exists_parts hd
+    rcases this with ⟨x,y,⟨happ,hab1⟩⟩
+    by_cases hax : a.length ≤ x.length
+    -- b gets rewritten by d
+    · -- maybe?
+      -- simp only [List.append_assoc, List.cons_append, List.nil_append,
+      --  List.append_eq_append_iff] at happ
+      -- maybe ?have ha : a = x.slice 0 a.length := by sorry
+      have ha : a = x.take a.length := by sorry
+      have hb : b = x.drop a.length ++ [Symbol.nonterminal d.input] ++ y := by sorry
+      have hab2 : ab = x.take a.length ++ x.drop a.length ++ d.output ++ y := by
+        rw [← ha]
+        rw [hab1]
+        sorry
+      simp only [hab1] at hD
+      have ih := @ih (x.take a.length) (x.drop a.length ++ d.output ++ y)
+      have : x.take a.length ++ (x.drop a.length ++ d.output ++ y)
+        = x ++ d.output ++ y := by grind
+      rw [this] at ih
+      clear this
+      have := ih hD
+      clear ih
+      rcases this with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
+      use a', b', E, d::F
+      refine ⟨?_,?_,hc,by simp; omega,by simp [hlenF]⟩
+      · rw [ha]
+        exact hE
+      · simp only [Derivation_succ]
+        refine ⟨hmemh,?_⟩
+        use x.drop a.length ++ d.output ++ y
+        refine ⟨?_,hF⟩
+        rw [hb]
+        apply rewrites_of_exists_parts
+    -- a gets rewritten by d
+    · have ha : a = x ++ [Symbol.nonterminal d.input] ++ y.take (a.length - x.length - 1) := by
+        sorry
+      have hb : b = y.drop (a.length - x.length - 1) := by sorry
+      have hab2 : ab = x ++ d.output ++ y.take (a.length - x.length - 1) ++
+        y.drop (a.length - x.length - 1) := by sorry
+      simp only [hab1] at hD
+      have ih := @ih (x ++ d.output ++ y.take (a.length - x.length - 1))
+        (y.drop (a.length - x.length - 1))
+      have : x ++ d.output ++ y.take (a.length - x.length - 1) ++ y.drop (a.length - x.length - 1)
+        = x ++ d.output ++ y := by grind
+      rw [this] at ih
+      clear this
+      have := ih hD
+      clear ih
+      rcases this with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
+      use a', b', d::E, F
+      refine ⟨?_,?_,hc,by simp [hlenE],by simp; omega⟩
+      · simp only [Derivation_succ]
+        refine ⟨hmemh,?_⟩
+        rw [ha]
+        use (x ++ d.output ++ List.take (a.length - x.length - 1) y)
+        refine ⟨?_,hE⟩
+        apply rewrites_of_exists_parts
+      · rw [hb]
+        exact hF
 
 end Earley

@@ -16,22 +16,22 @@ section EarleySet
 
 variable {T : Type} {N : Type}
 
-@[simp]
+@[simp, grind =]
 lemma alphaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     alphaItem item = [] := by
   simp [alphaItem, h]
 
-@[simp]
+@[simp, grind =]
 lemma betaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     betaItem item = item.rule.output := by
   simp [betaItem, h]
 
-@[simp]
+@[simp, grind =]
 lemma alphaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.output.length) :
     alphaItem item = item.rule.output := by
   simp [alphaItem, h]
 
-@[simp]
+@[simp, grind =]
 lemma betaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.output.length) :
     betaItem item = [] := by
   simp [betaItem, h]
@@ -65,6 +65,7 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
 Any EarleyItem within an EarleySet is well-formed.
 TODO: maybe split these up like I did with `soundItemEarley`? only if I need them somewhere else
 -/
+@[grind .]
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
   unfold isWellFormed
@@ -333,10 +334,12 @@ The EarleySet is partially complete.
 lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (n : Nat) (hw : isWord G w) : isPartiallyComplete G w n (EarleySet G w) (fun _ => true) := by
   intro rule pos i j k x a D ⟨hjk, hkn, hlen, hx, hmemx, hnext, hD, hP⟩
-  induction hDlen : D.length generalizing rule pos i j k x a D with
-  | zero =>
+  induction hDlen : D.length using Nat.strong_induction_on generalizing rule pos i j k x a D with
+  | h m ih =>
+    cases D with
+    | nil =>
       simp at hDlen
-      simp only [hDlen, Derivation] at hD
+      simp only [Derivation] at hD
       have hkw : k ≤ w.length := by omega
       have hkj : k = j + 1 := by
         have : [a].length = 1 := by simp
@@ -349,7 +352,49 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
         simp [hD]
       rw [hkj]
       apply EarleySet.scan x rule pos i j a hx hmemx hlenj this hnext
-  | succ m ih => sorry
+    | cons r rs =>
+      simp only [Derivation, exists_and_left] at hD
+      rcases hD.right with ⟨u, hu⟩
+      -- We know that `a` has to be a non-terminal
+      cases a
+      · cases hu.left
+        rename_i hrs
+        cases hrs
+      next nt =>
+      let y : EarleyItem T G.NT := ⟨⟨nt,u⟩, 0, j, j⟩
+      have : rs.length < (r::rs).length:= by simp
+      have wfX := wfEarley G w x hmemx
+      simp [isWellFormed, hx] at wfX
+      have hcompn : isPartiallyComplete G w n (EarleySet G w) (fun F => F.length ≤ rs.length) := by
+        simp only [isPartiallyComplete, decide_eq_true_eq, and_imp]
+        intro rule' pos' i' j' k' x' a' D' hjk' hkn' hlen' hx' hmemx' hnextx' hD' hDlen'
+        apply ih rs.length (by omega) rule' pos' i' j' k' hjk' hkn' hx' hmemx' hnextx' hD'
+        · simp
+        · have := hu.right
+          sorry
+      rw [isPartiallyComplete] at hcompn
+      have hcompk : isPartiallyComplete G w k (EarleySet G w) (fun F => F.length ≤ rs.length) := by
+        grind [isPartiallyComplete]
+      rw [isPartiallyComplete] at hcompk
+      clear hcompn hcompk ---XXX
+      have hrs : Derivation G (betaItem y) rs (slice w j k) := by
+        simp only [betaItem, List.drop_zero, y]
+        exact hu.right
+      have hmemy : y ∈ EarleySet G w := by
+        simp only [y]
+        have hr := rule_of_rewrite_step G r hu.left
+        rw [hr] at hD
+        apply EarleySet.predict x rule ⟨nt,u⟩ _ _ _ (Symbol.nonterminal nt) hx hmemx hD.left
+        · simp [hnext]
+        · sorry -- hnext
+        · sorry -- hu
+      have hklen : k ≤ w.length := by omega
+      let z : EarleyItem T G.NT := ⟨⟨nt,u⟩, u.length, j, k⟩
+      have : z ∈ EarleySet G w := by
+        simp [z]
+        -- wf
+        sorry
+      sorry
 
 /--
 The completeness criteria for the EarleySet:
