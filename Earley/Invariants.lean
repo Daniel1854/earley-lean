@@ -302,9 +302,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     -- Split the Derivation into a single step and the rest
     have := Derivation_cons_split G hD
     rcases this with ⟨a',b',E,F,⟨hE,hF,hab,hlenE,hlenF⟩⟩
-    -- XXX: think about the API of the lemma and what I even prove here
-    have : ∃ k, a' = slice w j k ∧ b' = slice w k n ∧ j ≤ k ∧ k ≤ n:= by
-      sorry
+    have : ∃ k, a' = slice w j k ∧ b' = slice w k n ∧ j ≤ k ∧ k ≤ n:= slice_concat_ex hab hjn
     rcases this with ⟨k,⟨ha',hb',hjk,hkn⟩⟩
     simp only [ha', hb'] at hE hF
     -- Construct an EarleyItem part of the Set, where the next symbol has been parsed

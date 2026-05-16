@@ -24,8 +24,8 @@ Examples from the List.extract docstring:
 public def slice {α : Type} : List α → Nat → Nat → List α
   | [], _, _ => []
   | _::_, _, 0 => []
-  | x::xs, 0, (m+1) => x :: slice xs 0 m
-  | _::xs, (n+1), (m+1) => slice xs n m
+  | x::xs, 0, (j+1) => x :: slice xs 0 j
+  | _::xs, (i+1), (j+1) => slice xs i j
 
 @[simp]
 lemma slice_nil {α : Type} (i j : Nat) : slice ([] : List α) i j = [] := by
@@ -36,8 +36,8 @@ lemma slice_eq_extract {α : Type} (xs : List α) (i j : Nat) :
   induction xs, i, j using slice.induct with
   | case1 => simp
   | case2 => simp [slice]
-  | case3 x xs m ih => simp [slice, ih]
-  | case4 x xs n m ih => simp [slice, ih]
+  | case3 x xs j ih => simp [slice, ih]
+  | case4 x xs i j ih => simp [slice, ih]
 
 lemma slice_eq_droptake {α : Type} (xs : List α) (i j : Nat) :
     slice xs i j = List.drop i (List.take j xs) := by
@@ -80,5 +80,38 @@ lemma succ_of_len {α : Type} (xs : List α) (i j : Nat) (h : (slice xs i j).len
     (hb : j ≤ xs.length) : j = i + 1 := by
   simp [slice_eq_extract] at h
   grind
+
+/--
+There always exists a middle-point for a slice to concatenate
+-/
+lemma slice_concat_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice xs i k = ys ++ zs)
+    (hik : i ≤ k) : ∃ j, ys = slice xs i j ∧ zs = slice xs j k ∧ i ≤ j ∧ j ≤ k := by
+  induction xs, i, k using slice.induct generalizing ys zs with
+  | case1 i k =>
+    simp [slice] at h
+    simp only [h, slice_nil, true_and]
+    use k
+  | case2 x xs i =>
+    simp [slice] at h
+    simp [h, slice]
+    omega
+  | case3 x xs k ih =>
+    cases ys with
+    | nil =>
+      use 0
+      simp [slice] at h
+      simp [slice, h]
+    | cons y ys =>
+      simp [slice] at h
+      have := ih h.right (by simp)
+      rcases this with ⟨j,hj⟩
+      use j+1
+      simp [h, hj, slice]
+  | case4 x xs i k ih =>
+    simp only [Nat.succ_eq_add_one, Nat.add_le_add_iff_right] at hik
+    have := @ih ys zs h hik
+    rcases this with ⟨j,hj⟩
+    use j+1
+    simp [hj, slice]
 
 end Earley
