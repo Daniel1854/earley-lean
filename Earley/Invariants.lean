@@ -243,6 +243,27 @@ public def isPartiallyComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (
     → ⟨rule, pos+1, i, k⟩ ∈ I
 
 /--
+If we know the set to be partially complete without restrictions,
+then we also know the set to be partially complete for a restricted Derivation length.
+-/
+lemma partiallyComplete_of_unrestricted_partiallyComplete {G : ContextFreeGrammar T} [BEq G.NT]
+    {w : List (Symbol T G.NT)} {n : Nat} {I : Set (EarleyItem T G.NT)}
+    {D : List (ContextFreeRule T G.NT)} (hcomp : isPartiallyComplete G w n I (fun _ => true)) :
+    isPartiallyComplete G w n I (fun D' => D'.length ≤ D.length) := by
+  grind [isPartiallyComplete]
+
+/--
+If we know the set to be partially complete for a given Derivation length,
+then we also know the set to be partially complete for a further restricted Derivation length .
+-/
+lemma partiallyComplete_of_longer_partiallyComplete {G : ContextFreeGrammar T} [BEq G.NT]
+    {w : List (Symbol T G.NT)} {n : Nat} {I : Set (EarleyItem T G.NT)}
+    {E F : List (ContextFreeRule T G.NT)} (hlen : F.length ≤ E.length)
+    (hcomp : isPartiallyComplete G w n I (fun D => D.length ≤ E.length)) :
+    isPartiallyComplete G w n I (fun D => D.length ≤ F.length) := by
+  grind [isPartiallyComplete]
+
+/--
 If a set of EarleyItems is partially complete up to `n`, then given a progressable item,
 the progressed item is also within the set.
 See `isPartiallyComplete`.
@@ -257,8 +278,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     ⟨⟨A, α⟩, α.length, i, n⟩ ∈ I := by
   induction hbeta : betaItem x generalizing pos i j n A D α x with
   | nil =>
-    -- A → α • []
-    -- The position is given and the item is already complete.
+    -- `A → α • []`: the position is given and the item is already complete.
     have hpos : pos = α.length := by
       simp [betaItem, hx] at hbeta
       have := wfI x hmem
@@ -272,7 +292,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     rw [heq, hpos] at hx
     rw [hx] at hmem
     apply hmem
-  -- A → α • a β
+  -- `A → α • a β`:
   | cons r rs ih =>
     rw [hbeta] at hD
     simp only [betaItem, hx] at hbeta
@@ -306,11 +326,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     have ih := @ih n (pos+1) i k A α F hkn hlen y (by simp [y]) hmemy
     apply ih
     · simp [hrs, hF]
-    -- This is only a more restricted version of `hcomp`
-    -- where there are less possible input combinations, and thus trivially correct.
-    · simp [isPartiallyComplete] at hcomp
-      simp [isPartiallyComplete]
-      grind
+    · apply partiallyComplete_of_longer_partiallyComplete hlenF hcomp
     · simp [hrs]
 
 /--
@@ -359,14 +375,10 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
     simp [hx]
   -- The remaining Derivation links the initial item with the final item via partial completeness
   have hD' : Derivation G u D' (slice w 0 w.length) := by simp [hu.left]
-  -- this is only a restricted version of `partiallyCompleteEarley`,
-  -- where there are less possible input combinations, and thus trivially correct.
   have partCompShorter :
       isPartiallyComplete G w w.length (EarleySet G w) (fun D => D.length ≤ D'.length) := by
-    unfold isPartiallyComplete
     have partComp := partiallyCompleteEarley G w w.length hw
-    simp only [isPartiallyComplete, Std.le_refl, true_and, and_imp] at partComp
-    grind
+    apply partiallyComplete_of_unrestricted_partiallyComplete partComp
   -- Prove a finished EarleyItem exists by fully leaning on EarleySet being partially completed
   have : ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩ ∈ EarleySet G w := by
     exact partiallyCompleteUpTo G w w.length (EarleySet G w)
