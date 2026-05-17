@@ -5,7 +5,7 @@ import Earley.Invariants
 /-
 This suite tests the basic functionality around EarleyItems
 
-It tests the general mathlib API and basic usage of the functions for the example Grammar G
+It plays with the general mathlib API and basic usage of the functions for the example Grammar G
   G = ({S, a}, {a}, {S -> aS | a}, S) with L(G) = a⁺
 -/
 
@@ -26,12 +26,6 @@ def exRule2 : ContextFreeRule T N where
   input := N.S
   output := [Symbol.terminal T.a, Symbol.nonterminal N.S]
 
-/--
-info: N.S → [T.a, N.S]
--/
-#guard_msgs in
-#eval exRule2
-
 def exRules : Finset (ContextFreeRule T N) where
   val := { exRule1, exRule2 }
   nodup := by simp [exRule1, exRule2]
@@ -41,10 +35,6 @@ def G : ContextFreeGrammar T :=
 
 /-
 Example theorems that the grammar can generate a certain word.
-
-TODO: Im overlooking some good lemmas right? This shouldnt need that much unfolding.
-Maybe the idea would be some mem_ lemmas?
-Or people dont think this is a noteworthy thing to prove.
 -/
 theorem exProduces : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.a] := by
   unfold G
@@ -68,27 +58,8 @@ theorem exGenerates (h : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.
 -- Sets in Mathlib are Prop. It is only about reasoning if an item is a part of that set
 def exLanguage : Language T := G.language
 
-/--
-info: {w | G.Generates (List.map Symbol.terminal w)} : Set (List T)
--/
-#guard_msgs in
-#check { w : List T | G.Generates (w.map Symbol.terminal) }
-
 /- Simple Unit Tests -/
 open Earley
-
-theorem split0 :
-    splitRuleAt exRule2 0 = ⟨[], [Symbol.terminal T.a, Symbol.nonterminal N.S]⟩
-  := rfl
-theorem split1 :
-    splitRuleAt exRule2 1 = ⟨[Symbol.terminal T.a], [Symbol.nonterminal N.S]⟩
-  := rfl
-theorem split2 :
-    splitRuleAt exRule2 2 = ⟨[Symbol.terminal T.a, Symbol.nonterminal N.S], []⟩
-  := rfl
-theorem split3 :
-    splitRuleAt exRule2 3 = ⟨[Symbol.terminal T.a, Symbol.nonterminal N.S], []⟩
-  := rfl
 
 def exItem1 : EarleyItem T N where
   rule := exRule2
@@ -110,30 +81,6 @@ def exItem5 : EarleyItem T N where
   position := 1
   startItem := 0
   endItem := 1
-
-/--
-info: N.S → [] @ [T.a, N.S] w/ (0, 0)
--/
-#guard_msgs in
-#eval exItem1
-
-/--
-info: N.S → [T.a] @ [N.S] w/ (1, 2)
--/
-#guard_msgs in
-#eval exItem2
-
-/--
-info: N.S → [T.a, N.S] @ [] w/ (1, 0)
--/
-#guard_msgs in
-#eval exItem3
-
-/--
-info: N.S → [T.a, N.S] @ [] w/ (1, 2)
--/
-#guard_msgs in
-#eval exItem4
 
 theorem next1 : nextSymbol exItem1 = some (Symbol.terminal T.a) := rfl
 theorem next2 : nextSymbol exItem2 = some (Symbol.nonterminal N.S) := rfl
@@ -164,8 +111,6 @@ theorem finished4 : isFinished G exW1 exItem4 = false := rfl
 theorem finished5 : isFinished G exW1 exItem5 = true := rfl
 
 open Invariants
--- These just wait for lemmas, which I will require anyway for the proofs right?
-  -- [Finset.mem_toList]
 theorem wf1 : isWellFormed G exW1 exItem1 := by
   rw [isWellFormed, exItem1]
   unfold G
@@ -189,11 +134,6 @@ theorem wf5 : isWellFormed G exW2 exItem5 := by
   unfold G
   unfold exRules
   simp [List.length, exRule1]
-
--- TODO: refer to some material in MIL with sets? I am a bit surprised how bad these are to handle
-theorem ntsG : nonterminals G = { Symbol.nonterminal N.S } := by
-  simp [nonterminals, G, exRules, exRule1, exRule2]
-  grind
 
 theorem isWord1 : isWord G exW1 := by
   simp [isWord, G, exRules, exRule1, exRule2, exW1]

@@ -47,33 +47,7 @@ public structure EarleyItem (T N : Type) where
   -/
   endItem : Nat
 
--- TODO: I want Repr over ToString, so I can read the output in proof states right?
-variable {T N : Type} [BEq N] [Repr T] [Repr N]
-
-instance : Repr (Symbol T N) where
-  reprPrec sym _ := match sym with
-    | Symbol.terminal t => reprStr t
-    | Symbol.nonterminal nt => reprStr nt
-
-instance : Repr (ContextFreeRule T N) where
-  reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
-
-instance : Repr (EarleyItem T N) where
-  reprPrec item _ :=
-    have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
-    have input := reprStr item.rule.input
-    s!"{input} → {reprStr lhs} @ {reprStr rhs} w/ ({item.startItem}, {item.endItem})"
-
-/--
-Returns the rhs of given rule split at some index `i`
-- rule=(A → α β) and i=1 returns ([], [β])
-- rule=(A → α β) and i=2 returns ([α, β], [])
-- rule=(A → α β) and i=3 returns ([α, β], [])
--/
-@[inline]
-public def splitRuleAt (rule : ContextFreeRule T N) (i : Nat) :
-    List (Symbol T N) × List (Symbol T N) :=
-  rule.output.splitAt i
+variable {T N : Type} [BEq N]
 
 /--
 Returns the next symbol of the production of the item if there is one
