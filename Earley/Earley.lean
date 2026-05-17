@@ -54,7 +54,7 @@ Returns the next symbol of the production of the item if there is one
 - A → •α returns some α
 - A → α• returns none
 -/
-@[inline]
+@[inline, grind]
 public def nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
   item.rule.output[item.position]?
 
@@ -63,7 +63,7 @@ Returns the rhs of the rule of the item up to the dot.
 - A → • β   returns []
 - A → α • β returns [α]
 -/
-@[inline]
+@[inline, grind]
 public def alphaItem (item : EarleyItem T N) : List (Symbol T N) :=
   item.rule.output.take item.position
 
@@ -72,7 +72,7 @@ Returns the rhs of the item after the dot.
 - A → α •   returns []
 - A → α • β returns [β]
 -/
-@[inline]
+@[inline, grind]
 public def betaItem (item : EarleyItem T N) : List (Symbol T N) :=
   item.rule.output.drop item.position
 
@@ -84,7 +84,7 @@ concretely if the position/dot is at the end of the production rule
 
 TODO: rau thinks it should be >=, but really no reason for?
 -/
-@[inline]
+@[inline, grind]
 public def isComplete (item : EarleyItem T N) : Bool :=
   item.position == item.rule.output.length
 
@@ -94,7 +94,7 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the item is complete
 - the entire word has been recognized
 -/
-@[inline]
+@[inline, grind]
 public def isFinished (G : ContextFreeGrammar T) [BEq (G.NT)] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Bool :=
   item.rule.input == G.initial
@@ -106,6 +106,7 @@ public def isFinished (G : ContextFreeGrammar T) [BEq (G.NT)] (w : List (Symbol 
 This the inductive definition of the Earley Set.
 Its purpose is only to prove correctness for the general judgement/ideas.
 -/
+@[grind cases]
 public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) :
     Set (EarleyItem T G.NT) where
   /--

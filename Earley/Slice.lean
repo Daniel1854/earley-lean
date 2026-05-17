@@ -7,6 +7,7 @@ import Mathlib.Computability.ContextFreeGrammar
 This module houses an alternative slice API to `List.extract`.
 For some proofs the inductive approach instead of drop/take is easier to reason with?
 At least Rau does it, but maybe this is unneeded.
+TODO: some doc strings on the lemmas
 -/
 
 namespace Earley
@@ -27,7 +28,7 @@ public def slice {α : Type} : List α → Nat → Nat → List α
   | x::xs, 0, (j+1) => x :: slice xs 0 j
   | _::xs, (i+1), (j+1) => slice xs i j
 
-@[simp]
+@[simp, grind =]
 lemma slice_nil {α : Type} (i j : Nat) : slice ([] : List α) i j = [] := by
   simp [slice]
 
@@ -43,32 +44,35 @@ lemma slice_eq_droptake {α : Type} (xs : List α) (i j : Nat) :
     slice xs i j = List.drop i (List.take j xs) := by
   simp [slice_eq_extract, List.drop_take]
 
-@[simp]
+@[simp, grind =]
 lemma slice_zero {α : Type} (xs : List α) (i : Nat) : slice xs i i = [] := by
   simp [slice_eq_extract]
 
-@[simp]
+@[simp, grind =]
 lemma slice_one {α : Type} (xs : List α) {i : Nat} (h : i < xs.length) :
     slice xs i (i + 1) = [xs[i]] := by
   simp only [slice_eq_extract, List.extract_eq_take_drop, Nat.add_sub_cancel_left]
   apply List.take_one_drop_eq_of_lt_length
 
-@[simp]
+@[simp, grind =]
 lemma slice_length {α : Type} (xs : List α) : slice xs 0 xs.length = xs := by
   simp [slice_eq_extract]
 
+@[grind =]
 lemma slice_aux {α : Type} (x : α) {i j : Nat} (xs : List α) (h : i + 1 ≤ j) :
     slice (x :: xs) (i+1) j = slice xs i (j-1) := by
   have : 0 < j := by omega
   simp [slice_eq_extract]
   omega
 
+@[grind =]
 lemma slice_concat {α : Type} (xs : List α) {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) :
     slice xs i j ++ slice xs j k = slice xs i k := by
   simp only [slice_eq_extract, List.extract_eq_take_drop]
   ext l h
   grind
 
+@[grind =]
 lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
     slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
   have := @slice_concat _ xs i j (j+1) (by omega) (by omega)
@@ -76,6 +80,7 @@ lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (h
   have := slice_one xs hb
   simp [this]
 
+@[grind <=]
 lemma succ_of_len {α : Type} (xs : List α) (i j : Nat) (h : (slice xs i j).length = 1)
     (hb : j ≤ xs.length) : j = i + 1 := by
   simp [slice_eq_extract] at h
@@ -84,6 +89,7 @@ lemma succ_of_len {α : Type} (xs : List α) (i j : Nat) (h : (slice xs i j).len
 /--
 There always exists a middle-point for a slice to concatenate
 -/
+@[grind <=]
 lemma slice_concat_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice xs i k = ys ++ zs)
     (hik : i ≤ k) : ∃ j, ys = slice xs i j ∧ zs = slice xs j k ∧ i ≤ j ∧ j ≤ k := by
   induction xs, i, k using slice.induct generalizing ys zs with

@@ -16,25 +16,30 @@ section EarleySet
 
 variable {T : Type} {N : Type}
 
-@[simp, grind =]
+@[simp]
 lemma alphaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     alphaItem item = [] := by
   simp [alphaItem, h]
 
-@[simp, grind =]
+@[simp]
 lemma betaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     betaItem item = item.rule.output := by
   simp [betaItem, h]
 
-@[simp, grind =]
+@[simp]
 lemma alphaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.output.length) :
     alphaItem item = item.rule.output := by
   simp [alphaItem, h]
 
-@[simp, grind =]
+@[simp]
 lemma betaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.output.length) :
     betaItem item = [] := by
   simp [betaItem, h]
+
+grind_pattern alphaItem_of_zero => alphaItem item, item.position
+grind_pattern alphaItem_of_len => alphaItem item, item.position
+grind_pattern betaItem_of_zero => betaItem item, item.position
+grind_pattern betaItem_of_len => betaItem item, item.position
 
 section WellFormed
 
@@ -45,6 +50,7 @@ An item is well-formed, if
 - the start is not bigger than the end
 - the end is not bigger than the length of the input w
 -/
+@[grind]
 public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Prop :=
   item.rule ∈ G.rules
@@ -65,12 +71,11 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
 Any EarleyItem within an EarleySet is well-formed.
 TODO: maybe split these up like I did with `soundItemEarley`? only if I need them somewhere else
 -/
-@[grind .]
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
   unfold isWellFormed
   induction hmem with
-  | init rule hmem hstart => simp [hmem]
+  | init rule hmem hstart => grind
   | scan x rule pos i j a hx hmem hbounds hw hnext ih =>
     simp only
     have := bounds_of_nextSymbol_eq_some hnext
@@ -87,11 +92,32 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
     simp only [hy] at ihy
     refine ⟨ihx.left,this, by omega⟩
 
+grind_pattern wfEarley => x ∈ EarleySet G w
+
 end WellFormed
 
 section Soundness
 open ContextFreeRule
 open ContextFreeGrammar
+
+attribute [local grind cases] Rewrites
+attribute [local grind .] Rewrites.input_output
+-- these should probably be custom patterns
+--attribute [grind <=] Rewrites.append_left
+--attribute [grind <=] Rewrites.append_right
+-- this is most likely not a good idea
+--attribute [grind →] Rewrites.exists_parts
+--attribute [grind =] rewrites_iff
+attribute [local grind] Produces
+attribute [local grind] Derives
+attribute [local grind <=] Derives.trans
+attribute [local grind <=] Derives.append_left
+attribute [local grind <=] Derives.append_right
+attribute [local grind] Generates
+
+attribute [local grind =_] List.singleton_append
+attribute [local grind =] List.getElem_cons_drop
+attribute [local grind =] List.drop_add_one_eq_tail_drop
 
 /--
 An item (A → α • β, i, j) for a word w is sound, if
@@ -99,6 +125,7 @@ by starting the grammar at the input of the rule of the item (A)
 you can derive the i'th up to but exluding the j'th symbol of the word
 followed by the remaining beta.
 -/
+@[grind]
 public def isSound (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Prop :=
   let parsedAlpha := slice w item.startItem item.endItem
@@ -113,11 +140,7 @@ we only need to show that A derives α, which is exactly the rule.
 public theorem soundItemPosZero (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {rule : ContextFreeRule T G.NT} {j : Nat} (hmem : rule ∈ G.rules) :
     isSound G w ⟨rule,0,j,j⟩ := by
-  unfold isSound
-  simp only
-  apply Produces.single
-  use rule
-  simp [hmem, Rewrites.input_output]
+  grind
 
 /--
 Any EarleyItem within an EarleySet produced through the .scan constructor is sound.
@@ -131,22 +154,7 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
     (hx : x = ⟨rule, pos, i, j⟩) (hmem : x ∈ EarleySet G w) (hbounds : j < w.length)
     (hw : w[j] = a) (hnext : nextSymbol x = some a) (hsound : isSound G w x) :
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
-  simp only [isSound, betaItem]
-  simp only [isSound, betaItem, hx] at hsound
-  simp only [nextSymbol, hx] at hnext
-  -- Split the expected parse into w_i/j ++ [a]
-  have wfx := wfEarley G w x hmem
-  simp [isWellFormed, hx] at wfx
-  have := slice_succ_right w wfx.right.right.left hbounds
-  simp only [this, hw]
-  -- Use the trailing [a] to get rid of the off by one
-  have := getElem_of_getElem? hnext
-  rcases this with ⟨hbounds,hpos⟩
-  have := @List.getElem_cons_drop _ rule.output pos hbounds
-  rw [hpos] at this
-  simp only [List.append_assoc, List.cons_append, List.nil_append]
-  rw [this]
-  exact hsound
+  grind
 
 /--
 Any EarleyItem within an EarleySet produced through the .complete constructor is sound.
@@ -167,11 +175,7 @@ public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List
   simp only [hcomp, List.drop_length, List.append_nil] at hsoundy
   -- Derive using the first rule
   apply Derives.trans hsoundx
-  have wfx := wfEarley G w x hmemx
-  have wfy := wfEarley G w y hmemy
-  simp [isWellFormed, hx, hy] at wfx wfy
-  have : slice w i j ++ slice w j k = slice w i k := by
-    exact @slice_concat _ w i j k (by omega) (by omega)
+  have : slice w i j ++ slice w j k = slice w i k := by grind
   rw [← this]
   -- Remove matching Prefix
   rw [List.append_assoc]
@@ -181,12 +185,7 @@ public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List
   have := getElem_of_getElem? hnext
   rcases this with ⟨hbounds,hpos⟩
   have := @List.getElem_cons_drop _ rule1.output posx hbounds
-  rw [← this]
-  -- Remove matching Postfix
-  rw [hpos]
-  rw [← List.singleton_append]
-  apply Derives.append_right _ (List.drop (posx + 1) rule1.output)
-  exact hsoundy
+  grind
 
 /--
 Any EarleyItem within an EarleySet is sound.
@@ -211,8 +210,8 @@ the grammar has to be able to generate that word.
 public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : x ∈ EarleySet G w)
     (hfin : isFinished G w x) : G.Generates w := by
-  unfold Generates
   have := soundItemEarley G w x hmem
+  unfold Generates
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq] at hfin
   simp only [isSound, hfin, slice_length, betaItem, List.drop_length, List.append_nil] at this
   exact this
@@ -307,7 +306,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     rcases this with ⟨k,⟨ha',hb',hjk,hkn⟩⟩
     simp only [ha', hb'] at hE hF
     -- Construct an EarleyItem part of the Set, where the next symbol has been parsed
-    let y : EarleyItem T G.NT :=  ⟨⟨A,α⟩, pos+1, i, k⟩
+    let y : EarleyItem T G.NT := ⟨⟨A,α⟩, pos+1, i, k⟩
     have hnextx : nextSymbol x = some r := by
       simp [nextSymbol, hx]
       have := @List.getElem_cons_drop _ α pos (by grind)

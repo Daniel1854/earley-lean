@@ -12,11 +12,31 @@ namespace Earley
 open ContextFreeGrammar
 open ContextFreeRule
 
+attribute [local grind cases] Rewrites
+attribute [local grind .] Rewrites.input_output
+-- these should probably be custom patterns
+--attribute [grind <=] Rewrites.append_left
+--attribute [grind <=] Rewrites.append_right
+-- this is most likely not a good idea
+--attribute [grind →] Rewrites.exists_parts
+--attribute [grind =] rewrites_iff
+attribute [local grind] Produces
+attribute [local grind] Derives
+attribute [local grind <=] Derives.trans
+attribute [local grind <=] Derives.append_left
+attribute [local grind <=] Derives.append_right
+attribute [local grind] Generates
+
+attribute [local grind =_] List.singleton_append
+attribute [local grind =] List.getElem_cons_drop
+attribute [local grind =] List.drop_add_one_eq_tail_drop
+
 variable {T : Type} {N : Type}
 
 /--
 Returns if a list of symbols includes only terminals of given grammar.
 -/
+@[grind]
 public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :=
   List.isEmpty (w.filter (fun s => match s with
     | Symbol.terminal _ => false
@@ -35,6 +55,9 @@ def Derivation (G : ContextFreeGrammar T) :
     List (Symbol T G.NT) → List (ContextFreeRule T G.NT) → List (Symbol T G.NT) → Prop
   | u, [], v => u = v
   | u, x::xs, v => ∃u', x ∈ G.rules ∧ x.Rewrites u u' ∧ Derivation G u' xs v
+
+-- TODO: somehow there is a difference if I mark it like that instead of marking Derivation directly
+attribute [grind] Derivation
 
 /--
 If the input word of a Derivation is the empty list, then the output list has to be empty as well.
@@ -88,13 +111,7 @@ lemma Derivation_implies_derives {G : ContextFreeGrammar T} {u v : List (Symbol 
     (D : List (ContextFreeRule T G.NT)) (hD : Derivation G u D v) : G.Derives u v := by
   induction D generalizing u with
   | nil => rw [hD]
-  | cons x xs ih =>
-    rcases hD with ⟨u',hu⟩
-    apply Derives.trans (u := u) (v := u') (w := v)
-    · apply Produces.single
-      use x
-      simp [hu]
-    · exact ih hu.right.right
+  | cons x xs ih => grind
 
 /--
 Given that you can derive `v` from `u`, there is a Derivation that rewrites `u` to `v`.
@@ -126,45 +143,29 @@ lemma derives_iff_Derivation (G : ContextFreeGrammar T) (u v : List (Symbol T G.
 /--
 Given `r.Rewrites u v` with `length u = 1`, we know that the only meaningful rule could be r=⟨u,v⟩
 -/
+@[grind →]
 lemma rule_of_rewrite_step (G : ContextFreeGrammar T) (r : ContextFreeRule T G.NT)
     {v : List (Symbol T G.NT)} {u : G.NT} (hr : r.Rewrites [Symbol.nonterminal u] v) :
     r = ⟨u,v⟩ := by
-  have := Rewrites.nonterminal_input_mem hr
-  have hin : u = r.input := by simp_all
-  have hout : v = r.output := by
-    have := rewrites_iff.mp hr
-    rcases this with ⟨p,q,⟨hpqIn,hpqOut⟩⟩
-    rw [hin] at hpqIn
-    have := (@List.self_eq_append_right _ [Symbol.nonterminal G.initial] q)
-    cases p <;> cases q <;> simp at hpqIn
-    simp [hpqOut]
+  have hin : u = r.input := by grind
+  have hout : v = r.output := by grind
   rw [hin, hout]
 
 /--
 Given a Derivation starting from a single non terminal symbol to the word,
 we can extract the first rule that has been applied and construct the derivation for the rest.
 -/
+@[grind .]
 lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hword : isWord G w)
     {u : G.NT} (D : List (ContextFreeRule T G.NT)) (hD : Derivation G [Symbol.nonterminal u] D w) :
     ∃ v D', Derivation G v D' w  ∧ ⟨u, v⟩ ∈ G.rules  := by
-  cases D with
-  | nil =>
-    -- Unreachable since there would be no rewrite and we impose w to be terminals only
-    simp [Derivation] at hD
-    simp [isWord,← hD] at hword
-  | cons x xs =>
-    simp only [Derivation, exists_and_left] at hD
-    rcases hD.right with ⟨v, hv⟩
-    use v, xs
-    simp only [hv, true_and]
-    have := rule_of_rewrite_step G x hv.left
-    rw [← this]
-    exact hD.left
+  cases D <;> grind
 
 /--
 Given a Derivation from multiple inputs, we can split up the inputs and
 derive their output separetely.
 -/
+@[grind →]
 lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G.NT)}
     {D : List (ContextFreeRule T G.NT)} (hD : Derivation G (a ++ b) D c) :
     ∃ a' b' E F, Derivation G a E a'  ∧ Derivation G b F b'  ∧ c = a' ++ b' ∧
@@ -181,6 +182,7 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
     · -- maybe?
       -- simp only [List.append_assoc, List.cons_append, List.nil_append,
       --  List.append_eq_append_iff] at happ
+      -- self_eq_append_right
       -- maybe ?have ha : a = x.slice 0 a.length := by sorry
       have ha : a = x.take a.length := by sorry
       have hb : b = x.drop a.length ++ [Symbol.nonterminal d.input] ++ y := by sorry
