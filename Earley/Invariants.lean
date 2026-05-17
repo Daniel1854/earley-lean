@@ -285,7 +285,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
       simp [isWellFormed, hx] at this
       omega
     simp only [betaItem, hx, hpos, List.drop_length] at hD
-    have : slice w j n = [] := Derivation_from_empty G hD
+    have : slice w j n = [] := Derivation_of_empty_input G hD
     have heq : j = n := by
       simp [slice_eq_droptake] at this
       omega
@@ -338,7 +338,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
     cases D with
     | nil =>
       simp at hDlen
-      simp only [Derivation] at hD
+      simp only [Derivation_of_empty_rule] at hD
       have hkw : k ≤ w.length := by omega
       have hkj : k = j + 1 := by
         have : [a].length = 1 := by simp
@@ -352,18 +352,23 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
       rw [hkj]
       apply EarleySet.scan x rule pos i j a hx hmemx hlenj this hnext
     | cons r rs =>
-      simp only [Derivation, exists_and_left] at hD
+      simp only [Derivation_succ] at hD
       rcases hD.right with ⟨u, hu⟩
-      -- We know that `a` has to be a non-terminal
+      -- We know that the next symbol `a` has to be a non-terminal.
+      -- For completeness we therefore have to prove that a .complete EarleyItem
+      -- with the next symbol handled exists within the EarleySet.
       cases a
       · cases hu.left
         rename_i hrs
         cases hrs
-      next nt =>
-      let y : EarleyItem T G.NT := ⟨⟨nt,u⟩, 0, j, j⟩
-      have : rs.length < (r::rs).length:= by simp
+      next A =>
+      -- Thus we need to construct the items which handle the metasymbol `A` fully.
+      let y : EarleyItem T G.NT := ⟨⟨A,u⟩, 0, j, j⟩
+      have : rs.length < (r::rs).length := by simp
+
       have wfX := wfEarley G w x hmemx
       simp [isWellFormed, hx] at wfX
+
       have hcompn : isPartiallyComplete G w n (EarleySet G w) (fun F => F.length ≤ rs.length) := by
         simp only [isPartiallyComplete, decide_eq_true_eq, and_imp]
         intro rule' pos' i' j' k' x' a' D' hjk' hkn' hlen' hx' hmemx' hnextx' hD' hDlen'
@@ -371,11 +376,8 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
         · simp
         · have := hu.right
           sorry
-      rw [isPartiallyComplete] at hcompn
       have hcompk : isPartiallyComplete G w k (EarleySet G w) (fun F => F.length ≤ rs.length) := by
         grind [isPartiallyComplete]
-      rw [isPartiallyComplete] at hcompk
-      clear hcompn hcompk ---XXX
       have hrs : Derivation G (betaItem y) rs (slice w j k) := by
         simp only [betaItem, List.drop_zero, y]
         exact hu.right
@@ -383,17 +385,20 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
         simp only [y]
         have hr := rule_of_rewrite_step G r hu.left
         rw [hr] at hD
-        apply EarleySet.predict x rule ⟨nt,u⟩ _ _ _ (Symbol.nonterminal nt) hx hmemx hD.left
+        apply EarleySet.predict x rule ⟨A,u⟩ _ _ _ (Symbol.nonterminal A) hx hmemx hD.left
         · simp [hnext]
         · sorry -- hnext
         · sorry -- hu
-      have hklen : k ≤ w.length := by omega
-      let z : EarleyItem T G.NT := ⟨⟨nt,u⟩, u.length, j, k⟩
-      have : z ∈ EarleySet G w := by
-        simp [z]
-        -- wf
-        sorry
-      sorry
+      -- Through partial completeness of y, we know that there is a complete version of y,
+      -- which we can use in combination with x for a completion rule
+      let z : EarleyItem T G.NT := ⟨⟨A,u⟩, u.length, j, k⟩
+      have hmemz : z ∈ EarleySet G w := by
+        apply partiallyCompleteUpTo G w k (EarleySet G w)
+          (by omega) (by omega) y _ hmemy (wfEarley G w) hrs hcompk
+        · exact 0
+        · simp [y]
+      apply EarleySet.complete x z rule ⟨A, u⟩ pos u.length i j k hx hmemx
+        (by simp [z]) hmemz (by simp [isComplete, z]) hnext
 
 /--
 The completeness criteria for the EarleySet:

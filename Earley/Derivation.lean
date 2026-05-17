@@ -28,6 +28,8 @@ attribute [local grind <=] Derives.append_right
 attribute [local grind] Generates
 
 attribute [local grind =_] List.singleton_append
+attribute [local grind .] List.append_cancel_left
+attribute [local grind .] List.append_cancel_right
 attribute [local grind =] List.getElem_cons_drop
 attribute [local grind =] List.drop_add_one_eq_tail_drop
 
@@ -60,10 +62,18 @@ def Derivation (G : ContextFreeGrammar T) :
 attribute [grind] Derivation
 
 /--
+If there are no rules to be applied, then the input has to be the same as the output.
+-/
+@[simp, grind =]
+lemma Derivation_of_empty_rule (G : ContextFreeGrammar T) {u v : List (Symbol T G.NT)} :
+    Derivation G u [] v ↔ (u = v) := by
+  grind
+
+/--
 If the input word of a Derivation is the empty list, then the output list has to be empty as well.
 -/
-@[grind →]
-lemma Derivation_from_empty (G : ContextFreeGrammar T) {v : List (Symbol T G.NT)}
+@[grind .]
+lemma Derivation_of_empty_input (G : ContextFreeGrammar T) {v : List (Symbol T G.NT)}
     {rules : List (ContextFreeRule T G.NT)} (h : Derivation G [] rules v) : v = [] := by
   induction rules with
   | nil =>
@@ -162,6 +172,35 @@ lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hwo
   cases D <;> grind
 
 /--
+Given an equality of List concatenations,
+if the length of `a` is smaller or equal to the length of `c`,
+then we know that `a` has to be the first `a.length` elements of `c`.
+-/
+lemma take_of_append_longer {α : Type} {a b c d : List α} (h : a ++ b = c ++ d)
+    (hac : a.length ≤ c.length) : a = List.take a.length c := by
+  induction a generalizing c with
+  | nil => simp
+  | cons a as ih =>
+    cases c <;> grind
+
+/--
+Given an equality of List concatenations,
+if the length of `a` is bigger than the length of `c`,
+then we know that `a` has to be `c` concatenated with the remaning number of elements.
+-/
+lemma take_of_append_shorter {α : Type} {d : α} {a b c e : List α} (h : a ++ b = c ++ [d] ++ e)
+    (hac : a.length > c.length) : a = c ++ [d] ++ e.take (a.length - c.length - 1) := by
+  induction a generalizing c with
+  | nil => grind
+  | cons a as ih =>
+    cases c with
+    | nil =>
+      simp
+      simp at h
+      grind
+    | cons c cs => grind
+
+/--
 Given a Derivation from multiple inputs, we can split up the inputs and
 derive their output separetely.
 -/
@@ -179,17 +218,10 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
     rcases this with ⟨x,y,⟨happ,hab1⟩⟩
     by_cases hax : a.length ≤ x.length
     -- b gets rewritten by d
-    · -- maybe?
-      -- simp only [List.append_assoc, List.cons_append, List.nil_append,
-      --  List.append_eq_append_iff] at happ
-      -- self_eq_append_right
-      -- maybe ?have ha : a = x.slice 0 a.length := by sorry
-      have ha : a = x.take a.length := by sorry
-      have hb : b = x.drop a.length ++ [Symbol.nonterminal d.input] ++ y := by sorry
-      have hab2 : ab = x.take a.length ++ x.drop a.length ++ d.output ++ y := by
-        rw [← ha]
-        rw [hab1]
-        sorry
+    · have hx : x = x.take a.length ++ x.drop a.length := by simp
+      have ha : a = x.take a.length := by grind [take_of_append_longer]
+      have hb : b = x.drop a.length ++ [Symbol.nonterminal d.input] ++ y := by grind
+      have hab2 : ab = x.take a.length ++ x.drop a.length ++ d.output ++ y := by grind
       simp only [hab1] at hD
       have ih := @ih (x.take a.length) (x.drop a.length ++ d.output ++ y)
       have : x.take a.length ++ (x.drop a.length ++ d.output ++ y)
@@ -211,10 +243,10 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
         apply rewrites_of_exists_parts
     -- a gets rewritten by d
     · have ha : a = x ++ [Symbol.nonterminal d.input] ++ y.take (a.length - x.length - 1) := by
-        sorry
-      have hb : b = y.drop (a.length - x.length - 1) := by sorry
+        grind [take_of_append_shorter]
+      have hb : b = y.drop (a.length - x.length - 1) := by grind
       have hab2 : ab = x ++ d.output ++ y.take (a.length - x.length - 1) ++
-        y.drop (a.length - x.length - 1) := by sorry
+        y.drop (a.length - x.length - 1) := by grind
       simp only [hab1] at hD
       have ih := @ih (x ++ d.output ++ y.take (a.length - x.length - 1))
         (y.drop (a.length - x.length - 1))
