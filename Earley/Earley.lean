@@ -128,9 +128,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   introduces an EarleyItem where that rule gets followed through.
   -/
   | predict (x : EarleyItem T G.NT) (rule1 rule2 : ContextFreeRule T G.NT) (pos i j : Nat)
-      (a : Symbol T G.NT) (hx : x = ⟨rule1,pos,i,j⟩) (hmemx : x ∈ EarleySet G w)
+      (hx : x = ⟨rule1,pos,i,j⟩) (hmemx : x ∈ EarleySet G w)
       (hmemr2 : rule2 ∈ G.rules) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
-      (hbounds : j < w.length) (hw : w[j] = a)
       : EarleySet G w ⟨rule2,0,j,j⟩
   /-
   Every completed EarleyItem part of the set introduces EarleyItems for where

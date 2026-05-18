@@ -81,7 +81,7 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
     have := bounds_of_nextSymbol_eq_some hnext
     simp only [hx] at ih this
     refine ⟨ih.left,this,by omega⟩
-  | predict x rule1 rule2 pos i j a hx hmem hr2 hnext hbounds hw ih =>
+  | predict x rule1 rule2 pos i j hx hmem hr2 hnext ih =>
     simp only
     simp only [hx] at ih
     refine ⟨hr2,by omega⟩
@@ -197,7 +197,7 @@ public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (
     exact soundItemPosZero _ _ hmem
   | scan _ _ _ _ _ _ hx hmem hbounds hw hnext ih =>
     exact soundItemScan _ _ hx hmem hbounds hw hnext ih
-  | predict _ _ _ _ _ _ _ hx hmemx hmemr2 hnext hbounds hw =>
+  | predict _ _ _ _ _ _ hx hmemx hmemr2 hnext =>
     exact soundItemPosZero _ _ hmemr2
   | complete x y rule1 rule2 posx posy i j k hx hmemx hy hmemy hcomp hnext ihx ihy =>
     exact soundItemComplete _ _ hx hmemx hy hmemy hcomp hnext ihx ihy
