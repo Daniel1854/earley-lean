@@ -26,9 +26,13 @@ def exRule2 : ContextFreeRule T N where
   input := N.S
   output := [Symbol.terminal T.a, Symbol.nonterminal N.S]
 
+def exRule3 : ContextFreeRule T N where
+  input := N.S
+  output := []
+
 def exRules : Finset (ContextFreeRule T N) where
-  val := { exRule1, exRule2 }
-  nodup := by simp [exRule1, exRule2]
+  val := { exRule1, exRule2, exRule3 }
+  nodup := by simp [exRule1, exRule2, exRule3]
 
 def G : ContextFreeGrammar T :=
   { NT := N, initial := N.S, rules := exRules }
@@ -43,6 +47,15 @@ theorem exProduces : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.a] :
   use exRule1
   simp only [Multiset.insert_eq_cons, Finset.mk_cons, Finset.mem_cons, Finset.mem_mk,
     Multiset.mem_singleton, true_or, true_and]
+  apply ContextFreeRule.Rewrites.head
+
+theorem exProducesEps : G.Produces [Symbol.nonterminal N.S] [] := by
+  unfold G
+  unfold ContextFreeGrammar.Produces
+  unfold exRules
+  use exRule3
+  simp only [Multiset.insert_eq_cons, Finset.mk_cons, Finset.mem_cons, Finset.mem_mk,
+    Multiset.mem_singleton, or_true, true_and]
   apply ContextFreeRule.Rewrites.head
 
 theorem exGenerates (h : G.Produces [Symbol.nonterminal N.S] [Symbol.terminal T.a]) :
