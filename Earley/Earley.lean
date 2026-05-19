@@ -11,7 +11,10 @@ while parsing the word or more concretely it's a state of a partial parse.
 
 The general idea of the algorithm is to built sets of EarleyItems for every input position,
 and check at the end whether there is an item which showcases
-that the whole input got parsed from the initial Nonterminal.
+that the whole input got parsed from the initial nonterminal.
+
+The implementation and its proofs follows the work from Rau et Nipkow:
+https://doi.org/10.4230/LIPIcs.ITP.2024.31
 -/
 
 namespace Earley
@@ -48,6 +51,16 @@ public structure EarleyItem (T N : Type) where
   endItem : Nat
 
 variable {T N : Type} [BEq N]
+
+/--
+Returns if a list of symbols include only terminals of given grammar.
+-/
+@[grind]
+public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :=
+  List.isEmpty (w.filter (fun s => match s with
+    | Symbol.terminal _ => false
+    | Symbol.nonterminal _ => true
+  ))
 
 /--
 Returns the next symbol of the production of the item if there is one

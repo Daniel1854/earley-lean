@@ -1,5 +1,6 @@
 module
 public import Mathlib.Computability.ContextFreeGrammar
+public import Earley.Earley
 @[expose] public section
 
 /-!
@@ -14,12 +15,6 @@ open ContextFreeRule
 
 attribute [local grind cases] Rewrites
 attribute [local grind .] Rewrites.input_output
--- these should probably be custom patterns
---attribute [grind <=] Rewrites.append_left
---attribute [grind <=] Rewrites.append_right
--- this is most likely not a good idea
---attribute [grind →] Rewrites.exists_parts
---attribute [grind =] rewrites_iff
 attribute [local grind] Produces
 attribute [local grind] Derives
 attribute [local grind <=] Derives.trans
@@ -29,37 +24,20 @@ attribute [local grind] Generates
 
 attribute [local grind =_] List.singleton_append
 attribute [local grind .] List.append_cancel_left
-attribute [local grind .] List.append_cancel_right
 attribute [local grind =] List.getElem_cons_drop
 attribute [local grind =] List.drop_add_one_eq_tail_drop
 
-variable {T : Type} {N : Type}
-
-/--
-Returns if a list of symbols includes only terminals of given grammar.
--/
-@[grind]
-public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :=
-  List.isEmpty (w.filter (fun s => match s with
-    | Symbol.terminal _ => false
-    | Symbol.nonterminal _ => true
-  ))
+variable {T : Type}
 
 /--
 A derivation for a CFG `G` states that `u` can be rewritten to `v` via rewriting using the
-given rule list in sequence (List is of finite length)
-I am not sure if there is a cleaner way to state it yet.
-Rau also got the index at which he rewrites u, thus the total length of what he rewrites
-
-hmem is new as well since rewrites is decoupled, its way more typey
+given rule list in sequence (List is of finite length).
 -/
+@[grind]
 def Derivation (G : ContextFreeGrammar T) :
     List (Symbol T G.NT) → List (ContextFreeRule T G.NT) → List (Symbol T G.NT) → Prop
   | u, [], v => u = v
   | u, x::xs, v => ∃u', x ∈ G.rules ∧ x.Rewrites u u' ∧ Derivation G u' xs v
-
--- TODO: somehow there is a difference if I mark it like that instead of marking Derivation directly
-attribute [grind] Derivation
 
 /--
 If there are no rules to be applied, then the input has to be the same as the output.
@@ -85,7 +63,7 @@ lemma Derivation_of_empty_input (G : ContextFreeGrammar T) {v : List (Symbol T G
     cases hu.left
 
 /--
-If the list of rules contains of multiple elements, then we can unfold the first application.
+If the list of rules contains multiple elements, then we can apply the first rule.
 -/
 @[simp, grind =]
 lemma Derivation_succ (G : ContextFreeGrammar T) {u v : List (Symbol T G.NT)}
@@ -94,10 +72,12 @@ lemma Derivation_succ (G : ContextFreeGrammar T) {u v : List (Symbol T G.NT)}
   simp [Derivation]
 
 /--
-TODO: name? Its some trans thing
+Given a Derivation from `u` to `v` by using `rules` and the grammar producing `w` from `v`,
+there exists a Derivation from `u` to `w`, which first applies `rules` and then
+some sequence of rules.
 -/
 @[grind →]
-lemma Derivation_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.NT)}
+lemma Derivation_trans_produces (G : ContextFreeGrammar T) {u v w : List (Symbol T G.NT)}
     {rules : List (ContextFreeRule T G.NT)} (hu : Derivation G u rules v)
     (hv : G.Produces v w) : ∃ D, Derivation G u (rules ++ D) w := by
   induction rules generalizing u v w with
@@ -135,7 +115,7 @@ lemma derives_implies_Derivation {G : ContextFreeGrammar T} {u v : List (Symbol 
     simp [Derivation]
   | tail h ih hex =>
     rcases hex with ⟨r, hr⟩
-    have := Derivation_produces G hr ih
+    have := Derivation_trans_produces G hr ih
     rcases this with ⟨D, hD⟩
     use r++D
 
@@ -175,6 +155,7 @@ lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hwo
 Given an equality of List concatenations,
 if the length of `a` is smaller or equal to the length of `c`,
 then we know that `a` has to be the first `a.length` elements of `c`.
+TODO: I'm surprised there doesn't exist a lemma for that
 -/
 lemma take_of_append_longer {α : Type} {a b c d : List α} (h : a ++ b = c ++ d)
     (hac : a.length ≤ c.length) : a = List.take a.length c := by
@@ -204,7 +185,6 @@ lemma take_of_append_shorter {α : Type} {d : α} {a b c e : List α} (h : a ++ 
 Given a Derivation from multiple inputs, we can split up the inputs and
 derive their output separetely.
 -/
-@[grind →]
 lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G.NT)}
     {D : List (ContextFreeRule T G.NT)} (hD : Derivation G (a ++ b) D c) :
     ∃ a' b' E F, Derivation G a E a'  ∧ Derivation G b F b'  ∧ c = a' ++ b' ∧

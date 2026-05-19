@@ -16,21 +16,36 @@ section EarleySet
 
 variable {T : Type} {N : Type}
 
+/--
+If the position of an `EarleyItem` is zero, then `alphaItem` of that item is empty.
+-/
 @[simp]
 lemma alphaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     alphaItem item = [] := by
   simp [alphaItem, h]
 
+/--
+If the position of an `EarleyItem` is zero,
+then `betaItem` of that item is the full output rule.
+-/
 @[simp]
 lemma betaItem_of_zero (item : EarleyItem T N) (h : item.position = 0) :
     betaItem item = item.rule.output := by
   simp [betaItem, h]
 
+/--
+If the position of an `EarleyItem` is the length of the output of its rule,
+then `alphaItem` of that item is the full output rule.
+-/
 @[simp]
 lemma alphaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.output.length) :
     alphaItem item = item.rule.output := by
   simp [alphaItem, h]
 
+/--
+If the position of an `EarleyItem` is the length of the output of its rule,
+then `betaItem` of that item is empty.
+-/
 @[simp]
 lemma betaItem_of_len (item : EarleyItem T N) (h : item.position = item.rule.output.length) :
     betaItem item = [] := by
@@ -140,7 +155,12 @@ we only need to show that A derives α, which is exactly the rule.
 public theorem soundItemPosZero (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {rule : ContextFreeRule T G.NT} {j : Nat} (hmem : rule ∈ G.rules) :
     isSound G w ⟨rule,0,j,j⟩ := by
-  grind
+  -- TODO: grind is able to prove this now, but probably wiser to keep the proof?
+  unfold isSound
+  simp only
+  apply Produces.single
+  use rule
+  simp [hmem, Rewrites.input_output]
 
 /--
 Any EarleyItem within an EarleySet produced through the .scan constructor is sound.
@@ -154,13 +174,29 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
     (hx : x = ⟨rule, pos, i, j⟩) (hmem : x ∈ EarleySet G w) (hbounds : j < w.length)
     (hw : w[j] = a) (hnext : nextSymbol x = some a) (hsound : isSound G w x) :
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
-  grind
+  -- TODO: grind is able to prove this now, but probably wiser to keep the proof?
+  simp only [isSound, betaItem]
+  simp only [isSound, betaItem, hx] at hsound
+  simp only [nextSymbol, hx] at hnext
+  -- Split the expected parse into w_i/j ++ [a]
+  have wfx := wfEarley G w x hmem
+  simp [isWellFormed, hx] at wfx
+  have := slice_succ_right w wfx.right.right.left hbounds
+  simp only [this, hw]
+  -- Use the trailing [a] to get rid of the off by one
+  have := getElem_of_getElem? hnext
+  rcases this with ⟨hbounds,hpos⟩
+  have := @List.getElem_cons_drop _ rule.output pos hbounds
+  rw [hpos] at this
+  simp only [List.append_assoc, List.cons_append, List.nil_append]
+  rw [this]
+  exact hsound
 
 /--
 Any EarleyItem within an EarleySet produced through the .complete constructor is sound.
 Given item x `A → α • B β` and item y `B → γ •`, we can derive the item `A → α B • β`
 with approriate indices. This proof operates like the one for .scan, but we have to chain
-two substrings together: the one for α and the one for γ.
+two substrings together: one for α and one for γ.
 -/
 public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {posx posy i j k : Nat}
@@ -204,8 +240,7 @@ public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (
 
 /--
 The soundness criteria for the EarleySet:
-Given a finished item for a word within the set,
-the grammar has to be able to generate that word.
+Given a finished item for a word within the set, the grammar has to be able to generate that word.
 -/
 public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : x ∈ EarleySet G w)
