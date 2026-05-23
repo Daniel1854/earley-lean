@@ -1,58 +1,38 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Mathlib.Computability.ContextFreeGrammar
+--import Lean
 
 /-!
 This module defines everything required to parse a context-free grammar.
 Basicly a wrapper around the `ContextFreeGrammar` definition within Mathlib,
-but also includes a metaprogram to parse a String of EBNF into such a structure directly.
-It doesn't handle epsilon rules.
+but also includes a metaprogram to parse a String of BNF into such a structure directly.
 
-Simple EBNF.
-Usage         | Notation
---------------+----------------
-definition    | ::=
-concatenation | ,
-termination   | ';\n'
-alternation   | |
-terminals     | '<x>'
+Simple BNF.
+Using "::=" for definition. Nonterminal symbols as is, terminal ones surrounded by "'".
+"|" for adding a second rhs to a lhs rule. ";\n" to denote the ending of a rule.
+ε for the empty rule.
+Whitespace between symbols? A ::= ε 'a' will probably not be well defined :D
 
-We cannot handle epsilon rules, so more syntactic sugar seems to not be worthwhile (yet)
-Maybe add Regex + and * when we can handle epsilon rules?
-optional      | [ ... ]  (none or once)
-repetition    | { ... }  (none or more)
-+             | at least once
-*             | none or more
+Example:
+A ::= 'a' A | 'a';
+B ::= A 'b' S | 'a' | ε ;
 
-TODO: Requires some metaprogram to dynamicly create the inductive types of T and NT?
-How to even state this as a one-pass? The return type doesnt exist before it would be called
-I would very much like to directly return the list of that type as well,
-but this doesnt seem possible?
-inductive types are some syntactic sugar right? Not sure how to add that type in a metaprogram
+Plan:
+A metaprogram creating the inductive types of T and NT as the first pass,
+then notation should suffice for actually parsing it into a ContextFreeGrammar struct?
+I dont think you can do this through one pass, but the grammar itself shouldnt be too long anyway.
 
-⟨T,NT⟩ ← collectTypes
-addDecl T ?
-addDecl NT ?
-parseCFG T NT s
+TODO: Its fine to return something of a new type as long as you return that type as well?
+TODO: startsymbol as a parameter?
+TODO: how to coerce the string into these types?
 
-def parseCFG (T NT : Type) (s : String) : ContextFreeGrammar T :=
-  sorry
+@ref: Algebra.adjoin for macro stuff
 
-EBNF Parsing:
-- bit difficult with this type setup since you need to declare types
-  for the (non-)terminals, which can't exist before you parse the grammar
-- it makes sense for them to be an inductive, so I would need to create those two types
-  and return them as the first pass?
-- on the second pass just coerce the String into that inductive type?
-- Probably am overthinking it by wanting a String to be parsed,
-  but could be an easy problem if I just use predefined types and notations
-
-ref Algebra.adjoin for macro stuff
-
-addDecl <|
-.inductDecl [] [] [\<inductName, .sort 1, [\<ctorName1, .const inductName []\>, ...]\>] false
-
-infixr:50 " – " => Score.vs
-notation (priority := high) "⟦" S "⟧" => denote S
 addDecl (.axiomDecl {
   name := `Exists, levelParams := [`u],
   type := mkForall `α .implicit sortu $ ← mkArrow (← mkArrow (mkBVar 0) prop) prop,
@@ -63,71 +43,65 @@ addDecl (.axiomDecl {
 namespace Earley
 namespace ContextFreeGrammars
 
---#check Language.IsContextFree
---#check Symbol
----- These are all about Prop so you can reason whether something multisteps to another thing,
----- so I need my own `step` version
---#check ContextFreeGrammar.Produces  -- s -> u
---#check ContextFreeGrammar.Derives   -- s ->^* u
---#check ContextFreeGrammar.Generates -- S ->^* u
----- A little unclear on how this fits into the rest. Not sure if I can use it for something
----- (besides proofs)
---#check ContextFreeRule.Rewrites
---#check ContextFreeGrammar.mem_language_iff
+open Lean Lean.Expr Lean.Meta
 
-inductive NT where
+public inductive NT where
   | A : NT
   | B : NT
   | C : NT
   | D : NT
   | S : NT
+deriving Repr
 
-inductive T where
+public inductive T where
   | a : T
   | b : T
   | c : T
   | d : T
   | s : T
-/--
-Metaprogram to parse an EBNF-style String into a `ContextFreeGrammar`
+deriving Repr
 
-  let cmd ← `(command|
+/--
+Metaprogram to parse from a BNF-style String all the occuring terminals and non-terminals,
+and create an inductive type for each of them.
+
+TODO: this splitting style is ugly.
+I dont think I will write up grammars that take tons of space,
+but maybe think/research if I want to do it more proper.
+
+TODO: alternative to addDecl
+let cmd ← `(command|
     inductive $name : Type where
     $[| $ctorNames:ident : $ctorTypes:term]*
-
-inductDecl (lparams : List Name) (nparams : Nat)
-(types : List InductiveType) (isUnsafe : Bool) : Declaration
-addDecl <| .inductDecl [] []
-[\<inductName, .sort 1, [\<ctorName1, .const inductName []\>, ...]\>] false
 -/
--- this has the most important things.
+def createSymbols (s : String) (ntName : String) (tName : String) : CoreM Unit :=
+  --let lines := s.split (fun x => x == ';')
+  --let inducts := #[]
+  -- inductDecl (lparams : List Name) (nparams : Nat)
+  -- (types : List InductiveType) (isUnsafe : Bool) : Declaration
+  -- why is types a list of inductivetype?
+  addDecl <| .inductDecl [] 0
+  [⟨`Earley.ContextFreeGrammars.NonTerminals, .sort 1,
+  [⟨`Earley.ContextFreeGrammars.NonTerminals.S,
+    .const `Earley.ContextFreeGrammars.NonTerminals.S []⟩]⟩] false
+
+#check InductiveType
+--#eval createSymbols "" "" ""
+
 -- A metaprogram could check the type of A if its NT or T and match accordingly
 -- but how to handle if there are multiple terms?
-notation (priority := high) E "::=" A ";" => ContextFreeRule.mk E [Symbol.terminal A]
---#check [NT.S ::= T.a;, NT.S ::= T.a;]
+def parseIntoCFG (T : Type) (s : String) : Option (ContextFreeGrammar T) :=
+  sorry
 
--- how to coerce the string into the inductive type
--- how to coerce 'a' S into [T.a, NT.S]
+notation (priority := high) E "::=" A ";" => ContextFreeRule.mk E [Symbol.terminal A]
+
+def rule := NT.S ::= T.a;
+--#eval rule.input
+--#eval rule.output
+
+-- how to coerce "'a' S" into [T.a, NT.S]
 --def parseLine (s : String) : ContextFreeRule T NT:=
 --  sorry
-
---  G = ({S, a}, {a}, {S -> aS | a}, S)
--- TODO: this splitting style is ugly.
--- I dont think I will write up grammars that take tons of space,
--- but maybe think/research if I want to do it monadicly
--- TODO: startsymbol as a parameter?
-def parseCFG (s : String) : Option (ContextFreeGrammar T) :=
-  let lines := s.split (fun x => x == ';')
-  let rules : Finset (ContextFreeRule T NT) :=
-  {
-    val := [NT.S ::= T.a;]
-      --{ input := Ex1NT.S, output := [Symbol.terminal Ex1T.a] },
-      --{ input := Ex1NT.S, output := [Symbol.nonterminal Ex1NT.S, Symbol.terminal Ex1T.a]}
-    ,
-    nodup := by simp
-  }
-  some { NT := NT, initial := NT.S, rules := rules }
-
 def String.toNT : String → Option NT
   | "S" => some NT.S
   | _ => none
@@ -135,13 +109,13 @@ def String.toNT : String → Option NT
 instance : CoeDep String "S" NT where
   coe := NT.S
 
-def ex2NT : NT := "S"
+def ex2CFG : String := "S ::= 'a' S | a;"
+-- createTypes ex2CFG -> G = ⟨NT,NT.S, {NT.S → [T.a, NT.S], NT.S → [T.a]}⟩
 
-def ex2CFG : String := "S ::= aS | a;"
 def ex2CFG' : String := "\
-S ::= aS;
-S ::= a;"
-def ex2CFG'' : String := "S ::= 'a'S | 'a'"
+S ::= 'a' S;
+S ::= 'a';"
+def ex2CFG'' : String := "S ::= 'a' S | 'a'"
 
 end ContextFreeGrammars
 end Earley
