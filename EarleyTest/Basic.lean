@@ -1,6 +1,9 @@
 import Mathlib.Computability.ContextFreeGrammar
 import Earley.Earley
 import Earley.Invariants
+import Earley.EarleyRecognizer
+
+namespace Basic
 
 /-
 This suite tests the basic functionality around EarleyItems
@@ -73,6 +76,8 @@ def exLanguage : Language T := G.language
 
 /- Simple Unit Tests -/
 open Earley
+open Invariants
+open EarleySet
 
 def exItem1 : EarleyItem T N where
   rule := exRule2
@@ -123,7 +128,6 @@ theorem finished3 : isFinished G exW1 exItem3 = false := rfl
 theorem finished4 : isFinished G exW1 exItem4 = false := rfl
 theorem finished5 : isFinished G exW1 exItem5 = true := rfl
 
-open Invariants
 theorem wf1 : isWellFormed G exW1 exItem1 := by
   rw [isWellFormed, exItem1]
   unfold G
@@ -156,3 +160,5 @@ theorem isWord2 : isWord G exW2 := by
 
 theorem isWord3 : ¬isWord G exW3 := by
   simp [isWord, G, exRules, exRule1, exRule2, exW3]
+
+end Basic

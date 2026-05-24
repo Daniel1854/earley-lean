@@ -1,5 +1,5 @@
 module
-public import Mathlib.Computability.ContextFreeGrammar
+public import Earley.Basic
 @[expose] public section
 
 /-!
@@ -13,7 +13,7 @@ The general idea of the algorithm is to built sets of EarleyItems for every inpu
 and check at the end whether there is an item which showcases
 that the whole input got parsed from the initial nonterminal.
 
-The implementation and its proofs follows the work from Rau et Nipkow:
+The implementation follows the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
 -/
 
@@ -49,8 +49,9 @@ public structure EarleyItem (T N : Type) where
   (Exclusive) Endindex for the word w which this rule recognizes
   -/
   endItem : Nat
+deriving BEq, Repr
 
-variable {T N : Type} [BEq N]
+variable {T N : Type}
 
 /--
 Returns if a list of symbols include only terminals of given grammar.
@@ -108,7 +109,7 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the entire word has been recognized
 -/
 @[inline, grind]
-public def isFinished (G : ContextFreeGrammar T) [BEq (G.NT)] (w : List (Symbol T G.NT))
+public def isFinished (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Bool :=
   item.rule.input == G.initial
   && isComplete item
@@ -133,17 +134,16 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   -/
   | scan (x : EarleyItem T G.NT) (rule : ContextFreeRule T G.NT) (pos i j : Nat)
       (a : Symbol T G.NT) (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
-      (hbounds : j < w.length) (hw : w[j] = a)
-      (hnext : nextSymbol x = some a)
-      : EarleySet G w ⟨rule,pos+1,i,j+1⟩
+      (hbounds : j < w.length) (hw : w[j] = a) (hnext : nextSymbol x = some a) :
+      EarleySet G w ⟨rule,pos+1,i,j+1⟩
   /--
   Every EarleyItem part of set, where the next symbol matches the NT of another rule,
   introduces an EarleyItem where that rule gets followed through.
   -/
   | predict (x : EarleyItem T G.NT) (rule1 rule2 : ContextFreeRule T G.NT) (pos i j : Nat)
       (hx : x = ⟨rule1,pos,i,j⟩) (hmemx : x ∈ EarleySet G w)
-      (hmemr2 : rule2 ∈ G.rules) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
-      : EarleySet G w ⟨rule2,0,j,j⟩
+      (hmemr2 : rule2 ∈ G.rules) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
+      EarleySet G w ⟨rule2,0,j,j⟩
   /-
   Every completed EarleyItem part of the set introduces EarleyItems for where
   the rule could have originated from.
@@ -152,7 +152,7 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
       (posx posy i j k : Nat)
       (hx : x = ⟨rule1,posx,i,j⟩) (hmemx : x ∈ EarleySet G w)
       (hy : y = ⟨rule2,posy,j,k⟩) (hmemy : y ∈ EarleySet G w)
-      (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
-      : EarleySet G w ⟨rule1,posx+1,i,k⟩
+      (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
+      EarleySet G w ⟨rule1,posx+1,i,k⟩
 
 end Earley
