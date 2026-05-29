@@ -18,6 +18,7 @@ https://doi.org/10.4230/LIPIcs.ITP.2024.31
 -/
 
 namespace Earley
+namespace Model
 
 /--
 An EarleyItem got four fields:
@@ -69,7 +70,7 @@ Returns the next symbol of the production of the item if there is one
 - A → α• returns none
 -/
 @[inline, grind]
-public def nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
+public def EarleyItem.nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
   item.rule.output[item.position]?
 
 /--
@@ -78,7 +79,7 @@ Returns the rhs of the rule of the item up to the dot.
 - A → α • β returns [α]
 -/
 @[inline, grind]
-public def alphaItem (item : EarleyItem T N) : List (Symbol T N) :=
+public def EarleyItem.alphaItem (item : EarleyItem T N) : List (Symbol T N) :=
   item.rule.output.take item.position
 
 /--
@@ -87,7 +88,7 @@ Returns the rhs of the item after the dot.
 - A → α • β returns [β]
 -/
 @[inline, grind]
-public def betaItem (item : EarleyItem T N) : List (Symbol T N) :=
+public def EarleyItem.betaItem (item : EarleyItem T N) : List (Symbol T N) :=
   item.rule.output.drop item.position
 
 /--
@@ -99,7 +100,7 @@ concretely if the position/dot is at the end of the production rule
 TODO: rau thinks it should be >=, but really no reason for?
 -/
 @[inline, grind]
-public def isComplete (item : EarleyItem T N) : Bool :=
+public def EarleyItem.isComplete (item : EarleyItem T N) : Bool :=
   item.position == item.rule.output.length
 
 /--
@@ -109,12 +110,29 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the entire word has been recognized
 -/
 @[inline, grind]
-public def isFinished (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+public def EarleyItem.isFinished (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Bool :=
   item.rule.input == G.initial
   && isComplete item
   && item.startItem == 0
   && item.endItem == w.length
+
+/--
+An item is well-formed, if
+- the rule belongs to given grammar G
+- the position is within the length of the rhs
+- the start is not bigger than the end
+- the end is not bigger than the length of the input w
+-/
+@[grind]
+public def EarleyItem.isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (item : EarleyItem T G.NT) : Prop :=
+  item.rule ∈ G.rules
+  ∧ item.position <= item.rule.output.length
+  ∧ item.startItem <= item.endItem
+  ∧ item.endItem <= w.length
+
+open EarleyItem
 
 /--
 This the inductive definition of the Earley Set.
@@ -155,4 +173,5 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
       (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
       EarleySet G w ⟨rule1,posx+1,i,k⟩
 
+end Model
 end Earley

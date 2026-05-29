@@ -1,6 +1,6 @@
 module
 public import Mathlib.Computability.ContextFreeGrammar
-public import Earley.Earley
+public import Earley.Model
 @[expose] public section
 
 /-!
@@ -9,7 +9,9 @@ you can derive `v` from `u` by following given sequence of rules.
 -/
 
 namespace Earley
+namespace Utils
 
+open Earley.Model
 open ContextFreeGrammar
 open ContextFreeRule
 
@@ -248,4 +250,5 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
       · rw [hb]
         exact hF
 
+end Utils
 end Earley

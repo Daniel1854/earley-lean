@@ -1,9 +1,9 @@
 import Mathlib.Computability.ContextFreeGrammar
-import Earley.Earley
-import Earley.EarleyRecognizer
+import Earley.Model
+import Earley.Recognizer
 
 namespace Recognizer
-open EarleyRecognizer
+open Earley.Recognizer
 
 /-
 This suite tests the basic functionality of the Recognizer

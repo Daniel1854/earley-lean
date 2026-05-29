@@ -2,6 +2,6 @@ module
 
 import Earley.Slice
 import Earley.Derivation
-import Earley.Earley
-import Earley.EarleyRecognizer
+import Earley.Model
+import Earley.Recognizer
 import Earley.Invariants

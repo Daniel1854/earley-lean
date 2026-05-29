@@ -1,8 +1,8 @@
 module
-public import Earley.Earley
+public import Earley.Model
 public import Earley.Slice
 public import Earley.Derivation
-public import Earley.EarleyRecognizer
+public import Earley.Recognizer
 @[expose] public section
 
 /-!
@@ -22,8 +22,11 @@ then refine it further to the actual bins with the same idea.
 
 namespace Earley
 namespace Invariants
-namespace EarleySet
+namespace Model
 
+open Earley.Model
+open Earley.Model.EarleyItem
+open Utils
 variable {T : Type} {N : Type}
 
 /--
@@ -67,23 +70,6 @@ grind_pattern betaItem_of_zero => betaItem item, item.position
 grind_pattern betaItem_of_len => betaItem item, item.position
 
 section WellFormed
-
-/--
-An item is well-formed, if
-- the rule belongs to given grammar G
-- the position is within the length of the rhs
-- the start is not bigger than the end
-- the end is not bigger than the length of the input w
-TODO: rethink the naming scheme and if I enjoy the `is` prefix. Maybe isWellFormedItem ?
-      Maybe put this in EarleyItem and have it as `EarleyItem.isWellFormed`?
--/
-@[grind]
-public def isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (item : EarleyItem T G.NT) : Prop :=
-  item.rule ∈ G.rules
-  ∧ item.position <= item.rule.output.length
-  ∧ item.startItem <= item.endItem
-  ∧ item.endItem <= w.length
 
 /--
 If there is a next symbol, then the position `pos+1` is still in bounds of the rhs of the rule.
@@ -494,15 +480,18 @@ public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     Finite (EarleySet G w) := by
   sorry
 
-end EarleySet
+end Model
 
 namespace EarleyRecognizerFixpoint
 
 end EarleyRecognizerFixpoint
 
 namespace EarleyRecognizerList
-open EarleyRecognizer
 
+open Earley.Model
+open Earley.Model.EarleyItem
+open Recognizer
+open Utils
 variable {T : Type}
 
 /--
@@ -512,7 +501,7 @@ their `endItem` corresponds to the index of the bin.
 @[grind]
 public def isWFBinItems (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (bin : List (EarleyItem T G.NT)) (n : Nat) : Prop :=
-  ∀ x ∈ bin, EarleySet.isWellFormed G w x ∧ x.endItem == n
+  ∀ x ∈ bin, isWellFormed G w x ∧ x.endItem == n
 
 /--
 The n-th bin are well-formed, if all of its items are well-formed and

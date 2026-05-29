@@ -1,5 +1,5 @@
 module
-public import Earley.Earley
+public import Earley.Model
 @[expose] public section
 
 /-!
@@ -43,9 +43,11 @@ TODO: Think about how to prepare the grammar itself for efficient usage
 TODO: there is potential for early returns
 -/
 
-namespace EarleyRecognizer
+namespace Earley
+namespace Recognizer
 
-open Earley
+open Model
+open EarleyItem
 
 /--
 Abbreviation for a two-dimensional list.
@@ -169,7 +171,7 @@ public partial def earleyBinList (G : ContextFreeGrammarList T) [BEq T] [BEq G.N
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := predictList G A i
         let newBin := appendNoDupl bins[i] newItems
-        bins.set i newBin (sorry)
+        bins.set i newBin (by grind)
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hi : i ≥ w.length then
@@ -181,9 +183,10 @@ public partial def earleyBinList (G : ContextFreeGrammarList T) [BEq T] [BEq G.N
           bins.set (i+1) newBin (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      let newItems := completeList G x (w.length + 1) bins sorry
+      have : x.startItem < w.length + 1 := sorry
+      let newItems := completeList G x (w.length + 1) bins this
       let newBin := appendNoDupl bins[i] newItems
-      bins.set i newBin (sorry)
+      bins.set i newBin ((by grind))
     earleyBinList G w i bins' sorry (j+1)
 --termination_by?
 
@@ -219,4 +222,5 @@ public def recognizeTest (G : ContextFreeGrammarList T) [BEq T] [BEq G.NT] (w : 
   let bins := earleyBinsList G w w.length (by grind)
   bins
 
-end EarleyRecognizer
+end Recognizer
+end Earley

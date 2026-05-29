@@ -10,6 +10,7 @@ Rau also does this, but probably this is not strictly necessary.
 -/
 
 namespace Earley
+namespace Utils
 
 /--
 An inductive definition of `List.extract`, which lends itself easier to proofs.
@@ -143,4 +144,5 @@ lemma slice_concat_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice xs
     use j+1
     simp [hj, slice]
 
+end Utils
 end Earley

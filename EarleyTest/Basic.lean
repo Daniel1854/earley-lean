@@ -1,7 +1,7 @@
 import Mathlib.Computability.ContextFreeGrammar
-import Earley.Earley
+import Earley.Model
 import Earley.Invariants
-import Earley.EarleyRecognizer
+import Earley.Recognizer
 
 namespace Basic
 
@@ -76,8 +76,9 @@ def exLanguage : Language T := G.language
 
 /- Simple Unit Tests -/
 open Earley
+open Model
+open Model.EarleyItem
 open Invariants
-open EarleySet
 
 def exItem1 : EarleyItem T N where
   rule := exRule2
