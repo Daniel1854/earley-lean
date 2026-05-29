@@ -2,6 +2,7 @@ module
 public import Earley.Model
 public import Earley.Slice
 public import Earley.Derivation
+public import Earley.Fixpoint
 public import Earley.Recognizer
 @[expose] public section
 
@@ -490,6 +491,7 @@ namespace EarleyRecognizerList
 
 open Earley.Model
 open Earley.Model.EarleyItem
+open Fixpoint
 open Recognizer
 open Utils
 variable {T : Type}

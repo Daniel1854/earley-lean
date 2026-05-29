@@ -1,5 +1,6 @@
 module
 public import Earley.Model
+public import Earley.Fixpoint
 @[expose] public section
 
 /-!
@@ -48,6 +49,7 @@ namespace Recognizer
 
 open Model
 open EarleyItem
+open Fixpoint
 
 /--
 Abbreviation for a two-dimensional list.
@@ -59,27 +61,7 @@ TODO: inner list should probably be an Array as well, but lets see first
 -/
 abbrev EarleyBins (T : Type) (N : Type) (n : Nat) : Type := Vector (List (EarleyItem T N)) n
 
-/--
-Variant of `ContextFreeGrammar` that uses a List internally to store the rules.
-Context-free grammar that generates words over the alphabet `T` (a type of terminals).
--/
-structure ContextFreeGrammarList (T : Type) where
-  /-- Type of nonterminals. -/
-  NT : Type
-  /-- Initial nonterminal. -/
-  initial : NT
-  /-- Rewrite rules. -/
-  rules : List (ContextFreeRule T NT)
-  /-- `rules` contains no duplicates -/
-  nodup : List.Nodup rules
-
 variable {T : Type}
-
-/--
-Returns if the grammar contains a rule with an empty rhs.
--/
-def isEpsilonFree (G : ContextFreeGrammarList T) : Prop :=
-  ∀ r ∈ G.rules, !r.output.isEmpty
 
 /--
 An item is finished w.r.t. a certain grammar G and the input word w, if
@@ -114,7 +96,7 @@ TODO: Think about if Option is more sensible.
 def scanList (G : ContextFreeGrammarList T) [BEq T] (w : List T)
     (x : EarleyItem T G.NT) (a : T) (i : Nat) (h : i < w.length) : List (EarleyItem T G.NT) :=
   if w[i] == a then
-    [{ x with position := x.position+1 }]
+    [incItem x x.endItem]
   else
     []
 
@@ -143,7 +125,7 @@ def completeList (G : ContextFreeGrammarList T) [BEq (Symbol T G.NT)] (y : Earle
   let xBin := bins[y.startItem]
   -- The origin bin filtered for matchings with y
   let xItems := xBin.filter (fun x => nextSymbol x == some (Symbol.nonterminal y.rule.input))
-  xItems.map (fun x => { x with position := x.position+1, endItem := y.endItem })
+  xItems.map (fun x => incItem x y.endItem)
 
 /--
 Returns xs appended with the elements of ys, that are not part of xs.
@@ -187,6 +169,12 @@ public partial def earleyBinList (G : ContextFreeGrammarList T) [BEq T] [BEq G.N
       let newItems := completeList G x (w.length + 1) bins this
       let newBin := appendNoDupl bins[i] newItems
       bins.set i newBin ((by grind))
+    -- I dont get the diagnostics here. The sorry is trivial
+    --have : Vector.size bins = Vector.size bins' := by
+    --  simp [EarleyBins] at bins
+    --  grind
+    --have : i < bins'.size := by
+    --  grind
     earleyBinList G w i bins' sorry (j+1)
 --termination_by?
 
