@@ -1,9 +1,11 @@
 import Mathlib.Computability.ContextFreeGrammar
 import Earley.Model
 import Earley.Recognizer
+import Earley.Fixpoint
 
 namespace Recognizer
 open Earley.Recognizer
+open Earley.Fixpoint
 
 /-
 This suite tests the basic functionality of the Recognizer

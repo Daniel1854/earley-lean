@@ -1,4 +1,5 @@
 module
+public import Mathlib.Data.Set.Finite.Powerset
 public import Earley.Model
 public import Earley.Slice
 public import Earley.Derivation
@@ -472,15 +473,6 @@ public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
     rcases hex with ⟨hw,h⟩
     apply soundnessEarley h.left h.right
 
-/--
-The EarleySet only has a finite number of element.
-TODO: seem to need this for the recognizer proof
---have := Fintype.ofFinite α
--/
-public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
-    Finite (EarleySet G w) := by
-  sorry
-
 end Model
 
 namespace EarleyRecognizerFixpoint
@@ -495,6 +487,48 @@ open Fixpoint
 open Recognizer
 open Utils
 variable {T : Type}
+
+section Finiteness
+open ContextFreeRule
+open ContextFreeGrammar
+open Earley.Invariants.Model
+
+/--
+There is only a finite number of well-formed EarleyItems for a grammar with no rules.
+-/
+public theorem finiteEarleyEmpty (G : ContextFreeGrammar T) [BEq G.NT]
+    (w : List (Symbol T G.NT)) (hempty : G.rules = ∅) :
+    Set.Finite { x | isWellFormed G w x} := by
+  simp [isWellFormed, hempty]
+
+/--
+There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
+-/
+public theorem finiteEarleyNonEmpty (G : ContextFreeGrammar T) [BEq G.NT]
+    (w : List (Symbol T G.NT)) (hempty : G.rules ≠ ∅) :
+    Set.Finite { x | isWellFormed G w x} := by
+  let M := Max { x | ∀ r, r ∈ G.rules ∧ x = r.output.length  }
+  --let M := G.rules.map_filter'
+  sorry
+
+/--
+There is only a finite number of well-formed EarleyItems for a specific grammar and word.
+-/
+public theorem finiteEarleyWF (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
+    Set.Finite { x | isWellFormed G w x} := by
+  grind [finiteEarleyEmpty, finiteEarleyNonEmpty]
+
+/--
+The EarleySet only has a finite number of elements.
+-/
+public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
+    Set.Finite (EarleySet G w) := by
+  have hwf := wfEarley G w
+  have hsub : EarleySet G w ⊆ { x | isWellFormed G w x } := by grind
+  have hf := finiteEarleyWF G w
+  exact Set.Finite.subset hf hsub
+
+end Finiteness
 
 /--
 The items of the n-th bin are well-formed, if all of them are well-formed and
