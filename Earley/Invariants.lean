@@ -1,4 +1,5 @@
 module
+public import Mathlib.Data.Set.Finite.Basic
 public import Mathlib.Data.Set.Finite.Powerset
 public import Earley.Model
 public import Earley.Slice
@@ -486,7 +487,7 @@ open Earley.Model.EarleyItem
 open Fixpoint
 open Recognizer
 open Utils
-variable {T : Type}
+variable {T : Type} {N : Type}
 
 section Finiteness
 open ContextFreeRule
@@ -496,37 +497,71 @@ open Earley.Invariants.Model
 /--
 There is only a finite number of well-formed EarleyItems for a grammar with no rules.
 -/
-public theorem finiteEarleyEmpty (G : ContextFreeGrammar T) [BEq G.NT]
-    (w : List (Symbol T G.NT)) (hempty : G.rules = ∅) :
-    Set.Finite { x | isWellFormed G w x} := by
-  simp [isWellFormed, hempty]
+public theorem finiteEarleyEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (hempty : G.rules = []) : Set.Finite { x | isWellFormedList G w x} := by
+  simp [isWellFormedList, hempty]
+
+/--
+Takes a terrible Prod and turns it into an EarleyItem.
+TODO: this doesnt feel much like lean
+-/
+public def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
+  ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
+
+TODO: this is a classic overapproximation, but still explain it
 -/
-public theorem finiteEarleyNonEmpty (G : ContextFreeGrammar T) [BEq G.NT]
-    (w : List (Symbol T G.NT)) (hempty : G.rules ≠ ∅) :
-    Set.Finite { x | isWellFormed G w x} := by
-  let M := Max { x | ∀ r, r ∈ G.rules ∧ x = r.output.length  }
-  --let M := G.rules.map_filter'
+public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormedList G w x} := by
+  -- the maximum length of any rule
+  let M := (G.rules.map (fun r => r.output.length)).max (by simp [hempty])
+  let Top := Set.prod {x | x ∈ G.rules} (Set.prod {i | 0 ≤ i ∧ i ≤ M}
+    (Set.prod {i | 0 ≤ i ∧ i ≤ w.length} {i | 0 ≤ i ∧ i ≤ w.length}))
+  -- very unclear if
+  have finTop : Set.Finite Top := by sorry
+  have injTop : Set.InjOn item_intro Top := by
+    simp [Set.InjOn, Top]
+    sorry
+  have : Set.Finite (Top.image item_intro) := by
+    have := Set.Finite.image item_intro finTop
+    grind
+  have : { x | isWellFormedList G w x } ⊆ Top.image item_intro := by
+    sorry
   sorry
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific grammar and word.
 -/
-public theorem finiteEarleyWF (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
-    Set.Finite { x | isWellFormed G w x} := by
+public theorem finiteEarleyWF (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) :
+    Set.Finite { x | isWellFormedList G w x} := by
   grind [finiteEarleyEmpty, finiteEarleyNonEmpty]
 
 /--
+Rubber lemma between the two Grammar definitions:
+An item is well-formed for one grammar iff it is also well-formed with the other.
+-/
+public lemma wfItem_iff_wfListItem (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
+    (G' : ContextFreeGrammarList T G.NT) (hR : G.rules.toList = G'.rules) :
+    ∀ x, isWellFormed G w x ↔ isWellFormedList G' w x := by
+  grind [Finset.mem_toList]
+
+/--
 The EarleySet only has a finite number of elements.
+
+TODO: This is a nice theorem to have proven in general, even without any usage,
+but due to technicalities with CFG vs CFGList this showcases some annoyance.
 -/
 public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
     Set.Finite (EarleySet G w) := by
   have hwf := wfEarley G w
   have hsub : EarleySet G w ⊆ { x | isWellFormed G w x } := by grind
-  have hf := finiteEarleyWF G w
-  exact Set.Finite.subset hf hsub
+  have : G.rules.toList.Nodup := Finset.nodup_toList G.rules
+  let G' : ContextFreeGrammarList T G.NT := ⟨G.initial, G.rules.toList, this⟩
+  have hsub' : EarleySet G w ⊆ { x | isWellFormedList G' w x } := by grind [wfItem_iff_wfListItem]
+  have hf := finiteEarleyWF G' w
+  exact Set.Finite.subset hf hsub'
 
 end Finiteness
 
@@ -535,17 +570,17 @@ The items of the n-th bin are well-formed, if all of them are well-formed and
 their `endItem` corresponds to the index of the bin.
 -/
 @[grind]
-public def isWFBinItems (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (bin : List (EarleyItem T G.NT)) (n : Nat) : Prop :=
-  ∀ x ∈ bin, isWellFormed G w x ∧ x.endItem == n
+public def isWFBinItems (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (bin : List (EarleyItem T N)) (n : Nat) : Prop :=
+  ∀ x ∈ bin, isWellFormedList G w x ∧ x.endItem == n
 
 /--
 The n-th bin are well-formed, if all of its items are well-formed and
 their `endItem` corresponds to the index of the bin and there are no duplicate items.
 -/
 @[grind]
-public def isWFBin (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (bin : List (EarleyItem T G.NT)) (n : Nat) : Prop :=
+public def isWFBin (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (bin : List (EarleyItem T N)) (n : Nat) : Prop :=
   isWFBinItems G w bin n ∧ bin.Nodup
 
 /--
@@ -556,8 +591,8 @@ iff
 there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarley {G : ContextFreeGrammar T} [BEq T] [BEq G.NT] [LawfulBEq G.NT]
-    (w : List T) {GList : ContextFreeGrammarList T} [BEq GList.NT]
-    (hG : GList = ⟨G.NT, G.initial, G.rules.toList, sorry⟩) :
+    (w : List T) {GList : ContextFreeGrammarList T G.NT}
+    (hI : G.initial = GList.initial) (hR : G.rules.toList = GList.rules) :
     G.Generates (w.map Symbol.terminal) ↔ recognizeList GList w := by
   sorry
 

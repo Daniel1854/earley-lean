@@ -42,6 +42,7 @@ TODO: Think about the bins and how to make checking for membership efficient
 TODO: Think about how to prepare the grammar itself for efficient usage
       HashMap NT → List of rules ?
 TODO: there is potential for early returns
+TODO: the order of the parameters is a little all over the place. fix
 -/
 
 namespace Earley
@@ -61,7 +62,7 @@ TODO: inner list should probably be an Array as well, but lets see first
 -/
 abbrev EarleyBins (T : Type) (N : Type) (n : Nat) : Type := Vector (List (EarleyItem T N)) n
 
-variable {T : Type}
+variable {T : Type} {N : Type} [BEq T] [BEq N]
 
 /--
 An item is finished w.r.t. a certain grammar G and the input word w, if
@@ -70,18 +71,33 @@ An item is finished w.r.t. a certain grammar G and the input word w, if
 - the entire word has been recognized
 -/
 @[inline, grind]
-public def isFinishedList (G : ContextFreeGrammarList T) [BEq G.NT] (w : List T)
-    (item : EarleyItem T G.NT) : Bool :=
+public def isFinishedList (G : ContextFreeGrammarList T N) (w : List T) (item : EarleyItem T N) :
+    Bool :=
   item.rule.input == G.initial
   && isComplete item
   && item.startItem == 0
   && item.endItem == w.length
 
 /--
+An item is well-formed, if
+- the rule belongs to given grammar G
+- the position is within the length of the rhs
+- the start is not bigger than the end
+- the end is not bigger than the length of the input w
+-/
+@[grind]
+public def isWellFormedList (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (item : EarleyItem T N) : Prop :=
+  item.rule ∈ G.rules
+  ∧ item.position <= item.rule.output.length
+  ∧ item.startItem <= item.endItem
+  ∧ item.endItem <= w.length
+
+/--
 List-based implementation of the .init operation.
 Returns a list filled with all possible .init states.
 -/
-def initList (G : ContextFreeGrammarList T) [BEq G.NT] : List (EarleyItem T G.NT) :=
+def initList (G : ContextFreeGrammarList T N) : List (EarleyItem T N) :=
   let rules := G.rules.filter (fun r => r.input == G.initial)
   rules.map (fun r => ⟨r,0,0,0⟩)
 
@@ -93,8 +109,8 @@ if `a` matches the word for given index `i`.
 TODO: Think about if Option is more sensible.
       This maybe makes sense if I dont switch to Arrays for the inner (expensive append)
 -/
-def scanList (G : ContextFreeGrammarList T) [BEq T] (w : List T)
-    (x : EarleyItem T G.NT) (a : T) (i : Nat) (h : i < w.length) : List (EarleyItem T G.NT) :=
+def scanList (w : List T) (x : EarleyItem T N) (a : T) (i : Nat) (h : i < w.length) :
+    List (EarleyItem T N) :=
   if w[i] == a then
     [incItem x x.endItem]
   else
@@ -105,8 +121,8 @@ List-based implementation of the .predict operation.
 
 Returns a fresh item for each rule, which got `A` as its lhs.
 -/
-def predictList (G : ContextFreeGrammarList T) [BEq G.NT] (A : G.NT) (i : Nat) :
-    List (EarleyItem T G.NT) :=
+def predictList (G : ContextFreeGrammarList T N) (A : N) (i : Nat) :
+    List (EarleyItem T N) :=
   let rules := G.rules.filter (fun r => r.input == A)
   rules.map (fun r => ⟨r,0,i,i⟩)
 
@@ -119,8 +135,8 @@ TODO: for the parse tree the filter needs to also keep track of the index within
       Rau uses custom filter_with_index, we can use filterMap
 TODO: completely unclear why Rau parametrizes k when it is already a part of y?
 -/
-def completeList (G : ContextFreeGrammarList T) [BEq (Symbol T G.NT)] (y : EarleyItem T G.NT)
-    (n : Nat) (bins : EarleyBins T G.NT n) (h : y.startItem < n) : List (EarleyItem T G.NT) :=
+def completeList (y : EarleyItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y.startItem < n) :
+    List (EarleyItem T N) :=
   -- The full origin bin for potential completions
   let xBin := bins[y.startItem]
   -- The origin bin filtered for matchings with y
@@ -131,17 +147,17 @@ def completeList (G : ContextFreeGrammarList T) [BEq (Symbol T G.NT)] (y : Earle
 Returns xs appended with the elements of ys, that are not part of xs.
 -/
 @[inline, grind]
-def appendNoDupl {NT : Type} [BEq (EarleyItem T NT)] (xs : List (EarleyItem T NT))
-    (ys : List (EarleyItem T NT)) : List (EarleyItem T NT) :=
+def appendNoDupl (xs : List (EarleyItem T N)) (ys : List (EarleyItem T N)) :
+    List (EarleyItem T N) :=
   xs.append (ys.filter (fun y => !xs.contains y))
 
 /--
 Computes the i-th bin starting from index j and returns the updated bins.
 TODO: .push would be so much nicer than .append
 -/
-public partial def earleyBinList (G : ContextFreeGrammarList T) [BEq T] [BEq G.NT]
-    (w : List T) (i : Nat) (bins : EarleyBins T G.NT (w.length + 1))
-    (hi : i < bins.size) (j : Nat) : EarleyBins T G.NT (w.length + 1) :=
+public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (i : Nat)
+    (bins : EarleyBins T N (w.length + 1)) (hi : i < bins.size) (j : Nat) :
+    EarleyBins T N (w.length + 1) :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[i].length then
     bins
@@ -160,13 +176,13 @@ public partial def earleyBinList (G : ContextFreeGrammarList T) [BEq T] [BEq G.N
           bins
         else
           -- Add a potential .scan operations on the current item to the next bin
-          let newItem := scanList G w x a i (by grind)
+          let newItem := scanList w x a i (by grind)
           let newBin := appendNoDupl bins[i] newItem
           bins.set (i+1) newBin (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       have : x.startItem < w.length + 1 := sorry
-      let newItems := completeList G x (w.length + 1) bins this
+      let newItems := completeList x (w.length + 1) bins this
       let newBin := appendNoDupl bins[i] newItems
       bins.set i newBin ((by grind))
     -- I dont get the diagnostics here. The sorry is trivial
@@ -182,8 +198,8 @@ public partial def earleyBinList (G : ContextFreeGrammarList T) [BEq T] [BEq G.N
 Computes up to the i-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
-public def earleyBinsList (G : ContextFreeGrammarList T) [BEq T] [BEq G.NT] (w : List T) (i : Nat)
-    (hi : i ≤ w.length) : EarleyBins T G.NT (w.length + 1) :=
+public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (i : Nat)
+    (hi : i ≤ w.length) : EarleyBins T N (w.length + 1) :=
   match h : i with
   | 0 =>
     -- Initialize the first bin by using .init for all G.rules
@@ -200,13 +216,13 @@ Returns if a given word gets recognized by the Grammar by using a variant of the
 
 TODO: what code gets compiled from `∃ x ∈ Array ?
 -/
-public def recognizeList (G : ContextFreeGrammarList T) [BEq T] [BEq G.NT] (w : List T) : Bool :=
+public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
   let bins := earleyBinsList G w w.length (by grind)
   ∃ x ∈ bins[w.length], isFinishedList G w x
 
 -- FIXME: delete :)
-public def recognizeTest (G : ContextFreeGrammarList T) [BEq T] [BEq G.NT] (w : List T) :
-    EarleyBins T G.NT (w.length+1) :=
+public def recognizeTest (G : ContextFreeGrammarList T N) (w : List T) :
+    EarleyBins T N (w.length+1) :=
   let bins := earleyBinsList G w w.length (by grind)
   bins
 

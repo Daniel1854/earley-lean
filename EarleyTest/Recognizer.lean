@@ -33,18 +33,11 @@ def exRule2 : ContextFreeRule T N where
   input := N.S
   output := [Symbol.terminal T.a, Symbol.nonterminal N.S]
 
-def G : ContextFreeGrammarList T := {
-  NT := N,
+def G : ContextFreeGrammarList T N := {
   initial := N.S,
   rules := [exRule1, exRule2],
   nodup := by simp [exRule1, exRule2]
 }
-
-/- Simple Unit Tests -/
--- TODO: I don't understand why
-instance : BEq G.NT where
-  beq fst snd := match fst,snd with
-    | N.S, N.S => true
 
 def exW1 : List T := [T.a]
 def exW2 : List T := [T.a, T.a, T.a]
