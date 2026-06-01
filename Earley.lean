@@ -6,4 +6,6 @@ import Earley.Model
 import Earley.Limit
 import Earley.Fixpoint
 import Earley.Recognizer
-import Earley.Invariants
+import Earley.Proofs.Model
+import Earley.Proofs.Fixpoint
+import Earley.Proofs.Recognizer

@@ -1,7 +1,8 @@
-import Mathlib.Computability.ContextFreeGrammar
 import Earley.Model
 import Earley.Recognizer
 import Earley.Fixpoint
+
+import Mathlib.Computability.ContextFreeGrammar
 
 namespace Recognizer
 open Earley.Recognizer

@@ -61,35 +61,6 @@ abbrev EarleyBins (T : Type) (N : Type) (n : Nat) : Type := Vector (List (Earley
 variable {T : Type} {N : Type} [BEq T] [BEq N]
 
 /--
-An item is finished w.r.t. a certain grammar G and the input word w, if
-- the lhs of the rule is the startsymbol of G
-- the item is complete
-- the entire word has been recognized
--/
-@[inline, grind]
-public def isFinishedList (G : ContextFreeGrammarList T N) (w : List T) (item : EarleyItem T N) :
-    Bool :=
-  item.rule.input == G.initial
-  && isComplete item
-  && item.startItem == 0
-  && item.endItem == w.length
-
-/--
-An item is well-formed, if
-- the rule belongs to given grammar G
-- the position is within the length of the rhs
-- the start is not bigger than the end
-- the end is not bigger than the length of the input w
--/
-@[grind]
-public def isWellFormedList (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
-    (item : EarleyItem T N) : Prop :=
-  item.rule ∈ G.rules
-  ∧ item.position <= item.rule.output.length
-  ∧ item.startItem <= item.endItem
-  ∧ item.endItem <= w.length
-
-/--
 List-based implementation of the .init operation.
 Returns a list filled with all possible .init states.
 -/
