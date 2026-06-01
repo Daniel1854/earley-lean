@@ -34,15 +34,11 @@ https://doi.org/10.4230/LIPIcs.ITP.2024.31
 
 TODO: As of now we only keep track of the Earley Item and let the Parse Tree be a future worry.
 TODO: Think if there are any issues arising from the input word being simply `List T`?
-TODO: I will need the different version of Grammar right?
-      I could in theory use Finset.prod, but then I am still stuck with Finsets for everything,
-      and its very difficult to improve performance
 TODO: Think about the bins and how to make checking for membership efficient
       There still has to be an order, and I need an index for the parse tree
 TODO: Think about how to prepare the grammar itself for efficient usage
       HashMap NT → List of rules ?
 TODO: there is potential for early returns
-TODO: the order of the parameters is a little all over the place. fix
 -/
 
 namespace Earley
@@ -145,6 +141,7 @@ def completeList (y : EarleyItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y
 
 /--
 Returns xs appended with the elements of ys, that are not part of xs.
+TODO: .push would be so much nicer than .append :)
 -/
 @[inline, grind]
 def appendNoDupl (xs : List (EarleyItem T N)) (ys : List (EarleyItem T N)) :
@@ -153,7 +150,8 @@ def appendNoDupl (xs : List (EarleyItem T N)) (ys : List (EarleyItem T N)) :
 
 /--
 Computes the i-th bin starting from index j and returns the updated bins.
-TODO: .push would be so much nicer than .append
+TODO: termination_by - Need to showcase (and know how to even write) that
+      any element part of a bin is WF and there is only a finite amount of those.
 -/
 public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (i : Nat)
     (bins : EarleyBins T N (w.length + 1)) (hi : i < bins.size) (j : Nat) :
@@ -181,18 +179,21 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
           bins.set (i+1) newBin (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      have : x.startItem < w.length + 1 := sorry
+      have : x.startItem < w.length + 1 := by
+        -- TODO: this is a major pain since I need to rely on previous results from Invariants
+        let G' : ContextFreeGrammar T := ⟨N, G.initial, G.rules, by simp [G.nodup]⟩
+        have : isWellFormed G' (w.map Symbol.terminal) x := by
+          sorry
+          --have := wfEarley G w
+          --grind
+        have : isWellFormedList G (w.map Symbol.terminal) x := by
+          --grind [Finset.mem_toList]
+          sorry
+        grind
       let newItems := completeList x (w.length + 1) bins this
       let newBin := appendNoDupl bins[i] newItems
       bins.set i newBin ((by grind))
-    -- I dont get the diagnostics here. The sorry is trivial
-    --have : Vector.size bins = Vector.size bins' := by
-    --  simp [EarleyBins] at bins
-    --  grind
-    --have : i < bins'.size := by
-    --  grind
-    earleyBinList G w i bins' sorry (j+1)
---termination_by?
+    earleyBinList G w i bins' (by grind) (j+1)
 
 /--
 Computes up to the i-th bin.

@@ -5,8 +5,13 @@ public import Earley.Model
 #check Monotone
 #check Nat.iterate
 
+/--
+TODO: funpower = Nat.repeat
+UNION, NOT JOIN
+-/
 def natUnion {α : Type} (f : Nat → Set α) : Set α :=
   sorry
+  --∪ { x | forall n, x = f n }
   --{ f n | ∀ n, True }
 
 /--
