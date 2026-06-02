@@ -80,7 +80,7 @@ TODO: Think about if Option is more sensible.
 def scanList (w : List T) (x : EarleyItem T N) (a : T) (i : Nat) (h : i < w.length) :
     List (EarleyItem T N) :=
   if w[i] == a then
-    [incItem x x.endItem]
+    [incItem x (x.endItem+1)]
   else
     []
 
@@ -147,7 +147,7 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanList w x a i (by grind)
-          let newBin := appendNoDupl bins[i] newItem
+          let newBin := appendNoDupl bins[i+1] newItem
           bins.set (i+1) newBin (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
@@ -175,7 +175,7 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (i : Nat
     let bins := Vector.replicate (w.length + 1) []
     earleyBinList G w 0 (bins.set 0 b₀ (by grind)) (by grind) 0
   | j+1 =>
-    -- Given the first mth bins being computed, we can compute m+1
+    -- Given the first jth bins being computed, we can compute j+1
     let mBins := earleyBinsList G w j (by grind)
     earleyBinList G w i mBins (by grind) 0
 
@@ -187,12 +187,6 @@ TODO: what code gets compiled from `∃ x ∈ Array ?
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
   let bins := earleyBinsList G w w.length (by grind)
   ∃ x ∈ bins[w.length], isFinishedList G w x
-
--- FIXME: delete :)
-public def recognizeTest (G : ContextFreeGrammarList T N) (w : List T) :
-    EarleyBins T N (w.length+1) :=
-  let bins := earleyBinsList G w w.length (by grind)
-  bins
 
 end Recognizer
 end Earley

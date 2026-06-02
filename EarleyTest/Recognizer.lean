@@ -24,6 +24,7 @@ deriving BEq, Repr
 
 inductive T where
 | a : T
+| b : T
 deriving BEq, Repr
 
 def exRule1 : ContextFreeRule T N where
@@ -43,15 +44,101 @@ def G : ContextFreeGrammarList T N := {
 def exW1 : List T := [T.a]
 def exW2 : List T := [T.a, T.a, T.a]
 def exW3 : List T := [T.a, T.a]
+def exW4 : List T := [T.a, T.b]
 
--- {S -> aS | a}
---#eval! (recognizeTest G exW1)[1]
---#eval! recognizeList G []
---#eval! recognizeList G exW1
---#eval! recognizeList G exW2
+instance : Repr (Symbol T N) where
+ reprPrec sym _ := match sym with
+   | Symbol.terminal t => reprStr t
+   | Symbol.nonterminal nt => reprStr nt
 
---#eval! earleyBinsList G exW1 2
---#eval! earleyBinsList G exW1 1
---#eval! earleyBinsList G exW1 0
+instance {T N : Type} [Repr T] [Repr N] : Repr (ContextFreeRule T N) where
+  reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
+
+instance : Repr (Earley.Model.EarleyItem T N) where
+  reprPrec item _ :=
+    have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
+    have input := reprStr item.rule.input
+    s!"({input} → {reprStr lhs} @ {reprStr rhs}, {item.startItem}, {item.endItem})"
+
+def recognizeTest (G : ContextFreeGrammarList T N) (w : List T) : EarleyBins T N (w.length+1) :=
+  let bins := earleyBinsList G w w.length (by grind)
+  bins
+
+/--
+info: [(Recognizer.N.S → [] @ [Recognizer.T.a], 0, 0), (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 0, 0)]
+-/
+#guard_msgs in
+#eval! (recognizeTest G exW1)[0]
+/--
+info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 0, 1),
+ (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 0, 1),
+ (Recognizer.N.S → [] @ [Recognizer.T.a], 1, 1),
+ (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 1, 1)]
+-/
+#guard_msgs in
+#eval! (recognizeTest G exW1)[1]
+/--
+info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 1, 2),
+ (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 1, 2),
+ (Recognizer.N.S → [Recognizer.T.a, Recognizer.N.S] @ [], 0, 2),
+ (Recognizer.N.S → [] @ [Recognizer.T.a], 2, 2),
+ (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 2, 2)]
+-/
+#guard_msgs in
+#eval! (recognizeTest G exW2)[2]
+/--
+info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 2, 3),
+ (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 2, 3),
+ (Recognizer.N.S → [Recognizer.T.a, Recognizer.N.S] @ [], 1, 3),
+ (Recognizer.N.S → [] @ [Recognizer.T.a], 3, 3),
+ (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 3, 3),
+ (Recognizer.N.S → [Recognizer.T.a, Recognizer.N.S] @ [], 0, 3)]
+-/
+#guard_msgs in
+#eval! (recognizeTest G exW2)[3]
+/--
+info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 0, 1),
+ (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 0, 1),
+ (Recognizer.N.S → [] @ [Recognizer.T.a], 1, 1),
+ (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 1, 1)]
+-/
+#guard_msgs in
+#eval! (recognizeTest G exW4)[1]
+/--
+info: []
+-/
+#guard_msgs in
+#eval! (recognizeTest G exW4)[2]
+/--
+info: []
+-/
+#guard_msgs in
+#eval! (recognizeTest G [T.b, T.b])[1]
+
+/--
+info: false
+-/
+#guard_msgs in
+#eval! recognizeList G []
+/--
+info: true
+-/
+#guard_msgs in
+#eval! recognizeList G exW1
+/--
+info: true
+-/
+#guard_msgs in
+#eval! recognizeList G exW2
+/--
+info: true
+-/
+#guard_msgs in
+#eval! recognizeList G exW3
+/--
+info: false
+-/
+#guard_msgs in
+#eval! recognizeList G exW4
 
 end Recognizer
