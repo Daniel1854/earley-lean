@@ -1,5 +1,6 @@
 module
 public import Earley.Model
+public import Earley.Proofs.Model
 public import Earley.Fixpoint
 @[expose] public section
 
@@ -151,16 +152,11 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       have : x.startItem < w.length + 1 := by
-        -- TODO: this is a major pain since I need to rely on previous results from Invariants
-        let G' : ContextFreeGrammar T := ⟨N, G.initial, G.rules, by simp [G.nodup]⟩
-        have : isWellFormed G' (w.map Symbol.terminal) x := by
-          sorry
-          --have := wfEarley G w
-          --grind
-        have : isWellFormedList G (w.map Symbol.terminal) x := by
-          --grind [Finset.mem_toList]
-          sorry
-        grind
+        -- TODO: In theory I only need to rely on the result that the bins only contain WF Items
+        --       but this a result _about_ this function so I cant access it ?
+        --       Alternatively, I could parametrize the function with a proof that only wf items
+        --       reside in the bins, but this makes everything a little convoluted?
+        sorry
       let newItems := completeList x (w.length + 1) bins this
       let newBin := appendNoDupl bins[i] newItems
       bins.set i newBin ((by grind))
