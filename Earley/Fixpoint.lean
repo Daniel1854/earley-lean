@@ -36,7 +36,7 @@ structure ContextFreeGrammarList (T N : Type) where
   /-- `rules` contains no duplicates -/
   nodup : List.Nodup rules
 
-variable {T : Type} {N : Type} [BEq N]
+variable {T N : Type} [BEq N]
 
 /--
 Returns if the grammar contains a rule with an empty rhs.

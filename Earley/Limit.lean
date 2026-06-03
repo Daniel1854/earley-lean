@@ -27,15 +27,15 @@ List of theorems to port:
 -/
 
 -- TODO: annotate some with grind
-#check Monotone
-#check MonotoneOn
-#check Function.iterate_fixed
-#check Function.iterate_id
+--#check Monotone
+--#check MonotoneOn
+--#check Function.iterate_fixed
+--#check Function.iterate_id
 
 namespace Earley
 namespace Limit
 
-variable {α : Type} {β : Type}
+variable {α β : Type}
 
 /--
 Applies the given function for each natural number `n`,

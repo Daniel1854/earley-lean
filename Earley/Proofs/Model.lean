@@ -35,7 +35,7 @@ open Earley.Model
 open Earley.Model.EarleyItem
 open Utils
 
-variable {T : Type} {N : Type}
+variable {T N : Type}
 
 /--
 If the position of an `EarleyItem` is zero, then `alphaItem` of that item is empty.

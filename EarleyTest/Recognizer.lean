@@ -46,10 +46,28 @@ def exW2 : List T := [T.a, T.a, T.a]
 def exW3 : List T := [T.a, T.a]
 def exW4 : List T := [T.a, T.b]
 
+instance : Repr T where
+ reprPrec sym _ := match sym with
+   | T.a => "T.a"
+   | T.b => "T.b"
+
+instance : Repr N where
+ reprPrec sym _ := match sym with
+   | N.S => "N.S"
+
 instance : Repr (Symbol T N) where
  reprPrec sym _ := match sym with
    | Symbol.terminal t => reprStr t
    | Symbol.nonterminal nt => reprStr nt
+
+instance : Repr (ReductionPointer) where
+  reprPrec p _ := s!"({p.endItemA},{p.i},{p.j})"
+
+instance : Repr (Pointer) where
+ reprPrec sym _ := match sym with
+   | Pointer.null => "null"
+   | Pointer.predecessor i => s!"pre {i}"
+   | Pointer.reduction ps => s!"red {reprStr ps}"
 
 instance {T N : Type} [Repr T] [Repr N] : Repr (ContextFreeRule T N) where
   reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
@@ -60,60 +78,58 @@ instance : Repr (Earley.Model.EarleyItem T N) where
     have input := reprStr item.rule.input
     s!"({input} → {reprStr lhs} @ {reprStr rhs}, {item.startItem}, {item.endItem})"
 
-def recognizeTest (G : ContextFreeGrammarList T N) (w : List T) : EarleyBins T N (w.length+1) :=
-  let bins := earleyBinsList G w w.length (by grind)
-  bins
+instance : Repr (Earley.Recognizer.BinItem T N) where
+  reprPrec item _ :=
+    s!"({reprStr item.item}, {reprStr item.pointer})"
 
+/-- info: [((N.S → [] @ [T.a], 0, 0), null), ((N.S → [] @ [T.a, N.S], 0, 0), null)] -/
+#guard_msgs in
+#eval! (earleyList G exW1)[0]
 /--
-info: [(Recognizer.N.S → [] @ [Recognizer.T.a], 0, 0), (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 0, 0)]
+info: [((N.S → [T.a] @ [], 0, 1), pre 0),
+ ((N.S → [T.a] @ [N.S], 0, 1), pre 1),
+ ((N.S → [] @ [T.a], 1, 1), null),
+ ((N.S → [] @ [T.a, N.S], 1, 1), null)]
 -/
 #guard_msgs in
-#eval! (recognizeTest G exW1)[0]
+#eval! (earleyList G exW1)[1]
 /--
-info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 0, 1),
- (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 0, 1),
- (Recognizer.N.S → [] @ [Recognizer.T.a], 1, 1),
- (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 1, 1)]
+info: [((N.S → [T.a] @ [], 1, 2), pre 2),
+ ((N.S → [T.a] @ [N.S], 1, 2), pre 3),
+ ((N.S → [T.a, N.S] @ [], 0, 2), red [(1,1,0)]),
+ ((N.S → [] @ [T.a], 2, 2), null),
+ ((N.S → [] @ [T.a, N.S], 2, 2), null)]
 -/
 #guard_msgs in
-#eval! (recognizeTest G exW1)[1]
+#eval! (earleyList G exW2)[2]
 /--
-info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 1, 2),
- (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 1, 2),
- (Recognizer.N.S → [Recognizer.T.a, Recognizer.N.S] @ [], 0, 2),
- (Recognizer.N.S → [] @ [Recognizer.T.a], 2, 2),
- (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 2, 2)]
+info: [((N.S → [T.a] @ [], 2, 3), pre 3),
+ ((N.S → [T.a] @ [N.S], 2, 3), pre 4),
+ ((N.S → [T.a, N.S] @ [], 1, 3), red [(2,1,0)]),
+ ((N.S → [] @ [T.a], 3, 3), null),
+ ((N.S → [] @ [T.a, N.S], 3, 3), null),
+ ((N.S → [T.a, N.S] @ [], 0, 3), red [(1,1,2)])]
 -/
 #guard_msgs in
-#eval! (recognizeTest G exW2)[2]
+#eval! (earleyList G exW2)[3]
 /--
-info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 2, 3),
- (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 2, 3),
- (Recognizer.N.S → [Recognizer.T.a, Recognizer.N.S] @ [], 1, 3),
- (Recognizer.N.S → [] @ [Recognizer.T.a], 3, 3),
- (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 3, 3),
- (Recognizer.N.S → [Recognizer.T.a, Recognizer.N.S] @ [], 0, 3)]
+info: [((N.S → [T.a] @ [], 0, 1), pre 0),
+ ((N.S → [T.a] @ [N.S], 0, 1), pre 1),
+ ((N.S → [] @ [T.a], 1, 1), null),
+ ((N.S → [] @ [T.a, N.S], 1, 1), null)]
 -/
 #guard_msgs in
-#eval! (recognizeTest G exW2)[3]
-/--
-info: [(Recognizer.N.S → [Recognizer.T.a] @ [], 0, 1),
- (Recognizer.N.S → [Recognizer.T.a] @ [Recognizer.N.S], 0, 1),
- (Recognizer.N.S → [] @ [Recognizer.T.a], 1, 1),
- (Recognizer.N.S → [] @ [Recognizer.T.a, Recognizer.N.S], 1, 1)]
--/
-#guard_msgs in
-#eval! (recognizeTest G exW4)[1]
+#eval! (earleyList G exW4)[1]
 /--
 info: []
 -/
 #guard_msgs in
-#eval! (recognizeTest G exW4)[2]
+#eval! (earleyList G exW4)[2]
 /--
 info: []
 -/
 #guard_msgs in
-#eval! (recognizeTest G [T.b, T.b])[1]
+#eval! (earleyList G [T.b, T.b])[1]
 
 /--
 info: false

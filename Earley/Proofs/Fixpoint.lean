@@ -45,7 +45,7 @@ open Utils
 open ContextFreeRule
 open ContextFreeGrammar
 
-variable {T : Type} {N : Type}
+variable {T N : Type}
 
 section Finiteness
 

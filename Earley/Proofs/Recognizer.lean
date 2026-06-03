@@ -49,7 +49,7 @@ open Utils
 open ContextFreeRule
 open ContextFreeGrammar
 
-variable {T : Type} {N : Type}
+variable {T N : Type}
 
 /--
 The items of the n-th bin are well-formed, if all of them are well-formed and
