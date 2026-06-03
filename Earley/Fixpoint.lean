@@ -1,13 +1,21 @@
 module
 public import Earley.Model
+public import Earley.Limit
 @[expose] public section
 
 /-!
 This module represents a fixpoint implementation of the Earley algorithm.
 It's a stepping stone to refine from the inductive definition to the fully functional one.
 
-A bit unclear where exactly this helps! This seems to just strip some syntactic sugar away.
-But maybe there is some relation to the bins that helps!
+TODO: Set (EarleyItems) - how does it differ from the Model? Where does it help?
+      It simply describes a set of items and not how to construct them inductively I suppose
+      but through sheer application of operations? The technical difference seems quite low
+      But maybe there is some relation to the bins that helps!
+TODO: This set-based implementation doesn't _really_ need the CFGₗ BUT the refinement proof
+      from EarleySet should be quite easy and the friction is better here than from
+      EarleyFixpoint -> EarleySet?
+      There is only one point where List vs. Finset is disruptive: `finiteEarleyNonEmpty`
+      I could use .image.max' to select the rule with the longest output.
 -/
 
 namespace Earley
@@ -19,16 +27,6 @@ open EarleyItem
 /--
 Variant of `ContextFreeGrammar` that uses a List internally to store the rules.
 Context-free grammar that generates words over the alphabet `T` (a type of terminals).
-
-TODO: I kind of have to parametrize with NT, else I cant bring CFG into context with CFGₗ neatly?
-      It also doesn't hold much practical value that the CFG would be decoupled from NT
-      for an implementation. On a theoretical level there are some advantages.
-TODO: This set-based implementation doesn't _really_ need the CFGₗ BUT the refinement proof
-      from EarleySet should be quite easy and the friction is better here than from
-      EarleyFixpoint -> EarleySet.
-      There is only one point where List vs. Finset it is very disruptive, and that would
-      be in finiteEarleyNonEmpty and there I could use .image.max' to select the rule with
-      the longest output.
 -/
 structure ContextFreeGrammarList (T N : Type) where
   /-- Initial nonterminal. -/
@@ -84,11 +82,6 @@ def bin (I : Set (EarleyItem T N)) (k : Nat) : Set (EarleyItem T N) :=
 
 /--
 Set-based implementation of the .init operation.
-Returns a set filled with all possible .init states.
-
-TODO: Set (EarleyItems) - how does it differ from the Model?
-It simply describes a set of items and not how to construct them inductively I suppose
-but through sheer application of operations? The technical difference seems quite low
 -/
 def initFixpoint (G : ContextFreeGrammarList T N) : Set (EarleyItem T N) :=
   { ⟨r,pos,i,j⟩ | pos = 0 ∧ i = 0 ∧ j = 0 ∧ (r ∈ G.rules) ∧ r.input = G.initial }
@@ -119,23 +112,22 @@ def completeFixpoint (I : Set (EarleyItem T N)) (k : Nat) : Set (EarleyItem T N)
     y ∈ bin I k ∧ isComplete y ∧ nextSymbol x = some (Symbol.nonterminal y.rule.input) }
 
 /--
-One step of the fixpoint iteration
+One step of the fixpoint iteration.
 -/
 def earleyFixpointBinStep (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     (I : Set (EarleyItem T N)) : Set (EarleyItem T N) :=
   I ∪ scanFixpoint I w k ∪ completeFixpoint I k ∪ predictFixpoint G I k
 
 /--
-Fixpoint Iteration of a single bin
+Fixpoint Iteration of a single bin.
 -/
 def earleyFixpointBin (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     (I : Set (EarleyItem T N)) : Set (EarleyItem T N) :=
-  -- TODO: missing "limit"
-  (earleyFixpointBinStep G w k) I
+  Limit.limit (earleyFixpointBinStep G w k) I
 
 /--
-TODO
-Builds the stack
+Set-based computation up to the k-th bin.
+Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 def earleyFixpointBins (G : ContextFreeGrammarList T N) (w : List T) (k : Nat) :
     Set (EarleyItem T N) :=
@@ -144,7 +136,7 @@ def earleyFixpointBins (G : ContextFreeGrammarList T N) (w : List T) (k : Nat) :
   | n+1 => earleyFixpointBin G w (n+1) (earleyFixpointBins G w n)
 
 /--
-Set-based/fixpoint iteration based computation of the EarleySet
+Set-based/fixpoint iteration based computation of the EarleySet.
 -/
 def earleyFixpoint (G : ContextFreeGrammarList T N) (w : List T) : Set (EarleyItem T N) :=
   earleyFixpointBins G w w.length

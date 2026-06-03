@@ -7,7 +7,7 @@ public import Earley.Fixpoint
 /-!
 This module represents a functional implementation of the Earley algorithm.
 
-Given an input word `w = a_0 .. a_(n-1)` of length `n`, we maintain a list of `n+1` bins `B_i`.
+Given an input word `w = a_0 .. a_(n-1)` of length `n`, we maintain a list of `n+1` bins `B_k`.
 For the initial starting position and position after parsing a certain characters,
 we maintain a bin of the possible states we could be in.
 Each bin contains a set of Earley Entries, which are a pair of an Earley Item and indices,
@@ -73,13 +73,13 @@ def initList (G : ContextFreeGrammarList T N) : List (EarleyItem T N) :=
 List-based implementation of the .scan operation.
 
 Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
-if `a` matches the word for given index `i`.
+if `a` matches the word for given index `k`.
 TODO: Think about if Option is more sensible.
       This maybe makes sense if I dont switch to Arrays for the inner (expensive append)
 -/
-def scanList (w : List T) (x : EarleyItem T N) (a : T) (i : Nat) (h : i < w.length) :
+def scanList (w : List T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.length) :
     List (EarleyItem T N) :=
-  if w[i] == a then
+  if w[k] == a then
     [incItem x (x.endItem+1)]
   else
     []
@@ -89,10 +89,10 @@ List-based implementation of the .predict operation.
 
 Returns a fresh item for each rule, which got `A` as its lhs.
 -/
-def predictList (G : ContextFreeGrammarList T N) (A : N) (i : Nat) :
+def predictList (G : ContextFreeGrammarList T N) (A : N) (k : Nat) :
     List (EarleyItem T N) :=
   let rules := G.rules.filter (fun r => r.input == A)
-  rules.map (fun r => ⟨r,0,i,i⟩)
+  rules.map (fun r => ⟨r,0,k,k⟩)
 
 /--
 List-based implementation of the .complete operation.
@@ -121,34 +121,34 @@ def appendNoDupl (xs : List (EarleyItem T N)) (ys : List (EarleyItem T N)) :
   xs.append (ys.filter (fun y => !xs.contains y))
 
 /--
-Computes the i-th bin starting from index j and returns the updated bins.
+Computes the k-th bin starting from index j and returns the updated bins.
 TODO: termination_by - Need to showcase (and know how to even write) that
       any element part of a bin is WF and there is only a finite amount of those.
 -/
-public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (i : Nat)
-    (bins : EarleyBins T N (w.length + 1)) (hi : i < bins.size) (j : Nat) :
+public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
+    (bins : EarleyBins T N (w.length + 1)) (h : k < bins.size) (j : Nat) :
     EarleyBins T N (w.length + 1) :=
   -- Return the bins if we are the end of the list of the current bin
-  if hj : j ≥ bins[i].length then
+  if hj : j ≥ bins[k].length then
     bins
   else
-    let x := bins[i][j]
+    let x := bins[k][j]
     let bins' := match nextSymbol x with
     | some s => match s with
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
-        let newItems := predictList G A i
-        let newBin := appendNoDupl bins[i] newItems
-        bins.set i newBin (by grind)
+        let newItems := predictList G A k
+        let newBin := appendNoDupl bins[k] newItems
+        bins.set k newBin (by grind)
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
-        if hi : i ≥ w.length then
+        if hk : k ≥ w.length then
           bins
         else
           -- Add a potential .scan operations on the current item to the next bin
-          let newItem := scanList w x a i (by grind)
-          let newBin := appendNoDupl bins[i+1] newItem
-          bins.set (i+1) newBin (by grind)
+          let newItem := scanList w x a k (by grind)
+          let newBin := appendNoDupl bins[k+1] newItem
+          bins.set (k+1) newBin (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       have : x.startItem < w.length + 1 := by
@@ -158,26 +158,26 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
         --       reside in the bins, but this makes everything a little convoluted?
         sorry
       let newItems := completeList x (w.length + 1) bins this
-      let newBin := appendNoDupl bins[i] newItems
-      bins.set i newBin ((by grind))
-    earleyBinList G w i bins' (by grind) (j+1)
+      let newBin := appendNoDupl bins[k] newItems
+      bins.set k newBin ((by grind))
+    earleyBinList G w k bins' (by grind) (j+1)
 
 /--
-Computes up to the i-th bin.
+Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
-public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (i : Nat)
-    (hi : i ≤ w.length) : EarleyBins T N (w.length + 1) :=
-  match h : i with
+public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
+    (h : k ≤ w.length) : EarleyBins T N (w.length + 1) :=
+  match h : k with
   | 0 =>
     -- Initialize the first bin by using .init for all G.rules
     let b₀ := initList G
     let bins := Vector.replicate (w.length + 1) []
     earleyBinList G w 0 (bins.set 0 b₀ (by grind)) (by grind) 0
-  | j+1 =>
-    -- Given the first jth bins being computed, we can compute j+1
-    let mBins := earleyBinsList G w j (by grind)
-    earleyBinList G w i mBins (by grind) 0
+  | i+1 =>
+    -- Given the first i-th bins being computed, we can compute i+1
+    let mBins := earleyBinsList G w i (by grind)
+    earleyBinList G w k mBins (by grind) 0
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
