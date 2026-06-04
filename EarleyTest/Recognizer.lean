@@ -1,39 +1,85 @@
 import Earley.Model
 import Earley.Recognizer
 import Earley.Fixpoint
+import Earley.Parser
 
 import Mathlib.Computability.ContextFreeGrammar
 
-namespace Recognizer
-open Earley.Recognizer
-open Earley.Fixpoint
-
-/-
+/-!
 This suite tests the basic functionality of the Recognizer
 
 It plays with the general mathlib API and basic usage of the functions for the example Grammar G
   G = ({S, a}, {a}, {S -> aS | a}, S) with L(G) = a⁺
 
-TODO: test basic functionality with decently complicated grammar
+TODO: unclear if these Repr instances are worthwhile for anything besides these tests.
+
+TODO: test the basic functionality with a decently complicated grammar
+      atleast some expression grammar like
+      S → E
+      E → E + E
+      E → T
+      T → T * T
+      T → 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
 -/
 
-/- Simple Usage Examples for Mathlib Types -/
+namespace Recognizer
+open Earley.Recognizer
+open Earley.Fixpoint
+open Earley.Parser
+
+variable {α β : Type} [Repr α] [Repr β]
+
+instance : Repr (Symbol α β) where
+ reprPrec sym _ := match sym with
+   | Symbol.terminal t => reprStr t
+   | Symbol.nonterminal nt => reprStr nt
+
+instance : Repr ReductionPointer where
+  reprPrec p _ := s!"({p.endItemA},{p.i},{p.j})"
+
+instance : Repr Pointer where
+ reprPrec sym _ := match sym with
+   | Pointer.null => "null"
+   | Pointer.predecessor i => s!"pre {i}"
+   | Pointer.reduction ps => s!"red {reprStr ps}"
+
+instance : Repr (ContextFreeRule α β) where
+  reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
+
+instance : Repr (Earley.Model.EarleyItem α β) where
+  reprPrec item _ :=
+    have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
+    have input := reprStr item.rule.input
+    s!"({input} → {reprStr lhs} @ {reprStr rhs}, {item.startItem}, {item.endItem})"
+
+instance : Repr (Earley.Recognizer.BinItem α β) where
+  reprPrec item _ :=
+    s!"({reprStr item.item}, {reprStr item.pointer})"
+
+
+/- Simplest Example: S → a | aS -/
+namespace BasicExample
+
 inductive N where
 | S : N
-deriving BEq, Repr
+deriving BEq
+
+instance : Repr N where
+ reprPrec sym _ := match sym with
+   | N.S => "N.S"
 
 inductive T where
 | a : T
 | b : T
-deriving BEq, Repr
+deriving BEq
 
-def exRule1 : ContextFreeRule T N where
-  input := N.S
-  output := [Symbol.terminal T.a]
+instance : Repr T where
+ reprPrec sym _ := match sym with
+   | T.a => "T.a"
+   | T.b => "T.b"
 
-def exRule2 : ContextFreeRule T N where
-  input := N.S
-  output := [Symbol.terminal T.a, Symbol.nonterminal N.S]
+def exRule1 : ContextFreeRule T N := ⟨N.S, [Symbol.terminal T.a]⟩
+def exRule2 : ContextFreeRule T N := ⟨N.S, [Symbol.terminal T.a, Symbol.nonterminal N.S]⟩
 
 def G : ContextFreeGrammarList T N := {
   initial := N.S,
@@ -43,44 +89,7 @@ def G : ContextFreeGrammarList T N := {
 
 def exW1 : List T := [T.a]
 def exW2 : List T := [T.a, T.a, T.a]
-def exW3 : List T := [T.a, T.a]
-def exW4 : List T := [T.a, T.b]
-
-instance : Repr T where
- reprPrec sym _ := match sym with
-   | T.a => "T.a"
-   | T.b => "T.b"
-
-instance : Repr N where
- reprPrec sym _ := match sym with
-   | N.S => "N.S"
-
-instance : Repr (Symbol T N) where
- reprPrec sym _ := match sym with
-   | Symbol.terminal t => reprStr t
-   | Symbol.nonterminal nt => reprStr nt
-
-instance : Repr (ReductionPointer) where
-  reprPrec p _ := s!"({p.endItemA},{p.i},{p.j})"
-
-instance : Repr (Pointer) where
- reprPrec sym _ := match sym with
-   | Pointer.null => "null"
-   | Pointer.predecessor i => s!"pre {i}"
-   | Pointer.reduction ps => s!"red {reprStr ps}"
-
-instance {T N : Type} [Repr T] [Repr N] : Repr (ContextFreeRule T N) where
-  reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
-
-instance : Repr (Earley.Model.EarleyItem T N) where
-  reprPrec item _ :=
-    have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
-    have input := reprStr item.rule.input
-    s!"({input} → {reprStr lhs} @ {reprStr rhs}, {item.startItem}, {item.endItem})"
-
-instance : Repr (Earley.Recognizer.BinItem T N) where
-  reprPrec item _ :=
-    s!"({reprStr item.item}, {reprStr item.pointer})"
+def exW3 : List T := [T.a, T.b]
 
 /-- info: [((N.S → [] @ [T.a], 0, 0), null), ((N.S → [] @ [T.a, N.S], 0, 0), null)] -/
 #guard_msgs in
@@ -119,12 +128,12 @@ info: [((N.S → [T.a] @ [], 0, 1), pre 0),
  ((N.S → [] @ [T.a, N.S], 1, 1), null)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW4)[1]
+#eval! (earleyList G exW3)[1]
 /--
 info: []
 -/
 #guard_msgs in
-#eval! (earleyList G exW4)[2]
+#eval! (earleyList G exW3)[2]
 /--
 info: []
 -/
@@ -147,14 +156,201 @@ info: true
 #guard_msgs in
 #eval! recognizeList G exW2
 /--
+info: false
+-/
+#guard_msgs in
+#eval! recognizeList G exW3
+
+/--
+info: some (Earley.Parser.Tree.node
+  (Symbol.nonterminal N.S)
+  [Earley.Parser.Tree.leaf (Symbol.terminal T.a),
+   Earley.Parser.Tree.node (Symbol.nonterminal N.S) [Earley.Parser.Tree.leaf (Symbol.terminal T.a)]])
+-/
+#guard_msgs in
+#eval! (parse G [T.a, T.a])
+end BasicExample
+
+/-
+Less simple example:
+Sum     -> Sum     + Product | Product
+Product -> Product * Factor  | Factor
+Factor  -> '(' Sum ')' | 0 | 1 | 2
+-/
+namespace LessBasicExample
+
+inductive N where
+| Sum : N
+| Product : N
+| Factor : N
+deriving BEq
+
+instance : Repr N where
+ reprPrec sym _ := match sym with
+   | N.Sum => "N.Sum"
+   | N.Product => "N.Product"
+   | N.Factor => "N.Factor"
+
+inductive T where
+| Plus : T
+| Mul : T
+| Open : T
+| Close : T
+| Zero : T
+| One : T
+| Two : T
+deriving BEq
+
+instance : Repr T where
+ reprPrec sym _ := match sym with
+  | T.Plus => "T.Plus"
+  | T.Mul => "T.Mul"
+  | T.Open => "T.Open"
+  | T.Close => "T.Close"
+  | T.Zero => "T.Zero"
+  | T.One => "T.One"
+  | T.Two => "T.Two"
+
+def exRule1 : ContextFreeRule T N where
+  input := N.Sum
+  output := [Symbol.nonterminal N.Sum, Symbol.terminal T.Plus, Symbol.nonterminal N.Product]
+def exRule2 : ContextFreeRule T N where
+  input := N.Sum
+  output := [Symbol.nonterminal N.Product]
+def exRule3 : ContextFreeRule T N where
+  input := N.Product
+  output := [Symbol.nonterminal N.Product, Symbol.terminal T.Mul, Symbol.nonterminal N.Factor]
+def exRule4 : ContextFreeRule T N where
+  input := N.Product
+  output := [Symbol.nonterminal N.Factor]
+def exRule5 : ContextFreeRule T N where
+  input := N.Factor
+  output := [Symbol.terminal T.Open, Symbol.nonterminal N.Sum, Symbol.terminal T.Close]
+def exRule6 : ContextFreeRule T N where
+  input := N.Factor
+  output := [Symbol.terminal T.Zero]
+def exRule7 : ContextFreeRule T N where
+  input := N.Factor
+  output := [Symbol.terminal T.One]
+def exRule8 : ContextFreeRule T N where
+  input := N.Factor
+  output := [Symbol.terminal T.Two]
+def G : ContextFreeGrammarList T N := {
+  initial := N.Sum,
+  rules := [exRule1, exRule2, exRule3, exRule4, exRule5, exRule6, exRule7, exRule8],
+  nodup := by simp [exRule1, exRule2, exRule3, exRule4, exRule5, exRule6, exRule7, exRule8]
+}
+
+def exW1 : List T := [T.Zero]
+def exW2 : List T := [T.Zero, T.Plus, T.One]
+def exW3 : List T := [T.Zero, T.Mul, T.One, T.Plus, T.One]
+def exW4 : List T := [T.Open, T.One, T.Plus, T.Zero, T.Close, T.Mul, T.Two]
+def exW5 : List T := [T.Mul, T.Plus, T.One]
+
+/--
+info: true
+-/
+#guard_msgs in
+#eval! recognizeList G exW1
+/--
+info: true
+-/
+#guard_msgs in
+#eval! recognizeList G exW2
+/--
 info: true
 -/
 #guard_msgs in
 #eval! recognizeList G exW3
 /--
-info: false
+info: true
 -/
 #guard_msgs in
 #eval! recognizeList G exW4
+/--
+info: false
+-/
+#guard_msgs in
+#eval! recognizeList G exW5
+
+/--
+info: some (Earley.Parser.Tree.node
+  (Symbol.nonterminal N.Sum)
+  [Earley.Parser.Tree.node
+     (Symbol.nonterminal N.Product)
+     [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.Zero)]]])
+-/
+#guard_msgs in
+#eval! (parse G exW1)
+/--
+info: some (Earley.Parser.Tree.node
+  (Symbol.nonterminal N.Sum)
+  [Earley.Parser.Tree.node
+     (Symbol.nonterminal N.Sum)
+     [Earley.Parser.Tree.node
+        (Symbol.nonterminal N.Product)
+        [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.Zero)]]],
+   Earley.Parser.Tree.leaf (Symbol.terminal T.Plus),
+   Earley.Parser.Tree.node
+     (Symbol.nonterminal N.Product)
+     [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.One)]]])
+-/
+#guard_msgs in
+#eval! (parse G exW2)
+/--
+info: some (Earley.Parser.Tree.node
+  (Symbol.nonterminal N.Sum)
+  [Earley.Parser.Tree.node
+     (Symbol.nonterminal N.Sum)
+     [Earley.Parser.Tree.node
+        (Symbol.nonterminal N.Product)
+        [Earley.Parser.Tree.node
+           (Symbol.nonterminal N.Product)
+           [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.Zero)]],
+         Earley.Parser.Tree.leaf (Symbol.terminal T.Mul),
+         Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.One)]]],
+   Earley.Parser.Tree.leaf (Symbol.terminal T.Plus),
+   Earley.Parser.Tree.node
+     (Symbol.nonterminal N.Product)
+     [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.One)]]])
+-/
+#guard_msgs in
+#eval! (parse G exW3)
+/--
+info: some (Earley.Parser.Tree.node
+  (Symbol.nonterminal N.Sum)
+  [Earley.Parser.Tree.node
+     (Symbol.nonterminal N.Product)
+     [Earley.Parser.Tree.node
+        (Symbol.nonterminal N.Product)
+        [Earley.Parser.Tree.node
+           (Symbol.nonterminal N.Factor)
+           [Earley.Parser.Tree.leaf (Symbol.terminal T.Open),
+            Earley.Parser.Tree.node
+              (Symbol.nonterminal N.Sum)
+              [Earley.Parser.Tree.node
+                 (Symbol.nonterminal N.Sum)
+                 [Earley.Parser.Tree.node
+                    (Symbol.nonterminal N.Product)
+                    [Earley.Parser.Tree.node
+                       (Symbol.nonterminal N.Factor)
+                       [Earley.Parser.Tree.leaf (Symbol.terminal T.One)]]],
+               Earley.Parser.Tree.leaf (Symbol.terminal T.Plus),
+               Earley.Parser.Tree.node
+                 (Symbol.nonterminal N.Product)
+                 [Earley.Parser.Tree.node
+                    (Symbol.nonterminal N.Factor)
+                    [Earley.Parser.Tree.leaf (Symbol.terminal T.Zero)]]],
+            Earley.Parser.Tree.leaf (Symbol.terminal T.Close)]],
+      Earley.Parser.Tree.leaf (Symbol.terminal T.Mul),
+      Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.Two)]]])
+-/
+#guard_msgs in
+#eval! (parse G exW4)
+/-- info: none -/
+#guard_msgs in
+#eval! (parse G exW5)
+
+end LessBasicExample
 
 end Recognizer
