@@ -38,6 +38,47 @@ inductive Tree (T N : Type) where
   | node (data : Symbol T N) (succ : List (Tree T N)) : Tree T N
 deriving BEq, Repr
 
+mutual
+  /--
+  Accumulates a graphviz string for a list of trees and returns the indices of each of these.
+  -/
+  def toGraphvizAuxList [ToString T] [ToString N] (acc : String) (idx : Nat)
+      (accChildren : List Nat) : List (Tree T N) → String × Nat × List Nat
+    | [] => ⟨acc,idx,accChildren⟩
+    | t::ts =>
+      let ⟨acc,newIdx⟩ := toGraphvizAux acc idx t
+      let accChildren := accChildren.append [idx]
+      toGraphvizAuxList acc newIdx accChildren ts
+
+  /--
+  Accumulates a graphviz string for a tree.
+  -/
+  def toGraphvizAux [ToString T] [ToString N] (acc : String) (idx : Nat) : Tree T N → String × Nat
+    | Tree.leaf d =>
+      -- TODO: no need for this with [toString Symbol T N]
+      let d := match d with
+      | Symbol.terminal t => s!"{t}"
+      | Symbol.nonterminal nt => s!"{nt}"
+      ⟨acc ++ s!"\n  {idx} [label=\"{d}\", shape=circle];", (idx+1)⟩
+    | Tree.node d ts =>
+      -- TODO: no need for this with [toString Symbol T N]
+      let d := match d with
+      | Symbol.terminal t => s!"{t}"
+      | Symbol.nonterminal nt => s!"{nt}"
+      let node := s!"\n  {idx} [label=\"{d}\", shape=circle];"
+      let ⟨acc, newIdx, childIndices⟩ := toGraphvizAuxList (acc ++ node) (idx+1) [] ts
+      -- Create an edge from the node to all of its direct children
+      let edges := String.join (childIndices.map (fun i => s!"\n  {idx} -> {i};"))
+      ⟨acc ++ edges, newIdx⟩
+end
+
+/--
+Transform a tree into a graphviz compatible format.
+-/
+def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
+  let ⟨graph, _⟩ := toGraphvizAux "Digraph tree {" 1 t
+  graph ++ "\n}"
+
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
 TODO: Realistically this should never return none if it gets called with a well-formed bin?

@@ -2,6 +2,21 @@
 An Earley Parser Formalization as part of my master thesis.
 Following the work from Rau et al (<https://doi.org/10.4230/LIPIcs.ITP.2024.31>).
 
+## Graphviz
+To visualize a parse tree, you can use the function `toGraphviz` on a `Tree`.
+This will return a string compatible with graphviz, which you can save into a file.
+See `saveTree` in `Test/Recognizer.lean` for further inspiration.
+
+Then execute the following command on a machine with graphviz installed
+```bash
+dot -Tsvg tree.gv -o tree.svg
+```
+or the following for png:
+```bash
+dot -T png tree.gv -O
+```
+and you can look at the rendered file.
+
 ## General Plan
 - [x] Setup Repository for writing thesis/presentations
 - [x] Setup Repository with Mathlib+Testrunner
@@ -12,11 +27,15 @@ Following the work from Rau et al (<https://doi.org/10.4230/LIPIcs.ITP.2024.31>)
   - [x] EarleyItem
   - [x] EarleySet
   - [x] Correctness Proof
-- [ ] Recognizer
-  - [ ] Implement
+- [x] Fixpoint Iteration
+  - [x] Implement
   - [ ] Refinement Correctness Proof
-- [ ] Parser
-  - [ ] Implementation
+- [x] Recognizer
+  - [x] Implement
+  - [ ] Refinement Correctness Proof
+- [x] Parser
+  - [x] Implementation
+  - [x] Graphviz
   - [ ] Correctness Proof
 - [ ] Evaluation/Benchmark
 - [ ] Performance Improvements?

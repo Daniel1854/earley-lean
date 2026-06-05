@@ -1,0 +1,9 @@
+Digraph tree {
+  1 [label="N.S", shape=circle];
+  2 [label="T.a", shape=circle];
+  3 [label="N.S", shape=circle];
+  4 [label="T.a", shape=circle];
+  3 -> 4;
+  1 -> 2;
+  1 -> 3;
+}

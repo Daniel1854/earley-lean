@@ -6,20 +6,10 @@ import Earley.Parser
 import Mathlib.Computability.ContextFreeGrammar
 
 /-!
-This suite tests the basic functionality of the Recognizer
+This suite tests the basic functionality of the Recognizer and Parser.
 
-It plays with the general mathlib API and basic usage of the functions for the example Grammar G
-  G = ({S, a}, {a}, {S -> aS | a}, S) with L(G) = a⁺
-
-TODO: unclear if these Repr instances are worthwhile for anything besides these tests.
-
-TODO: test the basic functionality with a decently complicated grammar
-      atleast some expression grammar like
-      S → E
-      E → E + E
-      E → T
-      T → T * T
-      T → 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+TODO: Unclear if these Repr instances are worthwhile for anything besides these tests.
+      Should they be ToString?
 -/
 
 namespace Recognizer
@@ -27,7 +17,12 @@ open Earley.Recognizer
 open Earley.Fixpoint
 open Earley.Parser
 
-variable {α β : Type} [Repr α] [Repr β]
+variable {α β : Type} [Repr α] [Repr β] [ToString α] [ToString β]
+
+def saveTree (t : Option (Tree α β)) (name : String) : IO Unit :=
+  match t with
+  | some t => IO.FS.writeFile name (toGraphviz t)
+  | none => pure ()
 
 instance : Repr (Symbol α β) where
  reprPrec sym _ := match sym with
@@ -68,6 +63,10 @@ instance : Repr N where
  reprPrec sym _ := match sym with
    | N.S => "N.S"
 
+instance : ToString N where
+ toString sym := match sym with
+   | N.S => "N.S"
+
 inductive T where
 | a : T
 | b : T
@@ -75,6 +74,11 @@ deriving BEq
 
 instance : Repr T where
  reprPrec sym _ := match sym with
+   | T.a => "T.a"
+   | T.b => "T.b"
+
+instance : ToString T where
+ toString sym := match sym with
    | T.a => "T.a"
    | T.b => "T.b"
 
@@ -169,6 +173,9 @@ info: some (Earley.Parser.Tree.node
 -/
 #guard_msgs in
 #eval! (parse G [T.a, T.a])
+
+-- #eval! saveTree (parse G [T.a, T.a]) "Examples/tree1.gv"
+
 end BasicExample
 
 /-
@@ -191,6 +198,12 @@ instance : Repr N where
    | N.Product => "N.Product"
    | N.Factor => "N.Factor"
 
+instance : ToString N where
+ toString sym := match sym with
+   | N.Sum => "N.Sum"
+   | N.Product => "N.Product"
+   | N.Factor => "N.Factor"
+
 inductive T where
 | Plus : T
 | Mul : T
@@ -203,6 +216,16 @@ deriving BEq
 
 instance : Repr T where
  reprPrec sym _ := match sym with
+  | T.Plus => "T.Plus"
+  | T.Mul => "T.Mul"
+  | T.Open => "T.Open"
+  | T.Close => "T.Close"
+  | T.Zero => "T.Zero"
+  | T.One => "T.One"
+  | T.Two => "T.Two"
+
+instance : ToString T where
+ toString sym := match sym with
   | T.Plus => "T.Plus"
   | T.Mul => "T.Mul"
   | T.Open => "T.Open"
@@ -350,6 +373,8 @@ info: some (Earley.Parser.Tree.node
 /-- info: none -/
 #guard_msgs in
 #eval! (parse G exW5)
+
+--#eval! saveTree (parse G exW4) "Examples/tree2.gv"
 
 end LessBasicExample
 
