@@ -11,7 +11,6 @@ TODO: Set (EarleyItems) - how does it differ from the Model? Where does it help?
       It simply describes a set of items and not how to construct them inductively I suppose
       but through sheer application of operations? The technical difference seems quite low
       But maybe there is some relation to the bins that helps!
-FIXME: maybe do Symbol T N
 -/
 
 namespace Earley
@@ -40,10 +39,10 @@ Set-based implementation of the .scan operation.
 
 TODO: a bit annoying that I have to do w[k]? since the previous assumption is the bounds check
 -/
-def scanFixpoint (I : Set (EarleyItem T N)) (w : List T) (k : Nat) :
+def scanFixpoint (I : Set (EarleyItem T N)) (w : List (Symbol T N)) (k : Nat) :
       Set (EarleyItem T N) :=
   { y | ∀ x a, y = incItem x (k+1) ∧ x ∈ bin I k ∧
-    k < w.length ∧ w[k]? = some a ∧ nextSymbol x = some (Symbol.terminal a) }
+    k < w.length ∧ w[k]? = some a ∧ nextSymbol x = some a }
 
 /--
 Set-based implementation of the .predict operation.
@@ -63,14 +62,14 @@ def completeFixpoint (I : Set (EarleyItem T N)) (k : Nat) : Set (EarleyItem T N)
 /--
 One step of the fixpoint iteration.
 -/
-def earleyFixpointBinStep (G : ContextFreeGrammar T) (w : List T) (k : Nat)
+def earleyFixpointBinStep (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (k : Nat)
     (I : Set (EarleyItem T G.NT)) : Set (EarleyItem T G.NT) :=
   I ∪ scanFixpoint I w k ∪ completeFixpoint I k ∪ predictFixpoint G I k
 
 /--
 Fixpoint Iteration of a single bin.
 -/
-def earleyFixpointBin (G : ContextFreeGrammar T) (w : List T) (k : Nat)
+def earleyFixpointBin (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (k : Nat)
     (I : Set (EarleyItem T G.NT)) : Set (EarleyItem T G.NT) :=
   Limit.limit (earleyFixpointBinStep G w k) I
 
@@ -78,7 +77,7 @@ def earleyFixpointBin (G : ContextFreeGrammar T) (w : List T) (k : Nat)
 Set-based computation up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
-def earleyFixpointBins (G : ContextFreeGrammar T) (w : List T) (k : Nat) :
+def earleyFixpointBins (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (k : Nat) :
     Set (EarleyItem T G.NT) :=
   match k with
   | 0 => earleyFixpointBin G w 0 (initFixpoint G)
@@ -87,7 +86,8 @@ def earleyFixpointBins (G : ContextFreeGrammar T) (w : List T) (k : Nat) :
 /--
 Set-based/fixpoint iteration based computation of the EarleySet.
 -/
-def earleyFixpoint (G : ContextFreeGrammar T) (w : List T) : Set (EarleyItem T G.NT) :=
+def earleyFixpoint (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) :
+    Set (EarleyItem T G.NT) :=
   earleyFixpointBins G w w.length
 
 end Fixpoint
