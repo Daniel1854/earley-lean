@@ -51,6 +51,138 @@ open ContextFreeGrammar
 
 variable {T N : Type}
 
+section Finiteness
+
+/--
+Rubber Prop that a ContextFreeGrammar corresponds to a ContextFreeGrammarList.
+-/
+@[grind]
+public def ContextFreeGrammarEqContextFreeGrammarList
+  (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) : Prop :=
+  G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules
+
+abbrev CFGEqCFGₗ (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) : Prop :=
+  ContextFreeGrammarEqContextFreeGrammarList G Gₗ
+
+/--
+A CFG is equal to a CFGₗ iff their initial symbols and their rules match.
+-/
+@[simp]
+public theorem eq_of_CFGEqCFGₗ (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) :
+    CFGEqCFGₗ G Gₗ ↔ G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules := by
+  grind
+
+/--
+Takes a terrible Prod and turns it into an EarleyItem.
+TODO: this doesnt feel much like lean
+-/
+def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
+  ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
+
+/--
+FIXME: need to understand better what the coercion here really means.
+-/
+public theorem finite_prod_of_finite {α β : Type} (s : Set α) (t : Set β) (hs : s.Finite)
+    [Nonempty ↑s] [Nonempty ↑t] (ht : t.Finite) : Set.Finite (Set.prod s t) := by
+  have hs' : Finite s := by
+    simp [Set.Finite] at hs
+    grind
+  have ht' : Finite t := by
+    simp [Set.Finite] at ht
+    grind
+  have := Prod.finite_iff.mpr ⟨hs',ht'⟩
+  sorry
+
+/--
+There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
+
+In essence we define the superset of all possible EarleyItems ⟨rule, pos, i, j⟩.
+Due the WellFormed-constraints, this results in a Product Set `Top` of
+- all rule of G
+- all position for the value range of 0 to the maximum length of any of the rules
+- all numbers between 0 and the length of `w` for the indices `i` and `j`
+
+The members of the Product are all individually finite, therefore the Product is also finite.
+Since the well-formed EarleyItems are simply a subset of this `Top`,
+that set also has to be finite.
+
+TODO: maybe I also do require that w is non-empty
+-/
+public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormed G.rules w x } := by
+  -- The maximum length of any rule
+  let M := (G.rules.map (fun r => r.output.length)).max (by simp [hempty])
+  -- The Set of all possible assignments of an EarleyItem with bounded rule length
+  let Top := Set.prod {x | x ∈ G.rules} (Set.prod {i | 0 ≤ i ∧ i ≤ M}
+    (Set.prod {i | 0 ≤ i ∧ i ≤ w.length} {i | 0 ≤ i ∧ i ≤ w.length}))
+  -- The product of four Finite Sets has to be finite as well
+  -- this should be like really trivial in general since these mostly are natural numbers
+  -- and therefore we have a trivial n for Fin n??
+  have finTop : Set.Finite Top := by
+    -- FIXME: maybe CFGₗ is actually a problem here since Lists could be infinite
+    --        logically while Finsets cannot? so maybe I do need CFG_eq_CFGₗ
+    have : Set.Finite {x | x ∈ G.rules} := by
+      sorry
+    have : Set.Finite {i | 0 ≤ i ∧ i ≤ M} := by
+      --grind [Set.Finite]
+      sorry
+    have : Set.Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
+      apply @Finite.intro _ w.length
+      simp
+      have := Fin.Internal.ofNat w.length
+      sorry
+    simp [Top]
+    sorry
+  have injTop : Set.InjOn item_intro Top := by grind [Set.InjOn, Top, item_intro]
+  have finImageTop: Set.Finite (Top.image item_intro) := by
+    have := Set.Finite.image item_intro finTop
+    grind
+  have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
+    intro x hmemx
+    have wf : isWellFormed G.rules w x := by grind
+    -- vvv This is the approach of Rau, not sure if this worthwhile here
+    have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
+      intro r
+      sorry
+    have : Set.Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
+      sorry
+   -- ^^^ this seems a little indirect.
+    have : x.rule.output.length ≤ M := by sorry
+    have : x.position ≤ M := by grind
+    simp [isWellFormed] at wf
+    simp only [item_intro, Set.mem_image, Prod.exists]
+    grind [Set.prod, item_intro]
+  exact Set.Finite.subset finImageTop this
+
+/--
+There is only a finite number of well-formed EarleyItems for a specific grammar and word.
+-/
+public theorem finiteEarleyWF (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) :
+    Set.Finite { x | isWellFormed G.rules w x} := by
+  cases h : G.rules
+  · simp [isWellFormed]
+  · grind [finiteEarleyNonEmpty]
+
+/--
+The EarleySet only has a finite number of elements.
+
+This is a nice theorem to have proven in general, even without any usage,
+but this also showcases some annoyance with CFG vs CFGList that I need to work around.
+TODO: improve lemma situation I suppose
+-/
+public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
+    Set.Finite (EarleySet G w) := by
+  have hwf := wfEarley G w
+  have hsub : EarleySet G w ⊆ { x | isWellFormed G.rules w x } := by grind
+  have : G.rules.toList.Nodup := Finset.nodup_toList G.rules
+  let G' : ContextFreeGrammarList T G.NT := ⟨G.initial, G.rules.toList, this⟩
+  have hsub' : EarleySet G w ⊆ { x | isWellFormed G'.rules w x } := by
+    grind [Finset.mem_toList]
+  have hf := finiteEarleyWF G' w
+  exact Set.Finite.subset hf hsub'
+
+end Finiteness
+
 /--
 The items of the n-th bin are well-formed, if all of them are well-formed and
 their `endItem` corresponds to the index of the bin.
@@ -76,7 +208,7 @@ A word can be generated from the grammar
 iff there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarleyList {G : ContextFreeGrammar T} [BEq T] [BEq G.NT] [LawfulBEq G.NT]
-    (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ)
+    (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
     (hw : isWord G (w.map Symbol.terminal)) :
     G.Generates (w.map Symbol.terminal) ↔ recognizeList Gₗ w := by
   sorry

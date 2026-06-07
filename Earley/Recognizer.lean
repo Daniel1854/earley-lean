@@ -44,6 +44,18 @@ open Fixpoint
 open Utils
 
 /--
+Variant of `ContextFreeGrammar` that uses a List internally to store the rules.
+Context-free grammar that generates words over the alphabet `T` (a type of terminals).
+-/
+structure ContextFreeGrammarList (T N : Type) where
+  /-- Initial nonterminal. -/
+  initial : N
+  /-- Rewrite rules. -/
+  rules : List (ContextFreeRule T N)
+  /-- `rules` contains no duplicates -/
+  nodup : List.Nodup rules
+
+/--
 A pointer, which encapsulates the relevant origin data for a completion operation.
 This requires only three indices since the endItem of the completed item is the same as the item,
 that this reduction pointer belongs to.
@@ -113,6 +125,12 @@ abbrev EarleyBins (T N : Type) (n : Nat) : Type :=
   Vector (List (BinItem T N)) n
 
 variable {T N : Type} [BEq T] [BEq N]
+
+/--
+Returns if the grammar contains a rule with an empty rhs.
+-/
+def isEpsilonFree (G : ContextFreeGrammarList T N) : Prop :=
+  ∀ r ∈ G.rules, !r.output.isEmpty
 
 /--
 List-based implementation of the .init operation.
@@ -230,7 +248,7 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
       -- Add all potential .complete operations on the current item to the current bin
       have : x.item.startItem < w.length + 1 := by
         -- TODO: In theory I only need to rely on the result that the bins only contain WF Items
-        --       but this a result _about_ this function so I cant access it ?
+        --       but this is a result _about_ this function so I cant access it ?
         --       Alternatively, I could parametrize the function with a proof that only wf items
         --       reside in the bins, but this makes everything a little convoluted?
         sorry

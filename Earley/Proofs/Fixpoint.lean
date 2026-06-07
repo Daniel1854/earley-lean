@@ -3,9 +3,6 @@ public import Earley.Model
 public import Earley.Fixpoint
 public import Earley.Proofs.Model
 
-public import Mathlib.Data.Finite.Prod
-public import Mathlib.Data.Set.Finite.Basic
-public import Mathlib.Data.Set.Finite.Powerset
 @[expose] public section
 
 /-!
@@ -30,7 +27,6 @@ then refine it further to the actual bins with the same idea.
 
 TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
       https://leanprover-community.github.io/contribute/naming.html
-TODO: introduce some Prop that revolves around CFG = CFGₗ
 -/
 
 namespace Earley
@@ -47,140 +43,14 @@ open ContextFreeGrammar
 
 variable {T N : Type}
 
-section Finiteness
-
-/--
-Rubber Prop that a ContextFreeGrammar corresponds to a ContextFreeGrammarList.
--/
-@[grind]
-public def ContextFreeGrammar_eq_ContextFreeGrammarList
-  (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) : Prop :=
-  G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules
-
-abbrev CFG_eq_CFGₗ (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) : Prop :=
-  ContextFreeGrammar_eq_ContextFreeGrammarList G Gₗ
-
-/--
-Takes a terrible Prod and turns it into an EarleyItem.
-TODO: this doesnt feel much like lean
--/
-def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
-  ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
-
-/--
-FIXME: need to understand better what the coercion here really means.
--/
-public theorem finite_prod_of_finite {α β : Type} (s : Set α) (t : Set β) (hs : s.Finite)
-    [Nonempty ↑s] [Nonempty ↑t] (ht : t.Finite) : Set.Finite (Set.prod s t) := by
-  have hs' : Finite s := by
-    simp [Set.Finite] at hs
-    grind
-  have ht' : Finite t := by
-    simp [Set.Finite] at ht
-    grind
-  have := Prod.finite_iff.mpr ⟨hs',ht'⟩
-  sorry
-
-/--
-There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
-
-In essence we define the superset of all possible EarleyItems ⟨rule, pos, i, j⟩.
-Due the WellFormed-constraints, this results in a Product Set `Top` of
-- all rule of G
-- all position for the value range of 0 to the maximum length of any of the rules
-- all numbers between 0 and the length of `w` for the indices `i` and `j`
-
-The members of the Product are all individually finite, therefore the Product is also finite.
-Since the well-formed EarleyItems are simply a subset of this `Top`,
-that set also has to be finite.
--/
-public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
-    (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormed G.rules w x } := by
-  -- The maximum length of any rule
-  let M := (G.rules.map (fun r => r.output.length)).max (by simp [hempty])
-  -- The Set of all possible assignments of an EarleyItem with bounded rule length
-  let Top := Set.prod {x | x ∈ G.rules} (Set.prod {i | 0 ≤ i ∧ i ≤ M}
-    (Set.prod {i | 0 ≤ i ∧ i ≤ w.length} {i | 0 ≤ i ∧ i ≤ w.length}))
-  -- The product of four Finite Sets has to be finite as well
-  -- this should be like really trivial in general since these mostly are natural numbers
-  -- and therefore we have a trivial n for Fin n??
-  have finTop : Set.Finite Top := by
-    have : Set.Finite {x | x ∈ G.rules} := by
-      --grind [Set.Finite]
-      sorry
-    have : Set.Finite {i | 0 ≤ i ∧ i ≤ M} := by
-      --grind [Set.Finite]
-      sorry
-    have : Set.Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
-      apply @Finite.intro _ w.length
-      sorry
-    sorry
-  have injTop : Set.InjOn item_intro Top := by grind [Set.InjOn, Top, item_intro]
-  have finImageTop: Set.Finite (Top.image item_intro) := by
-    have := Set.Finite.image item_intro finTop
-    grind
-  have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
-    intro x hmemx
-    have wf : isWellFormed G.rules w x := by grind
-    -- vvv This is the approach of Rau, not sure if this worthwhile here
-    have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
-      intro r
-      sorry
-    have : Set.Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
-      sorry
-   -- ^^^ this seems a little indirect.
-    have : x.rule.output.length ≤ M := by sorry
-    have : x.position ≤ M := by grind
-    simp [isWellFormed] at wf
-    simp only [item_intro, Set.mem_image, Prod.exists]
-    grind [Set.prod, item_intro]
-  exact Set.Finite.subset finImageTop this
-
-/--
-There is only a finite number of well-formed EarleyItems for a grammar with no rules.
--/
-public theorem finiteEarleyEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
-    (hempty : G.rules = []) : Set.Finite { x | isWellFormed G.rules w x} := by
-  simp [isWellFormed, hempty]
-
-/--
-There is only a finite number of well-formed EarleyItems for a specific grammar and word.
--/
-public theorem finiteEarleyWF (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) :
-    Set.Finite { x | isWellFormed G.rules w x} := by
-  grind [finiteEarleyEmpty, finiteEarleyNonEmpty]
-
-/--
-The EarleySet only has a finite number of elements.
-
-This is a nice theorem to have proven in general, even without any usage,
-but this also showcases some annoyance with CFG vs CFGList that I need to work around.
-TODO: improve lemma situation I suppose
--/
-public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
-    Set.Finite (EarleySet G w) := by
-  have hwf := wfEarley G w
-  have hsub : EarleySet G w ⊆ { x | isWellFormed G.rules w x } := by grind
-  have : G.rules.toList.Nodup := Finset.nodup_toList G.rules
-  let G' : ContextFreeGrammarList T G.NT := ⟨G.initial, G.rules.toList, this⟩
-  have hsub' : EarleySet G w ⊆ { x | isWellFormed G'.rules w x } := by
-    grind [Finset.mem_toList]
-  have hf := finiteEarleyWF G' w
-  exact Set.Finite.subset hf hsub'
-
-end Finiteness
-
 /--
 Returns the subset of `I` where prevSymbol is a terminal.
 
 Denotes the subset of I that forms the k-th base of a bin,
 meaning the subset of I containing only items of the form A → αa • β, i, j,
 where a is a terminal symbol preceding the dot.
-If k is zero, base ω I 0 consists of all initial items S G → •α, 0, 0
--> TODO: I dont see how that would be the case with this definition huh
-TODO: Rau uses a slightly different version:
-  prevSymbol x = Some (w[k-1]!)
-I dont think I can make that work, but I am also not sure what exactly ! denotes in Isabelle
+TODO: I dont see how the following quote would be correct with this definition:
+      `If k is zero, base ω I 0 consists of all initial items S G → •α, 0, 0`
 -/
 def base (I : Set (EarleyItem T N)) (w : List (Symbol T N)) (k : Nat) : Set (EarleyItem T N) :=
   { x ∈ I | x.endItem = k ∧ k > 0 ∧ prevSymbol x = w[k-1]?}
@@ -188,20 +58,32 @@ def base (I : Set (EarleyItem T N)) (w : List (Symbol T N)) (k : Nat) : Set (Ear
 section Soundness
 
 /--
+The set generated by the fixpoint .init algorithm is a subset of the one of the model.
+-/
+public theorem initFixpoint_sub_EarleySet (G : ContextFreeGrammar T) [BEq T] [BEq G.NT]
+    [LawfulBEq G.NT] (w : List T) : initFixpoint G ⊆ EarleySet G (w.map Symbol.terminal) := by
+  intro x hmemx
+  simp [initFixpoint] at hmemx
+  have h1 : x.rule ∈ G.rules := by
+    sorry
+  have h2 : x.rule.input = G.initial :=  by grind
+  have := @EarleySet.init _ G (w.map Symbol.terminal) x.rule h1 h2
+  --have : x.rule ∈ Gₗ.rules ∧ x.rule.input = Gₗ.initial} ⊆
+  sorry
+
+/--
 The set generated by the fixpoint algorithm is a subset of the one of the model.
 -/
-public theorem earleyFixpoint_sub_EarleySet {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
-    [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ) :
-    earleyFixpoint Gₗ w ⊆ EarleySet G (w.map Symbol.terminal) := by
+public theorem earleyFixpoint_sub_EarleySet (G : ContextFreeGrammar T) [BEq T] [BEq G.NT]
+    [LawfulBEq G.NT] (w : List T) : earleyFixpoint G w ⊆ EarleySet G (w.map Symbol.terminal) := by
   sorry
 
 /--
 The soundness criteria for the fixpoint version of the recognizer.
 -/
-public theorem soundnessEarleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
-    [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ)
-    (hgen : G.Generates (w.map Symbol.terminal)) :
-    ∃ x ∈ earleyFixpoint Gₗ w, isFinished Gₗ.initial (w.map Symbol.terminal) x := by
+public theorem soundnessEarleyFixpoint (G : ContextFreeGrammar T) [BEq T] [BEq G.NT]
+    [LawfulBEq G.NT] (w : List T) (hgen : G.Generates (w.map Symbol.terminal)) :
+    ∃ x ∈ earleyFixpoint G w, isFinished G.initial (w.map Symbol.terminal) x := by
   sorry
 
 end Soundness
@@ -211,18 +93,17 @@ section Completeness
 /--
 The set of the model is a subset of the one generated by the fixpoint algorithm.
 -/
-public theorem EarleySet_sub_earleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
-    [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ) :
-    EarleySet G (w.map Symbol.terminal) ⊆ earleyFixpoint Gₗ w := by
+public theorem EarleySet_sub_earleyFixpoint (G : ContextFreeGrammar T) [BEq T] [BEq G.NT]
+    [LawfulBEq G.NT] (w : List T) : EarleySet G (w.map Symbol.terminal) ⊆ earleyFixpoint G w := by
   sorry
 
 /--
 The completeness criteria for the fixpoint version of the recognizer.
 -/
-public theorem completenessEarleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
-    [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ)
+public theorem completenessEarleyFixpoint (G : ContextFreeGrammar T) [BEq T] [BEq G.NT]
+    [LawfulBEq G.NT] (w : List T)
     (hgen : G.Generates (w.map Symbol.terminal)) :
-    ∃ x ∈ earleyFixpoint Gₗ w, isFinished Gₗ.initial (w.map Symbol.terminal) x := by
+    ∃ x ∈ earleyFixpoint G w, isFinished G.initial (w.map Symbol.terminal) x := by
   sorry
 
 end Completeness
@@ -230,11 +111,10 @@ end Completeness
 /--
 The set of the model is identical to the one generated by the fixpoint algorithm.
 -/
-public theorem EarleySet_eq_earleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
-    [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ) :
-    EarleySet G (w.map Symbol.terminal) = earleyFixpoint Gₗ w := by
-  have hsub1 := EarleySet_sub_earleyFixpoint w h
-  have hsub2 := earleyFixpoint_sub_EarleySet w h
+public theorem EarleySet_eq_earleyFixpoint (G : ContextFreeGrammar T) [BEq T] [BEq G.NT]
+    [LawfulBEq G.NT] (w : List T) : EarleySet G (w.map Symbol.terminal) = earleyFixpoint G w := by
+  have hsub1 := EarleySet_sub_earleyFixpoint G w
+  have hsub2 := earleyFixpoint_sub_EarleySet G w
   apply Set.eq_of_subset_of_subset hsub1 hsub2
 
 /--
@@ -244,9 +124,8 @@ A word can be generated from the grammar
 iff there exists a finished item within the corresponding fixpoint-iterated Set.
 -/
 public theorem correctnessEarleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
-    [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ) :
-    G.Generates (w.map Symbol.terminal) ↔
-    ∃ x ∈ earleyFixpoint Gₗ w, isFinished Gₗ.initial (w.map Symbol.terminal) x := by
+    [LawfulBEq G.NT] (w : List T) : G.Generates (w.map Symbol.terminal) ↔
+    ∃ x ∈ earleyFixpoint G w, isFinished G.initial (w.map Symbol.terminal) x := by
   have : isWord G (w.map Symbol.terminal) := by simp [isWord]
   grind [EarleySet_eq_earleyFixpoint, Model.correctnessEarleyModel]
 
