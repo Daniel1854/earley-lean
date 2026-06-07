@@ -270,7 +270,7 @@ TODO: what code gets compiled from `∃ x ∈ Array ?
 -/
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
   let bins := earleyList G w
-  ∃ x ∈ bins[w.length], isFinishedList G w x.item
+  ∃ x ∈ bins[w.length], isFinished G.initial (w.map Symbol.terminal) x.item
 
 end Recognizer
 end Earley

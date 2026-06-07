@@ -125,7 +125,8 @@ Tries to parse a word with given grammar, and returns a parse tree if succesful.
 public def parse (G : ContextFreeGrammarList T N) (w : List T) : Option (Tree T N) :=
   let bins := earleyList G w
   -- Find the finished item, and follow its pointers.
-  match filterWithIdx bins[w.length] (fun x => isFinishedList G w x.item) with
+  match filterWithIdx bins[w.length]
+    (fun x => isFinished G.initial (w.map Symbol.terminal) x.item) with
   | [] => none
   -- TODO: This will be interesting to prove.
   --       A lot about these indices being well-formed I'd imagine.

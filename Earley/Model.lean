@@ -52,7 +52,7 @@ public structure EarleyItem (T N : Type) where
   endItem : Nat
 deriving BEq, Repr
 
-variable {T N : Type}
+variable {T N : Type} [BEq N]
 
 /--
 Returns if a list of symbols include only terminals of given grammar.
@@ -113,30 +113,30 @@ public def EarleyItem.isComplete (item : EarleyItem T N) : Bool :=
   item.position == item.rule.output.length
 
 /--
-An item is finished w.r.t. a certain grammar G and the input word w, if
-- the lhs of the rule is the startsymbol of G
+An item is finished w.r.t. a certain initial symbol and the input word w, if
+- the lhs of the rule is that initial symbol
 - the item is complete
 - the entire word has been recognized
 -/
 @[inline, grind]
-public def EarleyItem.isFinished (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (item : EarleyItem T G.NT) : Bool :=
-  item.rule.input == G.initial
+public def EarleyItem.isFinished (initial : N) (w : List (Symbol T N)) (item : EarleyItem T N) :
+    Bool :=
+  item.rule.input == initial
   && isComplete item
   && item.startItem == 0
   && item.endItem == w.length
 
 /--
 An item is well-formed, if
-- the rule belongs to given grammar G
+- the rule belongs to given ruleset
 - the position is within the length of the rhs
 - the start is not bigger than the end
 - the end is not bigger than the length of the input w
 -/
 @[grind]
-public def EarleyItem.isWellFormed (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (item : EarleyItem T G.NT) : Prop :=
-  item.rule ∈ G.rules
+public def EarleyItem.isWellFormed {R : Type} (rules : R) [Membership (ContextFreeRule T N) R]
+    (w : List (Symbol T N)) (item : EarleyItem T N) : Prop :=
+  item.rule ∈ rules
   ∧ item.position <= item.rule.output.length
   ∧ item.startItem <= item.endItem
   ∧ item.endItem <= w.length

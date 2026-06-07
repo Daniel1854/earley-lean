@@ -93,7 +93,7 @@ Any EarleyItem within an EarleySet is well-formed.
 TODO: maybe split these up like I did with `soundItemEarley`? only if I need them somewhere else
 -/
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G w x := by
+    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G.rules w x := by
   unfold isWellFormed
   induction hmem with
   | init rule hmem hstart => grind
@@ -250,7 +250,7 @@ Given a finished item for a word within the set, the grammar has to be able to g
 -/
 public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : x ∈ EarleySet G w)
-    (hfin : isFinished G w x) : G.Generates w := by
+    (hfin : isFinished G.initial w x) : G.Generates w := by
   have := soundItemEarley G w x hmem
   unfold Generates
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq] at hfin
@@ -313,7 +313,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     (n : Nat) (I : Set (EarleyItem T G.NT))
     {pos i j : Nat} {A : G.NT} {α : List (Symbol T G.NT)} {D : List (ContextFreeRule T G.NT)}
     (hjn : j ≤ n) (hlen : n ≤ w.length) (x : EarleyItem T G.NT) (hx : x = ⟨⟨A, α⟩, pos, i, j⟩)
-    (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G w x)
+    (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G.rules w x)
     (hD : Derivation G (betaItem x) D (slice w j n))
     (hcomp : isPartiallyComplete G w n I (fun D' => D'.length ≤ D.length)) :
     ⟨⟨A, α⟩, α.length, i, n⟩ ∈ I := by
@@ -436,7 +436,7 @@ there has to be a finished item within the corresponding EarleySet.
 -/
 public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} (hw : isWord G w) (hgen : G.Generates w) :
-    ∃ x ∈ EarleySet G w, isFinished G w x := by
+    ∃ x ∈ EarleySet G w, isFinished G.initial w x := by
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq]
   -- Fetch the first rule that has to have been applied
   have := derives_implies_Derivation hgen
@@ -471,7 +471,7 @@ iff there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarleyModel {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} (hw : isWord G w) :
-    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G w x := by
+    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G.initial w x := by
   constructor
   · apply completenessEarley hw
   · intro hex

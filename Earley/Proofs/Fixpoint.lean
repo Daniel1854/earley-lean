@@ -61,23 +61,15 @@ abbrev CFG_eq_CFGₗ (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T
   ContextFreeGrammar_eq_ContextFreeGrammarList G Gₗ
 
 /--
-Rubber lemma between the two Grammar definitions:
-An item is well-formed for one grammar iff it is also well-formed with the other.
-
-TODO: think about the grind_pattern
--/
-public lemma wfItem_iff_wfListItem (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (Gₗ : ContextFreeGrammarList T G.NT) (h : CFG_eq_CFGₗ G Gₗ) :
-    ∀ x, isWellFormed G w x ↔ isWellFormedList Gₗ w x := by
-  grind [Finset.mem_toList]
-
-/--
 Takes a terrible Prod and turns it into an EarleyItem.
 TODO: this doesnt feel much like lean
 -/
 def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
   ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
 
+/--
+FIXME: need to understand better what the coercion here really means.
+-/
 public theorem finite_prod_of_finite {α β : Type} (s : Set α) (t : Set β) (hs : s.Finite)
     [Nonempty ↑s] [Nonempty ↑t] (ht : t.Finite) : Set.Finite (Set.prod s t) := by
   have hs' : Finite s := by
@@ -103,7 +95,7 @@ Since the well-formed EarleyItems are simply a subset of this `Top`,
 that set also has to be finite.
 -/
 public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
-    (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormedList G w x } := by
+    (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormed G.rules w x } := by
   -- The maximum length of any rule
   let M := (G.rules.map (fun r => r.output.length)).max (by simp [hempty])
   -- The Set of all possible assignments of an EarleyItem with bounded rule length
@@ -127,9 +119,9 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
   have finImageTop: Set.Finite (Top.image item_intro) := by
     have := Set.Finite.image item_intro finTop
     grind
-  have : { x | isWellFormedList G w x } ⊆ Top.image item_intro := by
+  have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
     intro x hmemx
-    have wf : isWellFormedList G w x := by grind
+    have wf : isWellFormed G.rules w x := by grind
     -- vvv This is the approach of Rau, not sure if this worthwhile here
     have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
       intro r
@@ -139,7 +131,7 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
    -- ^^^ this seems a little indirect.
     have : x.rule.output.length ≤ M := by sorry
     have : x.position ≤ M := by grind
-    simp [isWellFormedList] at wf
+    simp [isWellFormed] at wf
     simp only [item_intro, Set.mem_image, Prod.exists]
     grind [Set.prod, item_intro]
   exact Set.Finite.subset finImageTop this
@@ -148,14 +140,14 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
 There is only a finite number of well-formed EarleyItems for a grammar with no rules.
 -/
 public theorem finiteEarleyEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
-    (hempty : G.rules = []) : Set.Finite { x | isWellFormedList G w x} := by
-  simp [isWellFormedList, hempty]
+    (hempty : G.rules = []) : Set.Finite { x | isWellFormed G.rules w x} := by
+  simp [isWellFormed, hempty]
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific grammar and word.
 -/
 public theorem finiteEarleyWF (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) :
-    Set.Finite { x | isWellFormedList G w x} := by
+    Set.Finite { x | isWellFormed G.rules w x} := by
   grind [finiteEarleyEmpty, finiteEarleyNonEmpty]
 
 /--
@@ -168,10 +160,11 @@ TODO: improve lemma situation I suppose
 public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
     Set.Finite (EarleySet G w) := by
   have hwf := wfEarley G w
-  have hsub : EarleySet G w ⊆ { x | isWellFormed G w x } := by grind
+  have hsub : EarleySet G w ⊆ { x | isWellFormed G.rules w x } := by grind
   have : G.rules.toList.Nodup := Finset.nodup_toList G.rules
   let G' : ContextFreeGrammarList T G.NT := ⟨G.initial, G.rules.toList, this⟩
-  have hsub' : EarleySet G w ⊆ { x | isWellFormedList G' w x } := by grind [wfItem_iff_wfListItem]
+  have hsub' : EarleySet G w ⊆ { x | isWellFormed G'.rules w x } := by
+    grind [Finset.mem_toList]
   have hf := finiteEarleyWF G' w
   exact Set.Finite.subset hf hsub'
 
@@ -208,7 +201,7 @@ The soundness criteria for the fixpoint version of the recognizer.
 public theorem soundnessEarleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
     [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ)
     (hgen : G.Generates (w.map Symbol.terminal)) :
-    ∃ x ∈ earleyFixpoint Gₗ w, isFinishedList Gₗ w x := by
+    ∃ x ∈ earleyFixpoint Gₗ w, isFinished Gₗ.initial (w.map Symbol.terminal) x := by
   sorry
 
 end Soundness
@@ -229,7 +222,7 @@ The completeness criteria for the fixpoint version of the recognizer.
 public theorem completenessEarleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
     [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ)
     (hgen : G.Generates (w.map Symbol.terminal)) :
-    ∃ x ∈ earleyFixpoint Gₗ w, isFinishedList Gₗ w x := by
+    ∃ x ∈ earleyFixpoint Gₗ w, isFinished Gₗ.initial (w.map Symbol.terminal) x := by
   sorry
 
 end Completeness
@@ -253,7 +246,7 @@ iff there exists a finished item within the corresponding fixpoint-iterated Set.
 public theorem correctnessEarleyFixpoint {G : ContextFreeGrammar T} [BEq T] [BEq G.NT]
     [LawfulBEq G.NT] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFG_eq_CFGₗ G Gₗ) :
     G.Generates (w.map Symbol.terminal) ↔
-    ∃ x ∈ earleyFixpoint Gₗ w, isFinishedList Gₗ w x := by
+    ∃ x ∈ earleyFixpoint Gₗ w, isFinished Gₗ.initial (w.map Symbol.terminal) x := by
   have : isWord G (w.map Symbol.terminal) := by simp [isWord]
   grind [EarleySet_eq_earleyFixpoint, Model.correctnessEarleyModel]
 

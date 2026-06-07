@@ -58,7 +58,7 @@ their `endItem` corresponds to the index of the bin.
 @[grind]
 public def isWFBinItems (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
     (bin : List (EarleyItem T N)) (n : Nat) : Prop :=
-  ∀ x ∈ bin, isWellFormedList G w x ∧ x.endItem == n
+  ∀ x ∈ bin, isWellFormed G.rules w x ∧ x.endItem == n
 
 /--
 The n-th bin are well-formed, if all of its items are well-formed and

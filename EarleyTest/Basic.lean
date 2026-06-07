@@ -122,31 +122,31 @@ instance : BEq G.NT where
 def exW1 : List (Symbol T N) := [Symbol.terminal T.a]
 def exW2 : List (Symbol T N) := [Symbol.terminal T.a, Symbol.terminal T.a, Symbol.terminal T.a]
 def exW3 : List (Symbol T N) := [Symbol.nonterminal N.S, Symbol.terminal T.a, Symbol.terminal T.a]
-theorem finished1 : isFinished G exW1 exItem1 = false := rfl
-theorem finished2 : isFinished G exW1 exItem2 = false := rfl
-theorem finished3 : isFinished G exW1 exItem3 = false := rfl
-theorem finished4 : isFinished G exW1 exItem4 = false := rfl
-theorem finished5 : isFinished G exW1 exItem5 = true := rfl
+theorem finished1 : isFinished G.initial exW1 exItem1 = false := rfl
+theorem finished2 : isFinished G.initial exW1 exItem2 = false := rfl
+theorem finished3 : isFinished G.initial exW1 exItem3 = false := rfl
+theorem finished4 : isFinished G.initial exW1 exItem4 = false := rfl
+theorem finished5 : isFinished G.initial exW1 exItem5 = true := rfl
 
-theorem wf1 : isWellFormed G exW1 exItem1 := by
+theorem wf1 : isWellFormed G.rules exW1 exItem1 := by
   rw [isWellFormed, exItem1]
   unfold G
   unfold exRules
   simp
 
-theorem wf2 : ¬isWellFormed G exW1 exItem2 := by
+theorem wf2 : ¬isWellFormed G.rules exW1 exItem2 := by
   rw [isWellFormed, exItem2, exW1]
   simp [List.length]
 
-theorem wf3 : ¬isWellFormed G exW2 exItem3 := by
+theorem wf3 : ¬isWellFormed G.rules exW2 exItem3 := by
   rw [isWellFormed, exItem3]
   simp
 
-theorem wf4 : ¬isWellFormed G exW2 exItem4 := by
+theorem wf4 : ¬isWellFormed G.rules exW2 exItem4 := by
   rw [isWellFormed, exItem4, exItem1, exW2, exRule2]
   simp [List.length]
 
-theorem wf5 : isWellFormed G exW2 exItem5 := by
+theorem wf5 : isWellFormed G.rules exW2 exItem5 := by
   rw [isWellFormed, exItem5, exW2]
   unfold G
   unfold exRules
