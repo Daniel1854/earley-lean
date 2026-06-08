@@ -80,18 +80,23 @@ def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem
   ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
 
 /--
-FIXME: need to understand better what the coercion here really means.
+FIXME: need to understand better what the coercion here really means,
+       and why grind has so much trouble.
+#check Set.Finite.prod
+protected theorem Finite.prod (hs : s.Finite) (ht : t.Finite) : (s ×ˢ t : Set (α × β)).Finite := by
+  have := hs.to_subtype
+  have := ht.to_subtype
+  apply toFinite
 -/
-public theorem finite_prod_of_finite {α β : Type} (s : Set α) (t : Set β) (hs : s.Finite)
-    [Nonempty ↑s] [Nonempty ↑t] (ht : t.Finite) : Set.Finite (Set.prod s t) := by
+public theorem setFiniteProd_of_setFinite {α β : Type} (s : Set α) (t : Set β) (hs : s.Finite)
+    (ht : t.Finite) : Set.Finite (Set.prod s t) := by
   have hs' : Finite s := by
     simp [Set.Finite] at hs
     grind
   have ht' : Finite t := by
     simp [Set.Finite] at ht
     grind
-  have := Prod.finite_iff.mpr ⟨hs',ht'⟩
-  sorry
+  apply Finite.Set.finite_prod s t
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
@@ -107,11 +112,15 @@ Since the well-formed EarleyItems are simply a subset of this `Top`,
 that set also has to be finite.
 
 TODO: maybe I also do require that w is non-empty
+TODO: maybe require [Finite T] [Finite N] ?
+      This wouldnt allow types like String to represent Terminals?
+have := Finite.Set.finite_prod s t
+have := Prod.finite_iff.mpr ⟨hs',ht'⟩ <- this requires NonEmpty
 -/
 public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
     (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormed G.rules w x } := by
   -- The maximum length of any rule
-  let M := (G.rules.map (fun r => r.output.length)).max (by simp [hempty])
+  let M := G.rules.map (fun r => r.output.length) |>.max (by simp [hempty])
   -- The Set of all possible assignments of an EarleyItem with bounded rule length
   let Top := Set.prod {x | x ∈ G.rules} (Set.prod {i | 0 ≤ i ∧ i ≤ M}
     (Set.prod {i | 0 ≤ i ∧ i ≤ w.length} {i | 0 ≤ i ∧ i ≤ w.length}))
@@ -121,35 +130,37 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
   have finTop : Set.Finite Top := by
     -- FIXME: maybe CFGₗ is actually a problem here since Lists could be infinite
     --        logically while Finsets cannot? so maybe I do need CFG_eq_CFGₗ
-    have : Set.Finite {x | x ∈ G.rules} := by
+    have hFinMem: Set.Finite {x | x ∈ G.rules} := by
       sorry
-    have : Set.Finite {i | 0 ≤ i ∧ i ≤ M} := by
+    have hFinM : Set.Finite {i | 0 ≤ i ∧ i ≤ M} := by
       --grind [Set.Finite]
       sorry
-    have : Set.Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
+    have hFinW : Set.Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
       apply @Finite.intro _ w.length
       simp
       have := Fin.Internal.ofNat w.length
       sorry
-    simp [Top]
-    sorry
+    grind [setFiniteProd_of_setFinite]
   have injTop : Set.InjOn item_intro Top := by grind [Set.InjOn, Top, item_intro]
   have finImageTop: Set.Finite (Top.image item_intro) := by
     have := Set.Finite.image item_intro finTop
     grind
   have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
     intro x hmemx
-    have wf : isWellFormed G.rules w x := by grind
-    -- vvv This is the approach of Rau, not sure if this worthwhile here
-    have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
-      intro r
-      sorry
-    have : Set.Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
-      sorry
-   -- ^^^ this seems a little indirect.
-    have : x.rule.output.length ≤ M := by sorry
-    have : x.position ≤ M := by grind
-    simp [isWellFormed] at wf
+    have : x.position ≤ M := by
+      have wf : isWellFormed G.rules w x := by grind
+      simp only [isWellFormed] at wf
+      have ⟨hmem,hpos,hs,he⟩ := wf
+      have : x.rule.output.length ≤ M := by
+        sorry
+      --  -- vvv This is the approach of Rau, not sure if this worthwhile here
+      --  have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
+      --    intro r
+      --    sorry
+      --  have : Set.Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
+      --    sorry
+      --  -- ^^^ this seems a little indirect.
+      grind
     simp only [item_intro, Set.mem_image, Prod.exists]
     grind [Set.prod, item_intro]
   exact Set.Finite.subset finImageTop this
