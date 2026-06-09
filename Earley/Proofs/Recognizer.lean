@@ -80,24 +80,10 @@ TODO: this doesnt feel much like lean
 def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
   ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
 
-/--
-FIXME: need to understand better what the coercion here really means,
-       and why grind has so much trouble.
-#check Set.Finite.prod
-protected theorem Finite.prod (hs : s.Finite) (ht : t.Finite) : (s ×ˢ t : Set (α × β)).Finite := by
-  have := hs.to_subtype
-  have := ht.to_subtype
-  apply toFinite
--/
-public theorem setFiniteProd_of_setFinite {α β : Type} (s : Set α) (t : Set β) (hs : s.Finite)
-    (ht : t.Finite) : Set.Finite (Set.prod s t) := by
-  have hs' : Finite s := by
-    simp [Set.Finite] at hs
-    grind
-  have ht' : Finite t := by
-    simp [Set.Finite] at ht
-    grind
+public theorem setFiniteProd_of_Finite {α β : Type} (s : Set α) (t : Set β) [Finite s]
+    [Finite t] : Finite (Set.prod s t) := by
   apply Finite.Set.finite_prod s t
+
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
@@ -119,7 +105,7 @@ have := Finite.Set.finite_prod s t
 have := Prod.finite_iff.mpr ⟨hs',ht'⟩ <- this requires NonEmpty
 -/
 public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
-    (hempty : G.rules ≠ []) : Set.Finite { x | isWellFormed G.rules w x } := by
+    (hempty : G.rules ≠ []) : Finite { x | isWellFormed G.rules w x } := by
   -- The maximum length of any rule
   let M := G.rules.map (fun r => r.output.length) |>.max (by simp [hempty])
   -- The Set of all possible assignments of an EarleyItem with bounded rule length
@@ -128,24 +114,32 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
   -- The product of four Finite Sets has to be finite as well
   -- this should be like really trivial in general since these mostly are natural numbers
   -- and therefore we have a trivial n for Fin n??
-  have finTop : Set.Finite Top := by
+  have finTop : Finite Top := by
     -- FIXME: maybe CFGₗ is actually a problem here since Lists could be infinite
     --        logically while Finsets cannot? so maybe I do need CFG_eq_CFGₗ
-    have hFinMem: Set.Finite {x | x ∈ G.rules} := by
+    have hFinMem: Finite {x | x ∈ G.rules} := by
       sorry
-    have hFinM : Set.Finite {i | 0 ≤ i ∧ i ≤ M} := by
-      --grind [Set.Finite]
-      sorry
-    have hFinW : Set.Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
-      apply @Finite.intro _ w.length
+    have hFinM : Finite {i | 0 ≤ i ∧ i ≤ M} := by
       simp
+      sorry
+    have hFinW : Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
+      simp only [Nat.zero_le, true_and, Set.coe_setOf]
+      apply @Finite.intro _ w.length
       have := Fin.Internal.ofNat w.length
       sorry
-    grind [setFiniteProd_of_setFinite]
-  have injTop : Set.InjOn item_intro Top := by grind [Set.InjOn, Top, item_intro]
-  have finImageTop: Set.Finite (Top.image item_intro) := by
-    have := Set.Finite.image item_intro finTop
-    grind
+    -- amazing. very curious.
+    have : Finite ↑({i | i ≤ w.length}.prod {i | i ≤ w.length}) := by
+      apply Finite.Set.finite_prod
+    have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
+      apply Finite.Set.finite_prod
+    have : Finite ↑({i | 0 ≤ i ∧ i ≤ w.length}.prod {i | 0 ≤ i ∧ i ≤ w.length}) :=  by
+      apply Finite.Set.finite_prod
+    have : Finite ↑({i | 0 ≤ i ∧ i ≤ M}.prod ({i | 0 ≤ i ∧ i ≤ w.length}.prod
+        {i | 0 ≤ i ∧ i ≤ w.length})) := by
+      apply Finite.Set.finite_prod
+    apply Finite.Set.finite_prod
+  --have injTop : Set.InjOn item_intro Top := by grind [Set.InjOn, Top, item_intro]
+  have finImageTop: Finite (Top.image item_intro) := Finite.Set.finite_image Top item_intro
   have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
     intro x hmemx
     have : x.position ≤ M := by
@@ -158,21 +152,22 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
       --  have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
       --    intro r
       --    sorry
-      --  have : Set.Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
+      --  have : Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
       --    sorry
       --  -- ^^^ this seems a little indirect.
       grind
     simp only [item_intro, Set.mem_image, Prod.exists]
     grind [Set.prod, item_intro]
-  exact Set.Finite.subset finImageTop this
+  exact Finite.Set.subset (Top.image item_intro) this
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific grammar and word.
 -/
 public theorem finiteEarleyWF (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) :
-    Set.Finite { x | isWellFormed G.rules w x} := by
+    Finite { x | isWellFormed G.rules w x} := by
   cases h : G.rules
   · simp [isWellFormed]
+    grind [Finite.exists_equiv_fin, Finite.of_fintype]
   · grind [finiteEarleyNonEmpty]
 
 /--
@@ -183,7 +178,7 @@ but this also showcases some annoyance with CFG vs CFGList that I need to work a
 TODO: improve lemma situation I suppose
 -/
 public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
-    Set.Finite (EarleySet G w) := by
+    Finite (EarleySet G w) := by
   have hwf := wfEarley G w
   have hsub : EarleySet G w ⊆ { x | isWellFormed G.rules w x } := by grind
   have : G.rules.toList.Nodup := Finset.nodup_toList G.rules
