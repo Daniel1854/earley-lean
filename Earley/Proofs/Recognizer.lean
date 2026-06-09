@@ -54,7 +54,8 @@ variable {T N : Type}
 section Finiteness
 
 /--
-Rubber Prop that a ContextFreeGrammar corresponds to a ContextFreeGrammarList.
+A ContextFreeGrammar is equal to a ContextFreeGrammarList iff
+their initial symbols and their rules match.
 -/
 @[grind]
 public def ContextFreeGrammarEqContextFreeGrammarList

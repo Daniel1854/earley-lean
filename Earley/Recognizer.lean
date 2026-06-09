@@ -133,6 +133,25 @@ def isEpsilonFree (G : ContextFreeGrammarList T N) : Prop :=
   ∀ r ∈ G.rules, !r.output.isEmpty
 
 /--
+An EarleyBin is well-formed, if
+- there are no duplicate items in the bin
+- all items in the bin are well-formed
+- all endItems match the index of the bin
+-/
+@[grind]
+public def isWellFormedBin (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) (k : Nat)
+    (bin : List (BinItem T N)) : Prop :=
+  bin.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w x.item ∧ x.item.endItem = k
+
+/--
+EarleyBins are well-formed, if all of its bins are well-formed.
+-/
+@[grind]
+public def isWellFormedBins (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+    (bins : EarleyBins T N (w.length + 1)) : Prop :=
+  ∀ k, (h : k < bins.size) → isWellFormedBin G w k bins[k]
+
+/--
 List-based implementation of the .init operation.
 Returns a list filled with all possible .init states.
 -/
