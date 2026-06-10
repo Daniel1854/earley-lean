@@ -3,15 +3,14 @@ public import Earley.Basic
 @[expose] public section
 
 /-!
-This module represents the general Earley parsing algorithm in a way
-which lends itself nicely to proofs.
-Concretely the main definition is an inductively built set of the typing judgements from Earley.
-The set consists of EarleyItems, which represent one the possible states the derivation could be in
-while parsing the word or more concretely it's a state of a partial parse.
+This module represents the Earley parsing algorithm in a way which lends itself nicely to proofs.
+The main definition is an inductively built set of the typing judgements from Earley.
+It consists of EarleyItems, which represent one the possible states a derivation could be in
+while parsing the word. Alternatively you can think of an EarleyItem as a partial parse.
 
-The general idea of the algorithm is to built sets of EarleyItems for every input position,
-and check at the end whether there is an item which showcases
-that the whole input got parsed from the initial nonterminal.
+The general idea of the algorithm is to built a set of EarleyItems for every input position,
+and check for the final input position whether there is an item which parsed the full input
+from the initial nonterminal.
 
 The implementation follows the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
@@ -24,23 +23,16 @@ namespace Model
 An EarleyItem got four fields:
 - a rule of the grammar
 - a position within that rule
-- the start- and endindex of the word which the rule handles
+- the start- and endindex for the slice of the word, which this item handles
 
-The rule and the position jointly pinpoint what can be accepted next in this state,
-while the startItem enables pointing back to the input index
-where this rule derivation started from.
-The endIndex exists since this inductive definition is not a List of Sets,
-where each item of the List represents the EarleySet for a specific input position.
-Thus we need to keep track of it another way.
+The `rule` and the `position` jointly define, which transitions can happen next.
+The `startIdx` keeps track of where this item originated from.
+The `endIdx` exists to keep track of the current index of the word.
 -/
 public structure EarleyItem (T N : Type) where
-  /--
-  The rule the item is representing
-  -/
+  /-- The rule of the item. -/
   rule : ContextFreeRule T N
-  /--
-  The position within the `rule`
-  -/
+  /-- The position within the rule. -/
   position : Nat
   /-- Startindex for a word, which this item recognizes. -/
   startIdx : Nat
@@ -62,8 +54,8 @@ public def isWord (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) : Prop :
 
 /--
 Returns the next symbol of the production of the item if there is one
-- A → •α returns some α
-- A → α• returns none
+- A → • α returns some α
+- A → α • returns none
 -/
 @[inline, grind]
 public def EarleyItem.nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
@@ -71,8 +63,8 @@ public def EarleyItem.nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :
 
 /--
 Returns the previous symbol of the production of the item if there is one
-- A → •α returns none
-- A → α• returns some α
+- A → • α returns none
+- A → α • returns some α
 -/
 @[inline, grind]
 public def EarleyItem.prevSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
@@ -97,12 +89,9 @@ public def EarleyItem.betaItem (item : EarleyItem T N) : List (Symbol T N) :=
   item.rule.output.drop item.position
 
 /--
-Returns whether the rule of the EarleyItem is completed,
-concretely if the position/dot is at the end of the production rule
-- A → α• returns true
-- A → •α returns false
-
-TODO: rau thinks it should be >=, but really no reason for?
+Returns whether the rule of the EarleyItem is completed.
+- A → α • returns true
+- A → • α returns false
 -/
 @[inline, grind]
 public def EarleyItem.isComplete (item : EarleyItem T N) : Bool :=
