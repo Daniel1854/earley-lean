@@ -149,7 +149,7 @@ followed by the remaining beta.
 @[grind]
 public def isSound (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (item : EarleyItem T G.NT) : Prop :=
-  let parsedAlpha := slice w item.startItem item.endItem
+  let parsedAlpha := slice w item.startIdx item.endIdx
   G.Derives [Symbol.nonterminal item.rule.input] <| parsedAlpha ++ betaItem item
 
 /--

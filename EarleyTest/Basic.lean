@@ -82,23 +82,23 @@ open Model.EarleyItem
 def exItem1 : EarleyItem T N where
   rule := exRule2
   position := 0
-  startItem := 0
-  endItem := 0
+  startIdx := 0
+  endIdx := 0
 
 def exItem2 : EarleyItem T N :=
-  { exItem1 with position := 1, startItem := 1, endItem := 2 }
+  { exItem1 with position := 1, startIdx := 1, endIdx:= 2 }
 
 def exItem3 : EarleyItem T N :=
-  { exItem1 with position := 2, startItem := 1 , endItem := 0 }
+  { exItem1 with position := 2, startIdx := 1 , endIdx:= 0 }
 
 def exItem4 : EarleyItem T N :=
-  { exItem1 with position := 3, startItem := 1 , endItem := 2 }
+  { exItem1 with position := 3, startIdx := 1 , endIdx:= 2 }
 
 def exItem5 : EarleyItem T N where
   rule := exRule1
   position := 1
-  startItem := 0
-  endItem := 1
+  startIdx := 0
+  endIdx := 1
 
 theorem next1 : nextSymbol exItem1 = some (Symbol.terminal T.a) := rfl
 theorem next2 : nextSymbol exItem2 = some (Symbol.nonterminal N.S) := rfl

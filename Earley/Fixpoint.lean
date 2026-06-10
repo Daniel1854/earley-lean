@@ -22,11 +22,11 @@ open EarleyItem
 variable {T N : Type} [BEq N]
 
 /--
-Returns the subset of `I` where endItem is equal to `k`.
+Returns the subset of `I` where endIdx is equal to `k`.
 Corresponds to the i-th bin in the list-based algorithm.
 -/
 def bin (I : Set (EarleyItem T N)) (k : Nat) : Set (EarleyItem T N) :=
-  { x ∈ I | x.endItem = k }
+  { x ∈ I | x.endIdx = k }
 
 /--
 Set-based implementation of the .init operation.
@@ -56,7 +56,7 @@ def predictFixpoint (G : ContextFreeGrammar T) (I : Set (EarleyItem T G.NT)) (k 
 Set-based implementation of the .complete operation.
 -/
 def completeFixpoint (I : Set (EarleyItem T N)) (k : Nat) : Set (EarleyItem T N) :=
-  { z | ∀ x y : EarleyItem T N, z = incItem x k ∧ x ∈ bin I y.startItem ∧
+  { z | ∀ x y : EarleyItem T N, z = incItem x k ∧ x ∈ bin I y.startIdx ∧
     y ∈ bin I k ∧ isComplete y ∧ nextSymbol x = some (Symbol.nonterminal y.rule.input) }
 
 /--

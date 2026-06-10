@@ -30,7 +30,7 @@ instance : Repr (Symbol α β) where
    | Symbol.nonterminal nt => reprStr nt
 
 instance : Repr ReductionPointer where
-  reprPrec p _ := s!"({p.endItemA},{p.i},{p.j})"
+  reprPrec p _ := s!"({p.endIdxA},{p.i},{p.j})"
 
 instance : Repr Pointer where
  reprPrec sym _ := match sym with
@@ -45,7 +45,7 @@ instance : Repr (Earley.Model.EarleyItem α β) where
   reprPrec item _ :=
     have ⟨lhs,rhs⟩ := item.rule.output.splitAt item.position
     have input := reprStr item.rule.input
-    s!"({input} → {reprStr lhs} @ {reprStr rhs}, {item.startItem}, {item.endItem})"
+    s!"({input} → {reprStr lhs} @ {reprStr rhs}, {item.startIdx}, {item.endIdx})"
 
 instance : Repr (Earley.Recognizer.BinItem α β) where
   reprPrec item _ :=

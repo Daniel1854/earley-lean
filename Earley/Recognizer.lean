@@ -14,7 +14,7 @@ we maintain a bin of the possible states we could be in.
 Each bin contains a set of `BinItem`s, which are a pair of an `EarleyItem` and a `Pointer`,
 which help us keep track of its origin. The pointer is only required to assemble the parse tree.
 
-The `endItem` of an `EarleyItem` corresponds always to the bin number.
+The `endIdx` of an `EarleyItem` corresponds always to the bin number.
 `B_0` is filled with the items from the INIT rule.
 
 The parse tree will only be built _after_ a word has been fully recognized,
@@ -57,20 +57,20 @@ structure ContextFreeGrammarList (T N : Type) where
 
 /--
 A pointer, which encapsulates the relevant origin data for a completion operation.
-This requires only three indices since the endItem of the completed item is the same as the item,
+This requires only three indices since the endIdx of the completed item is the same as the item,
 that this reduction pointer belongs to.
 - Bins Index for the original Item and its index with that bin
 - The index of the completed item within the current bin
 
 Example:
-A → α • B β, startItemA, endItemA stored in bins[endItemA][i]
-B → γ •,     startItemB, endItemB stored in bins[endItemB][j]
+A → α • B β, startIdxA, endIdxA stored in bins[endIdxA][i]
+B → γ •,     startIdxB, endIdxB stored in bins[endIdxB][j]
 -/
 public structure ReductionPointer where
   /--
-  `endItem` of the original item.
+  `endIdx` of the original item.
   -/
-  endItemA : Nat
+  endIdxA : Nat
   /--
   Index of the original item within its bin.
   -/
@@ -136,12 +136,12 @@ def isEpsilonFree (G : ContextFreeGrammarList T N) : Prop :=
 An EarleyBin is well-formed, if
 - there are no duplicate items in the bin
 - all items in the bin are well-formed
-- all endItems match the index of the bin
+- all endIdx match the index of the bin
 -/
 @[grind]
 public def isWellFormedBin (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) (k : Nat)
     (bin : List (BinItem T N)) : Prop :=
-  bin.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w x.item ∧ x.item.endItem = k
+  bin.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w x.item ∧ x.item.endIdx = k
 
 /--
 EarleyBins are well-formed, if all of its bins are well-formed.
@@ -170,7 +170,7 @@ TODO: Think about if Option is more sensible.
 def scanList (w : List T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.length) (pre : Nat) :
     List (BinItem T N) :=
   if w[k] == a then
-    [⟨incItem x (x.endItem+1), Pointer.predecessor pre⟩]
+    [⟨incItem x (x.endIdx+1), Pointer.predecessor pre⟩]
   else
     []
 
@@ -187,19 +187,18 @@ def predictList (G : ContextFreeGrammarList T N) (A : N) (k : Nat) :
 /--
 List-based implementation of the .complete operation.
 
-Returns items for each successful completion of item `y` using its startItem index for bins.
+Returns items for each successful completion of item `y` using its startIdx for bins.
 `j` is the index of y in its bin.
 -/
-def completeList (y : BinItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y.item.startItem < n)
+def completeList (y : BinItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y.item.startIdx < n)
     (j : Nat) : List (BinItem T N) :=
   -- The full origin bin for potential completions
-  let xBin := bins[y.item.startItem]
+  let xBin := bins[y.item.startIdx]
   -- The origin bin filtered for matchings with y
   let xMatches : List (BinItem T N × Nat) := filterWithIdx xBin
     (fun x => nextSymbol x.item == some (Symbol.nonterminal y.item.rule.input))
   xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x.item y.item.endItem, Pointer.reduction [⟨y.item.startItem,i,j⟩]⟩)
-
+    ⟨incItem x.item y.item.endIdx, Pointer.reduction [⟨y.item.startIdx,i,j⟩]⟩)
 
 /--
 Returns the list appended with an element, if it is not already part of the list,
@@ -265,7 +264,7 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
           bins.set (k+1) newBin (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      have : x.item.startItem < w.length + 1 := by
+      have : x.item.startIdx < w.length + 1 := by
         -- TODO: In theory I only need to rely on the result that the bins only contain WF Items
         --       but this is a result _about_ this function so I cant access it ?
         --       Alternatively, I could parametrize the function with a proof that only wf items

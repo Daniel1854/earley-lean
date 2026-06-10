@@ -108,10 +108,10 @@ public partial def buildTree (w : List T) (bins : EarleyBins T N (w.length + 1))
     match ps with
     | [] => none
     -- TODO: Any reduction pointer is sufficient since we simply take one of the parse trees.
-    | ⟨endItemA,i,j⟩ :: _ => do
-      have hEnd : endItemA < w.length + 1 := sorry -- sth about well-formed items
-      have hi : i < bins[endItemA].length := sorry -- sth about well-formed items
-      let t ← buildTree w bins endItemA hEnd i hi
+    | ⟨endIdxA,i,j⟩ :: _ => do
+      have hEnd : endIdxA < w.length + 1 := sorry -- sth about well-formed items
+      have hi : i < bins[endIdxA].length := sorry -- sth about well-formed items
+      let t ← buildTree w bins endIdxA hEnd i hi
       match t with
       | Tree.leaf d => none
       | Tree.node d ts => do

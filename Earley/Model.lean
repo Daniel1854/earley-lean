@@ -42,14 +42,10 @@ public structure EarleyItem (T N : Type) where
   The position within the `rule`
   -/
   position : Nat
-  /--
-  Startindex for the word w which this rule recognizes
-  -/
-  startItem : Nat
-  /--
-  (Exclusive) Endindex for the word w which this rule recognizes
-  -/
-  endItem : Nat
+  /-- Startindex for a word, which this item recognizes. -/
+  startIdx : Nat
+  /-- (Exclusive) Endindex for a word, which this item recognizes. -/
+  endIdx : Nat
 deriving BEq, Repr
 
 variable {T N : Type} [BEq N]
@@ -123,8 +119,8 @@ public def EarleyItem.isFinished (initial : N) (w : List (Symbol T N)) (item : E
     Bool :=
   item.rule.input == initial
   && isComplete item
-  && item.startItem == 0
-  && item.endItem == w.length
+  && item.startIdx == 0
+  && item.endIdx == w.length
 
 /--
 An item is well-formed, if
@@ -138,15 +134,15 @@ public def EarleyItem.isWellFormed {R : Type} (rules : R) [Membership (ContextFr
     (w : List (Symbol T N)) (item : EarleyItem T N) : Prop :=
   item.rule ∈ rules
   ∧ item.position <= item.rule.output.length
-  ∧ item.startItem <= item.endItem
-  ∧ item.endItem <= w.length
+  ∧ item.startIdx <= item.endIdx
+  ∧ item.endIdx <= w.length
 
 /--
-Returns a new item with the position incremented by one and a new endItem index.
+Returns a new item with the position incremented by one and a new endIdx.
 -/
 @[inline, grind]
-def EarleyItem.incItem (item : EarleyItem T N) (endItem : Nat) : EarleyItem T N :=
-  { item with position := item.position+1, endItem := endItem }
+def EarleyItem.incItem (item : EarleyItem T N) (endIdx : Nat) : EarleyItem T N :=
+  { item with position := item.position+1, endIdx := endIdx }
 
 open EarleyItem
 
