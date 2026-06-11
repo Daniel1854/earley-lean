@@ -67,17 +67,11 @@ A → α • B β, startIdxA, endIdxA stored in bins[endIdxA][i]
 B → γ •,     startIdxB, endIdxB stored in bins[endIdxB][j]
 -/
 public structure ReductionPointer where
-  /--
-  `endIdx` of the original item.
-  -/
+  /-- `endIdx` of the original item. -/
   endIdxA : Nat
-  /--
-  Index of the original item within its bin.
-  -/
+  /-- Index of the original item within its bin. -/
   i : Nat
-  /--
-  Index of the completed item within its bin.
-  -/
+  /-- Index of the completed item within its bin. -/
   j : Nat
 deriving BEq, Repr
 
@@ -86,17 +80,11 @@ A Pointer helps keep track of the origin of an EarleyItem.
 These are only required to assemble the parse tree after the successful recognition.
 -/
 inductive Pointer where
-  /--
-  .init/.predict: no origin data needed.
-  -/
+  /-- .init/.predict: no origin data needed. -/
   | null : Pointer
-  /--
-  .scan: origin index for previous bin.
-  -/
+  /-- .scan: origin index for previous bin. -/
   | predecessor (i : Nat) : Pointer
-  /--
-  .complete: nonempty list of possible reduction pointers
-  -/
+  /-- .complete: nonempty list of possible reduction pointers -/
   | reduction (ps : List ReductionPointer) : Pointer
 deriving BEq, Repr
 
@@ -104,13 +92,9 @@ deriving BEq, Repr
 The items of a bin. It contains the EarleyItem and data for its origin.
 -/
 public structure BinItem (T N : Type) where
-  /--
-  The EarleyItem of the item.
-  -/
+  /-- The EarleyItem of the item. -/
   item : EarleyItem T N
-  /--
-  The origin data of the item.
-  -/
+  /-- The origin data of the item. -/
   pointer : Pointer
 deriving BEq, Repr
 
