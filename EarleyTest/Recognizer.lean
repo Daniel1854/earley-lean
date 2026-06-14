@@ -49,13 +49,12 @@ instance : Repr (Earley.Recognizer.BinItem α β) where
   reprPrec item _ :=
     s!"({reprStr item.item}, {reprStr item.pointer})"
 
-
 /- Simplest Example: S → a | aS -/
 namespace BasicExample
 
 inductive N where
 | S : N
-deriving BEq
+deriving BEq, ReflBEq, LawfulBEq
 
 instance : Repr N where
  reprPrec sym _ := match sym with
@@ -68,7 +67,7 @@ instance : ToString N where
 inductive T where
 | a : T
 | b : T
-deriving BEq
+deriving BEq, ReflBEq, LawfulBEq
 
 instance : Repr T where
  reprPrec sym _ := match sym with
@@ -188,7 +187,7 @@ inductive N where
 | Sum : N
 | Product : N
 | Factor : N
-deriving BEq
+deriving BEq, ReflBEq, LawfulBEq
 
 instance : Repr N where
  reprPrec sym _ := match sym with
@@ -210,7 +209,7 @@ inductive T where
 | Zero : T
 | One : T
 | Two : T
-deriving BEq
+deriving BEq, ReflBEq, LawfulBEq
 
 instance : Repr T where
  reprPrec sym _ := match sym with

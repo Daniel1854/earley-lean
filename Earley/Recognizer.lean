@@ -3,10 +3,11 @@ public import Earley.Model
 public import Earley.Proofs.Model
 public import Earley.Fixpoint
 public import Earley.Filter
+public import Mathlib.Data.Set.Card
 @[expose] public section
 
 /-!
-This module represents a functional implementation of the Earley algorithm.
+This module represents a computable implementation of the Earley algorithm.
 
 Given an input word `w = a_0 .. a_(n-1)` of length `n`, we maintain a list of `n+1` bins `B_k`.
 For the initial starting position and position after parsing a certain characters,
@@ -96,13 +97,23 @@ TODO: inner list should probably be an Array as well, but lets see first
 abbrev EarleyBins (T N : Type) (n : Nat) : Type :=
   Vector (List (BinItem T N)) n
 
-variable {T N : Type} [BEq T] [BEq N]
+variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
+
+@[grind]
+def items (bin : List (BinItem T N)) : List (EarleyItem T N) :=
+  bin.map (fun x => x.item)
+
+@[grind]
+def pointers (bin : List (BinItem T N)) : List Pointer :=
+  bin.map (fun x => x.pointer)
 
 /--
 Returns if the grammar contains a rule with an empty rhs.
 -/
 def isEpsilonFree (G : ContextFreeGrammarList T N) : Prop :=
   ∀ r ∈ G.rules, !r.output.isEmpty
+
+section WellFormedBin
 
 /--
 An EarleyBin is well-formed, if
@@ -111,17 +122,25 @@ An EarleyBin is well-formed, if
 - all endIdx match the index of the bin
 -/
 @[grind]
-public def isWellFormedBin (G : ContextFreeGrammarList T N) (w : List (Symbol T N)) (k : Nat)
+public def isWellFormedBin (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     (bin : List (BinItem T N)) : Prop :=
-  bin.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w x.item ∧ x.item.endIdx = k
+  (items bin).Nodup ∧
+    ∀ x ∈ bin, isWellFormed G.rules (w.map Symbol.terminal) x.item ∧ x.item.endIdx = k
 
 /--
 EarleyBins are well-formed, if all of its bins are well-formed.
 -/
 @[grind]
-public def isWellFormedBins (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
+public def isWellFormedBins (G : ContextFreeGrammarList T N) (w : List T)
     (bins : EarleyBins T N (w.length + 1)) : Prop :=
   ∀ k, (h : k < bins.size) → isWellFormedBin G w k bins[k]
+
+/--
+A combination of an EarleyBins with a well-formedness Invariant about it.
+-/
+public structure WfEarleyBins (T N : Type) (G : ContextFreeGrammarList T N) (w : List T) where
+  bins : EarleyBins T N (w.length + 1)
+  inv : isWellFormedBins G w bins
 
 /--
 List-based implementation of the .init operation.
@@ -162,15 +181,14 @@ List-based implementation of the .complete operation.
 Returns items for each successful completion of item `y` using its startIdx for bins.
 `j` is the index of y in its bin.
 -/
-def completeList (y : BinItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y.item.startIdx < n)
+def completeList (y : EarleyItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y.startIdx < n)
     (j : Nat) : List (BinItem T N) :=
-  -- The full origin bin for potential completions
-  let xBin := bins[y.item.startIdx]
   -- The origin bin filtered for matchings with y
-  let xMatches : List (BinItem T N × Nat) := filterWithIdx xBin
-    (fun x => nextSymbol x.item == some (Symbol.nonterminal y.item.rule.input))
+  let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
+    (fun x => nextSymbol x.item == some (Symbol.nonterminal y.rule.input))
+  -- Matchings mapped onto a new item with the index recorded within the reduction pointer
   xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x.item y.item.endIdx, Pointer.reduction [⟨y.item.startIdx,i,j⟩]⟩)
+    ⟨incItem x.item y.endIdx, Pointer.reduction [⟨y.startIdx,i,j⟩]⟩)
 
 /--
 Returns the list appended with an element, if it is not already part of the list,
@@ -206,16 +224,201 @@ def updateBin (xs : List (BinItem T N)) : List (BinItem T N) → List (BinItem T
   | y::ys => updateBin (updateBinAux xs y) ys
 
 /--
-Computes the k-th bin starting from index j and returns the updated bins.
-TODO: termination_by - Need to showcase (and know how to even write) that
-      any element part of a bin is WF and there is only a finite amount of those.
+Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
-public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
-    (bins : EarleyBins T N (w.length + 1)) (h : k < bins.size) (j : Nat) :
-    EarleyBins T N (w.length + 1) :=
+@[grind]
+def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (newBin : List (BinItem T N))
+    (hk : k < n) : EarleyBins T N n :=
+  let newBin := updateBin bins[k] newBin
+  bins.set k newBin (by grind)
+
+-- TODO: naming scheme and more lemmas, maybe not have LawfulBEq in variables,
+-- but I want grind to utilize it first.
+omit [LawfulBEq (EarleyItem T N)] in
+@[simp]
+lemma updateBinAux_nil (y : BinItem T N) : updateBinAux [] y = [y] := by simp [updateBinAux]
+
+omit [LawfulBEq (EarleyItem T N)] in
+@[simp]
+lemma updateBin_nil (xs : List (BinItem T N)) : updateBin xs [] = xs := by simp [updateBin]
+
+theorem mem_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N) (x : EarleyItem T N)
+    (hmem : x ∈ items (updateBinAux xs y)) : x ∈ items xs ∨ x = y.item := by
+  induction xs with
+  | nil => grind
+  | cons head tail ih => grind
+
+omit [LawfulBEq (EarleyItem T N)] in
+/--
+Using updateBinAux on a List with no duplicates, results in a list with no duplicates as well.
+-/
+theorem noDup_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N)
+    [LawfulBEq (EarleyItem T N)] (hx : (items xs).Nodup) :
+    items (updateBinAux xs y) |>.Nodup := by
+  induction xs,y using updateBinAux.induct with
+  | case1 => grind
+  | case2 => grind
+  | case3 x xs y xItem xP yItem yP hxy h ih =>
+    have := mem_of_updateBinAux xs y
+    grind
+  | case4 => grind
+  | case5 x xs y h hxy ih =>
+    have := mem_of_updateBinAux xs y
+    grind
+
+omit [LawfulBEq (EarleyItem T N)] in
+/--
+Using updateBin on a List with no duplicates, results in a list with no duplicates as well.
+-/
+theorem noDup_of_updateBin (xs ys : List (BinItem T N)) (hx : (items xs).Nodup)
+    [LawfulBEq (EarleyItem T N)] : items (updateBin xs ys) |>.Nodup := by
+  induction xs,ys using updateBin.induct with
+  | case1 xs => grind
+  | case2 xs y ys ih1 => grind [noDup_of_updateBinAux xs y]
+
+lemma wfBin_of_updateBinAux (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
+    (bin : List (BinItem T N)) (hwfbin : isWellFormedBin G w k bin) (y : BinItem T N)
+    (hwfy : isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+    isWellFormedBin G w k (updateBinAux bin y)  := by
+  induction bin with
+  | nil => grind
+  | cons x xs ih => grind [noDup_of_updateBinAux]
+
+lemma wfBin_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
+    (xs ys : List (BinItem T N)) (hwfx : isWellFormedBin G w k xs)
+    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+    isWellFormedBin G w k (updateBin xs ys)  := by
+  induction ys generalizing xs with
+  | nil => grind
+  | cons y ys ih => grind [wfBin_of_updateBinAux, noDup_of_updateBin]
+
+-- TODO: I probably dont want to annotate this and similar lemmas with grind?
+-- maybe a very specific grind multipattern
+omit [BEq T] [BEq N] in
+lemma wfItem_of_wfBins {G : ContextFreeGrammarList T N} {w : List T} {k : Nat}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (x : BinItem T N) (hk : k < bins.size) (hmem : x ∈ bins[k]) :
+    isWellFormed G.rules (w.map Symbol.terminal) x.item ∧ x.item.endIdx = k := by
+  grind
+
+@[grind .]
+lemma wfBins_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
+    (bins : EarleyBins T N (w.length + 1)) (hwf : isWellFormedBins G w bins)
+    (ys : List (BinItem T N)) (hk : k < w.length + 1)
+    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+    isWellFormedBins G w (updateBins bins k ys hk)  := by
+  intro i hi
+  if heq : i = k then
+    grind [wfBin_of_updateBin]
+  else
+    grind
+
+-- TODO: do I want wfBin for all the operations?
+omit [BEq T] in
+lemma wfBin_of_initList (G : ContextFreeGrammarList T N) (w : List T) :
+    isWellFormedBin G w 0 (initList G)  := by
+  have := G.nodup
+  grind [initList]
+
+-- hk more restrictive since we bump k by 1
+omit [BEq N] [LawfulBEq (EarleyItem T N)] in
+lemma wfItems_of_scanList {G : ContextFreeGrammarList T N} {w : List T} (k j : Nat) {a : T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (x : EarleyItem T N) (hk : k < w.length) (hmemx : x ∈ (items bins[k]))
+    (hnext : nextSymbol x = some (Symbol.terminal a))
+    (y : EarleyItem T N) (hmemy : y ∈ (items (scanList w x a k hk j))) :
+    isWellFormed G.rules (w.map Symbol.terminal) y ∧ y.endIdx = k + 1 := by
+  grind [scanList]
+
+omit [BEq T] [LawfulBEq (EarleyItem T N)] in
+lemma wfItems_of_predictList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat) (A : N)
+    (hk : k ≤ w.length) (y : EarleyItem T N) (hmemy : y ∈ (items (predictList G A k))) :
+    isWellFormed G.rules (w.map Symbol.terminal) y ∧ y.endIdx = k := by
+  grind [predictList]
+
+omit [LawfulBEq (EarleyItem T N)] in
+lemma wfItems_of_completeList {G : ContextFreeGrammarList T N} {w : List T} (j k : Nat)
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (y : EarleyItem T N) (hk : k < bins.size) (hmemy : y ∈ (items bins[k]))
+    (x : EarleyItem T N) (hmemx : x ∈ (items (completeList y (w.length + 1) bins (by grind) j))) :
+    isWellFormed G.rules (w.map Symbol.terminal) x ∧ x.endIdx = k := by
+  simp only [completeList, items, List.map_map, List.mem_map, Function.comp_apply,
+    Prod.exists] at hmemx
+  let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
+  let originBin := bins[y.startIdx]'(by grind)
+  let filteredOriginBin := filterWithIdx originBin P
+  have := filterWithIdx_cong_filter originBin P
+  -- z is the original item, which will be completed
+  rcases hmemx with ⟨z,_,hInc⟩
+  have : z ∈ filteredOriginBin.map Prod.fst := by grind
+  grind
+
+-- TODO: this EarleyItem <-> BinItem & items is an issue for the automation.
+-- I want to destructure everything into EarleyItems via
+--  x ∈ bins[k] → x.item ∈ items (bins[k]) ?
+-- hj is a negation for direct reasoning with earleyBinList
+lemma wfBins_of_scanList {G : ContextFreeGrammarList T N} {w : List T} {j k : Nat} {a : T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (x : EarleyItem T N) (hk : k < w.length) (hj : ¬ (j ≥ bins[k].length))
+    (hx : x = (bins[k][j]).item) (hnext : nextSymbol x = some (Symbol.terminal a)) :
+    isWellFormedBins G w (updateBins bins (k+1) (scanList w x a k (by grind) j) (by grind)) := by
+  have := wfItems_of_scanList k j hbins x hk (by grind) hnext
+  grind
+
+-- hj is a negation for direct reasoning with earleyBinList
+lemma wfBins_of_predictList {G : ContextFreeGrammarList T N} {w : List T} {A : N} {k : Nat}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins) (hk : k ≤ w.length) :
+    isWellFormedBins G w (updateBins bins k (predictList G A k) (by grind)) := by
+  have := wfItems_of_predictList G w k A hk
+  grind
+
+-- hj is a negation for direct reasoning with earleyBinList
+lemma wfBins_of_completeList {G : ContextFreeGrammarList T N} {w : List T} {j k : Nat}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (y : EarleyItem T N) (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].length))
+    (hy : y = bins[k][j].item) : isWellFormedBins G w
+    (updateBins bins k (completeList y (w.length + 1) bins (by grind) j) (by grind)) := by
+  have := wfItems_of_completeList j k hbins y hk (by grind)
+  grind
+
+
+lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (k j : Nat)
+    (bins bins' : EarleyBins T N (w.length + 1)) (hbins : isWellFormedBins G w bins)
+    (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].length))
+    (h : bins' =
+      let x := bins[k][j]
+      match nextSymbol x.item with
+      | some s => match s with
+        | Symbol.nonterminal A =>
+          -- Add all potential .predict operations on the current item to the current bin
+          let newItems := predictList G A k
+          updateBins bins k newItems (by grind)
+        | Symbol.terminal a =>
+          -- If we are the final bin then don't try to progress via consuming another terminal
+          if hk : k ≥ w.length then
+            bins
+          else
+            -- Add a potential .scan operations on the current item to the next bin
+            let newItem := scanList w x.item a k (by grind) j
+            updateBins bins (k + 1) newItem (by grind)
+      | none =>
+        -- Add all potential .complete operations on the current item to the current bin
+        let newItems := completeList x.item (w.length + 1) bins (by grind) j
+        updateBins bins k newItems (by grind))
+    : isWellFormedBins G w bins' := by
+  sorry
+
+end WellFormedBin
+
+/--
+Computes the k-th bin starting from index j and returns the updated bins.
+-/
+public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
+    (bins : EarleyBins T N (w.length + 1)) (h : k < bins.size) (j : Nat)
+    (hbins : isWellFormedBins G w bins) : WfEarleyBins T N G w :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].length then
-    bins
+    ⟨bins, hbins⟩
   else
     let x := bins[k][j]
     let bins' := match nextSymbol x.item with
@@ -223,8 +426,7 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := predictList G A k
-        let newBin := updateBin bins[k] newItems
-        bins.set k newBin (by grind)
+        updateBins bins k newItems (by grind)
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hk : k ≥ w.length then
@@ -232,44 +434,51 @@ public partial def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanList w x.item a k (by grind) j
-          let newBin := updateBin bins[k+1] newItem
-          bins.set (k+1) newBin (by grind)
+          updateBins bins (k+1) newItem (by grind)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      have : x.item.startIdx < w.length + 1 := by
-        -- TODO: In theory I only need to rely on the result that the bins only contain WF Items
-        --       but this is a result _about_ this function so I cant access it ?
-        --       Alternatively, I could parametrize the function with a proof that only wf items
-        --       reside in the bins, but this makes everything a little convoluted?
+      let newItems := completeList x.item (w.length + 1) bins (by grind) j
+      updateBins bins k newItems (by grind)
+    have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
+    earleyBinList G w k bins' (by grind) (j+1) this
+  termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x ∧ x.endIdx = k }.ncard + 1 - j
+  decreasing_by
+    apply Nat.sub_lt_sub_left
+    · simp only [isWellFormedBins, Order.lt_add_one_iff] at hbins
+      specialize hbins k (by grind)
+      simp [isWellFormedBin] at hbins
+      simp at hj
+      have : Finite {x | isWellFormed G.rules (List.map Symbol.terminal w) x ∧ x.endIdx = k} := by
         sorry
-      let newItems := completeList x (w.length + 1) bins this j
-      let newBin := updateBin bins[k] newItems
-      bins.set k newBin ((by grind))
-    earleyBinList G w k bins' (by grind) (j+1)
+      simp [Set.ncard, Set.encard]
+      sorry
+    · grind
 
 /--
 Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
-    (h : k ≤ w.length) : EarleyBins T N (w.length + 1) :=
+    (h : k ≤ w.length) : WfEarleyBins T N G w :=
   match h : k with
   | 0 =>
     -- Initialize the first bin by using .init for all G.rules
     let b₀ := initList G
     let bins := Vector.replicate (w.length + 1) []
-    earleyBinList G w 0 (bins.set 0 b₀ (by grind)) (by grind) 0
+    let bins' := bins.set 0 b₀ (by grind)
+    have : isWellFormedBin G w 0 b₀ := wfBin_of_initList G w
+    earleyBinList G w 0 bins' (by grind) 0 (by grind)
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
-    let mBins := earleyBinsList G w i (by grind)
-    earleyBinList G w k mBins (by grind) 0
+    let ⟨mBins, inv⟩ := earleyBinsList G w i (by grind)
+    earleyBinList G w k mBins (by grind) 0 inv
 
 /--
 Returns the bins after trying to recognize `w` by using `G`.
 -/
 public def earleyList (G : ContextFreeGrammarList T N) (w : List T) :
     EarleyBins T N (w.length+1) :=
-  earleyBinsList G w w.length (by grind)
+  earleyBinsList G w w.length (by grind) |>.bins
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.

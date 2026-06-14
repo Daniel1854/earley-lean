@@ -44,5 +44,13 @@ theorem filterWithIdxAux_eq_zipFilter (l : List α) (P : α → Bool) (i : Nat) 
   | nil => grind
   | cons x xs ih => grind
 
+theorem filterWithIdxAux_cong_filter (l : List α) (P : α → Bool) (i : Nat) :
+    (filterWithIdxAux P i l).map (fun ⟨item,_⟩ => item) = l.filter P := by
+  induction l generalizing i <;> grind
+
+theorem filterWithIdx_cong_filter (l : List α) (P : α → Bool) :
+    (filterWithIdx l P).map (fun ⟨item,_⟩ => item) = l.filter P := by
+  simp [filterWithIdx, filterWithIdxAux_cong_filter]
+
 end Utils
 end Earley

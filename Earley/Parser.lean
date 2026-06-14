@@ -122,7 +122,8 @@ public partial def buildTree (w : List T) (bins : EarleyBins T N (w.length + 1))
 /--
 Tries to parse a word with given grammar, and returns a parse tree if succesful.
 -/
-public def parse (G : ContextFreeGrammarList T N) (w : List T) : Option (Tree T N) :=
+public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : List T) :
+    Option (Tree T N) :=
   let bins := earleyList G w
   -- Find the finished item, and follow its pointers.
   match filterWithIdx bins[w.length]
