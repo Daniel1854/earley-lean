@@ -3,8 +3,6 @@ import Earley.Recognizer
 import Earley.Fixpoint
 import Earley.Parser
 
-import Mathlib.Computability.ContextFreeGrammar
-
 /-!
 This suite tests the basic functionality of the Recognizer and Parser.
 

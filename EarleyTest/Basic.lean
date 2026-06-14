@@ -1,8 +1,6 @@
 import Earley.Model
 import Earley.Recognizer
 
-import Mathlib.Computability.ContextFreeGrammar
-
 namespace Basic
 
 /-

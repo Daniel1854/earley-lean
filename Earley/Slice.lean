@@ -1,6 +1,6 @@
 module
+public import Earley.Basic
 -- TODO: what exactly do I need to import for the @[simp]/attribute to be recognized?
-import Mathlib.Computability.ContextFreeGrammar
 @[expose] public section
 
 /-!

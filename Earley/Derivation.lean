@@ -1,5 +1,4 @@
 module
-public import Mathlib.Computability.ContextFreeGrammar
 public import Earley.Model
 @[expose] public section
 

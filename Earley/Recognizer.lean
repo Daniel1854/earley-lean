@@ -44,18 +44,6 @@ open Fixpoint
 open Utils
 
 /--
-Variant of `ContextFreeGrammar` that uses a List internally to store the rules.
-Context-free grammar that generates words over the alphabet `T` (a type of terminals).
--/
-structure ContextFreeGrammarList (T N : Type) where
-  /-- Initial nonterminal. -/
-  initial : N
-  /-- Rewrite rules. -/
-  rules : List (ContextFreeRule T N)
-  /-- `rules` contains no duplicates -/
-  nodup : List.Nodup rules
-
-/--
 A pointer, which encapsulates the relevant origin data for a completion operation.
 This requires only three indices since the endIdx of the completed item is the same as the item,
 that this reduction pointer belongs to.
