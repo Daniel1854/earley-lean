@@ -4,11 +4,6 @@ public import Mathlib.Data.Set.Finite.Powerset
 public import Mathlib.Data.Finite.Prod
 public import Earley.Model
 public import Earley.Proofs.Model
-public import Earley.Slice
-public import Earley.Derivation
-public import Earley.Fixpoint
-public import Earley.Proofs.Fixpoint
-public import Earley.Recognizer
 @[expose] public section
 
 /-!
@@ -19,7 +14,6 @@ https://doi.org/10.4230/LIPIcs.ITP.2024.31
 
 TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
       https://leanprover-community.github.io/contribute/naming.html
-TODO: trim down on open and imports
 -/
 
 namespace Earley
@@ -29,10 +23,6 @@ namespace Finiteness
 open Earley.Model
 open Earley.Model.EarleyItem
 open Earley.Proofs.Model
-open Earley.Fixpoint
-open Earley.Proofs.Fixpoint
-open Earley.Recognizer
-open Utils
 open ContextFreeRule
 open ContextFreeGrammar
 

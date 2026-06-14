@@ -3,6 +3,7 @@ public import Earley.Model
 public import Earley.Proofs.Model
 public import Earley.Fixpoint
 public import Earley.Filter
+public import Earley.Proofs.Finiteness
 public import Mathlib.Data.Set.Card
 @[expose] public section
 
@@ -412,6 +413,30 @@ lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (j k
         grind [wfBins_of_scanList]
   | none => grind [wfBins_of_completeList]
 
+/--
+TODO: this is a funny lemma. Rename.
+-/
+lemma length_lte_ncard_of_superset {α : Type} (xs : List α) (s : Set α) [Finite s]
+    (P : α → Prop) (hs : s = { x | P x }) (hx : ∀ x ∈ xs, P x) (hNoDup : xs.Nodup) :
+    xs.length ≤ s.ncard := by
+  have : xs.length ≤ { x | x ∈ xs }.ncard := by
+    induction xs with
+    | nil => grind
+    | cons y ys ih =>
+      specialize ih (by grind) (by grind)
+      simp only [List.length, List.mem_cons]
+      have : { x | x ∈ ys }.ncard + 1 = { x | x = y ∨ x ∈ ys }.ncard := by
+        have : { x | x ∈ ys } = { x | x = y ∨ x ∈ ys } \ {y} := by
+          ext
+          grind
+        have : Finite { x | x = y ∨ x ∈ ys } := by grind [Finite.Set.subset]
+        have : y ∈ { x | x = y ∨ x ∈ ys } := by grind
+        have := Set.ncard_diff_singleton_add_one this
+        grind
+      grind
+  have hcard : { x | x ∈ xs }.ncard ≤ s.ncard := Set.ncard_le_ncard (by grind)
+  grind
+
 end WellFormedBin
 
 /--
@@ -445,17 +470,19 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
       updateBins bins k newItems (by omega)
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList G w k bins' (by omega) (j+1) this
-  termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x ∧ x.endIdx = k }.ncard + 1 - j
+  termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x }.ncard + 1 - j
   decreasing_by
     apply Nat.sub_lt_sub_left
-    · simp only [isWellFormedBins, Order.lt_add_one_iff] at hbins
+    · clear this bins'
       specialize hbins k (by grind)
-      simp [isWellFormedBin] at hbins
-      simp at hj
-      have : Finite {x | isWellFormed G.rules (List.map Symbol.terminal w) x ∧ x.endIdx = k} := by
-        sorry
-      simp [Set.ncard, Set.encard]
-      sorry
+      let wfItemsBin := { x | isWellFormed G.rules (List.map Symbol.terminal w) x }
+      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (w.map Symbol.terminal)
+      have : (items bins[k]).length ≤ wfItemsBin.ncard := by
+        have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
+        have ⟨hNoDup, _⟩ := hbins
+        let P := (fun x => isWellFormed G.rules (List.map Symbol.terminal w) x)
+        apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
+      grind
     · grind
 
 /--
