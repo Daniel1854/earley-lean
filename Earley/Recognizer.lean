@@ -322,7 +322,7 @@ lemma wfBin_of_initList (G : ContextFreeGrammarList T N) (w : List T) :
 
 -- hk more restrictive since we bump k by 1
 omit [BEq N] [LawfulBEq (EarleyItem T N)] in
-lemma wfItems_of_scanList {G : ContextFreeGrammarList T N} {w : List T} (k j : Nat) {a : T}
+lemma wfItems_of_scanList {G : ContextFreeGrammarList T N} {w : List T} (j k : Nat) {a : T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (x : EarleyItem T N) (hk : k < w.length) (hmemx : x ∈ (items bins[k]))
     (hnext : nextSymbol x = some (Symbol.terminal a))
@@ -362,7 +362,7 @@ lemma wfBins_of_scanList {G : ContextFreeGrammarList T N} {w : List T} {j k : Na
     (x : EarleyItem T N) (hk : k < w.length) (hj : ¬ (j ≥ bins[k].length))
     (hx : x = (bins[k][j]).item) (hnext : nextSymbol x = some (Symbol.terminal a)) :
     isWellFormedBins G w (updateBins bins (k+1) (scanList w x a k (by grind) j) (by grind)) := by
-  have := wfItems_of_scanList k j hbins x hk (by grind) hnext
+  have := wfItems_of_scanList j k hbins x hk (by grind) hnext
   grind
 
 -- hj is a negation for direct reasoning with earleyBinList
@@ -381,8 +381,7 @@ lemma wfBins_of_completeList {G : ContextFreeGrammarList T N} {w : List T} {j k 
   have := wfItems_of_completeList j k hbins y hk (by grind)
   grind
 
-
-lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (k j : Nat)
+lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (j k : Nat)
     (bins bins' : EarleyBins T N (w.length + 1)) (hbins : isWellFormedBins G w bins)
     (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].length))
     (h : bins' =
@@ -390,23 +389,28 @@ lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (k j
       match nextSymbol x.item with
       | some s => match s with
         | Symbol.nonterminal A =>
-          -- Add all potential .predict operations on the current item to the current bin
           let newItems := predictList G A k
-          updateBins bins k newItems (by grind)
+          updateBins bins k newItems (by omega)
         | Symbol.terminal a =>
-          -- If we are the final bin then don't try to progress via consuming another terminal
           if hk : k ≥ w.length then
             bins
           else
-            -- Add a potential .scan operations on the current item to the next bin
-            let newItem := scanList w x.item a k (by grind) j
-            updateBins bins (k + 1) newItem (by grind)
+            let newItem := scanList w x.item a k (by omega) j
+            updateBins bins (k + 1) newItem (by omega)
       | none =>
-        -- Add all potential .complete operations on the current item to the current bin
         let newItems := completeList x.item (w.length + 1) bins (by grind) j
-        updateBins bins k newItems (by grind))
-    : isWellFormedBins G w bins' := by
-  sorry
+        updateBins bins k newItems (by omega)) :
+    isWellFormedBins G w bins' := by
+  simp only [h, ge_iff_le]
+  match hnext : nextSymbol bins[k][j].item with
+  | some s => match s with
+    | Symbol.nonterminal A => grind [wfBins_of_predictList]
+    | Symbol.terminal a =>
+      if hk : k ≥ w.length then
+        simp [hk, hbins]
+      else
+        grind [wfBins_of_scanList]
+  | none => grind [wfBins_of_completeList]
 
 end WellFormedBin
 
@@ -426,21 +430,21 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := predictList G A k
-        updateBins bins k newItems (by grind)
+        updateBins bins k newItems (by omega)
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hk : k ≥ w.length then
           bins
         else
           -- Add a potential .scan operations on the current item to the next bin
-          let newItem := scanList w x.item a k (by grind) j
-          updateBins bins (k+1) newItem (by grind)
+          let newItem := scanList w x.item a k (by omega) j
+          updateBins bins (k+1) newItem (by omega)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeList x.item (w.length + 1) bins (by grind) j
-      updateBins bins k newItems (by grind)
+      updateBins bins k newItems (by omega)
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
-    earleyBinList G w k bins' (by grind) (j+1) this
+    earleyBinList G w k bins' (by omega) (j+1) this
   termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x ∧ x.endIdx = k }.ncard + 1 - j
   decreasing_by
     apply Nat.sub_lt_sub_left
