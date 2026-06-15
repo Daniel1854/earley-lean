@@ -507,9 +507,8 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
 /--
 Returns the bins after trying to recognize `w` by using `G`.
 -/
-public def earleyList (G : ContextFreeGrammarList T N) (w : List T) :
-    EarleyBins T N (w.length+1) :=
-  earleyBinsList G w w.length (by grind) |>.bins
+public def earleyList (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBins T N G w :=
+  earleyBinsList G w w.length (by grind)
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
@@ -517,7 +516,7 @@ Returns if a given word gets recognized by the Grammar by using a variant of the
 TODO: what code gets compiled from `∃ x ∈ Array ?
 -/
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
-  let bins := earleyList G w
+  let bins := earleyList G w |>.bins
   ∃ x ∈ bins[w.length], isFinished G.initial (w.map Symbol.terminal) x.item
 
 end Recognizer

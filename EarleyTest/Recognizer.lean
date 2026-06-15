@@ -93,7 +93,7 @@ def exW3 : List T := [T.a, T.b]
 
 /-- info: [((N.S → [] @ [T.a], 0, 0), null), ((N.S → [] @ [T.a, N.S], 0, 0), null)] -/
 #guard_msgs in
-#eval! (earleyList G exW1)[0]
+#eval! (earleyList G exW1).bins[0]
 /--
 info: [((N.S → [T.a] @ [], 0, 1), pre 0),
  ((N.S → [T.a] @ [N.S], 0, 1), pre 1),
@@ -101,7 +101,7 @@ info: [((N.S → [T.a] @ [], 0, 1), pre 0),
  ((N.S → [] @ [T.a, N.S], 1, 1), null)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW1)[1]
+#eval! (earleyList G exW1).bins[1]
 /--
 info: [((N.S → [T.a] @ [], 1, 2), pre 2),
  ((N.S → [T.a] @ [N.S], 1, 2), pre 3),
@@ -110,7 +110,7 @@ info: [((N.S → [T.a] @ [], 1, 2), pre 2),
  ((N.S → [] @ [T.a, N.S], 2, 2), null)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW2)[2]
+#eval! (earleyList G exW2).bins[2]
 /--
 info: [((N.S → [T.a] @ [], 2, 3), pre 3),
  ((N.S → [T.a] @ [N.S], 2, 3), pre 4),
@@ -120,7 +120,7 @@ info: [((N.S → [T.a] @ [], 2, 3), pre 3),
  ((N.S → [T.a, N.S] @ [], 0, 3), red [(1,1,2)])]
 -/
 #guard_msgs in
-#eval! (earleyList G exW2)[3]
+#eval! (earleyList G exW2).bins[3]
 /--
 info: [((N.S → [T.a] @ [], 0, 1), pre 0),
  ((N.S → [T.a] @ [N.S], 0, 1), pre 1),
@@ -128,17 +128,17 @@ info: [((N.S → [T.a] @ [], 0, 1), pre 0),
  ((N.S → [] @ [T.a, N.S], 1, 1), null)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW3)[1]
+#eval! (earleyList G exW3).bins[1]
 /--
 info: []
 -/
 #guard_msgs in
-#eval! (earleyList G exW3)[2]
+#eval! (earleyList G exW3).bins[2]
 /--
 info: []
 -/
 #guard_msgs in
-#eval! (earleyList G [T.b, T.b])[1]
+#eval! (earleyList G [T.b, T.b]).bins[1]
 
 /--
 info: false

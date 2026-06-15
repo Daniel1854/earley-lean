@@ -121,7 +121,7 @@ Tries to parse a word with given grammar, and returns a parse tree if succesful.
 -/
 public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : List T) :
     Option (Tree T N) :=
-  let bins := earleyList G w
+  let ⟨bins, inv⟩ := earleyList G w
   -- Find the finished item, and follow its pointers.
   match filterWithIdx bins[w.length]
     (fun x => isFinished G.initial (w.map Symbol.terminal) x.item) with

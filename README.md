@@ -32,10 +32,12 @@ and you can look at the rendered file.
   - [ ] Refinement Correctness Proof
 - [x] Recognizer
   - [x] Implement
+  - [x] Termination Proof
   - [ ] Refinement Correctness Proof
 - [x] Parser
   - [x] Implementation
   - [x] Graphviz
+  - [ ] Termination Proof
   - [ ] Correctness Proof
 - [ ] Evaluation/Benchmark
 - [ ] Performance Improvements?
