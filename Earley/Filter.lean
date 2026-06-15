@@ -52,5 +52,16 @@ theorem filterWithIdx_cong_filter (l : List α) (P : α → Bool) :
     (filterWithIdx l P).map (fun ⟨item,_⟩ => item) = l.filter P := by
   simp [filterWithIdx, filterWithIdxAux_cong_filter]
 
+lemma filterWithIdxAux_le_length {α : Type} (l : List α) (P : α → Bool) :
+    ∀ k ∈ (filterWithIdxAux P 0 l).map Prod.snd, k < l.length := by
+  induction l with
+  | nil => grind
+  | cons x xs ih => grind [filterWithIdxAux_eq_zipFilter]
+
+lemma filterWithIdx_le_length {α : Type} (l : List α) (P : α → Bool) :
+    ∀ i ∈ (filterWithIdx l P).map Prod.snd, i < l.length := by
+  have := filterWithIdxAux_le_length l P
+  grind
+
 end Utils
 end Earley
