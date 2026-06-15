@@ -38,6 +38,12 @@ inductive Tree (T N : Type) where
   | node (data : Symbol T N) (succ : List (Tree T N)) : Tree T N
 deriving BEq, Repr
 
+-- TODO: this should probably live somewhere else.
+instance [ToString T] [ToString N] : ToString (Symbol T N) where
+ toString sym := match sym with
+   | Symbol.terminal t => toString t
+   | Symbol.nonterminal nt => toString nt
+
 mutual
   /--
   Accumulates a graphviz string for a list of trees and returns the indices of each of these.
@@ -54,17 +60,8 @@ mutual
   Accumulates a graphviz string for a tree.
   -/
   def toGraphvizAux [ToString T] [ToString N] (acc : String) (idx : Nat) : Tree T N → String × Nat
-    | Tree.leaf d =>
-      -- TODO: no need for this with [toString Symbol T N]
-      let d := match d with
-      | Symbol.terminal t => s!"{t}"
-      | Symbol.nonterminal nt => s!"{nt}"
-      ⟨acc ++ s!"\n  {idx} [label=\"{d}\", shape=circle];", (idx+1)⟩
+    | Tree.leaf d => ⟨acc ++ s!"\n  {idx} [label=\"{d}\", shape=circle];", (idx+1)⟩
     | Tree.node d ts =>
-      -- TODO: no need for this with [toString Symbol T N]
-      let d := match d with
-      | Symbol.terminal t => s!"{t}"
-      | Symbol.nonterminal nt => s!"{nt}"
       let node := s!"\n  {idx} [label=\"{d}\", shape=circle];"
       let ⟨acc, newIdx, childIndices⟩ := toGraphvizAuxList (acc ++ node) (idx+1) [] ts
       -- Create an edge from the node to all of its direct children

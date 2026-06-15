@@ -1,6 +1,5 @@
 import Earley.Model
 import Earley.Recognizer
-import Earley.Fixpoint
 import Earley.Parser
 
 /-!
