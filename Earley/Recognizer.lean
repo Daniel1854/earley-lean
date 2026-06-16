@@ -149,8 +149,8 @@ public def isWellFormedPointer (w : List T) (bins : EarleyBins T N (w.length + 1
 
 @[grind]
 public def isWellFormedBinPointers (w : List T) (bins : EarleyBins T N (w.length + 1))
-    (k : Nat) (hk : k < bins.size) : Prop :=
-  ∀ x ∈ bins[k], isWellFormedPointer w bins x.pointer k
+    (bin : List (BinItem T N)) (k : Nat) : Prop :=
+  ∀ x ∈ bin, isWellFormedPointer w bins x.pointer k
 
 /--
 EarleyBins are well-formed, if all of its bins are well-formed.
@@ -158,7 +158,8 @@ EarleyBins are well-formed, if all of its bins are well-formed.
 @[grind]
 public def isWellFormedBins (G : ContextFreeGrammarList T N) (w : List T)
     (bins : EarleyBins T N (w.length + 1)) : Prop :=
-  ∀ k, (h : k < bins.size) → isWellFormedBinItems G w k bins[k] ∧ isWellFormedBinPointers w bins k h
+  ∀ k, (h : k < bins.size) → isWellFormedBinItems G w k bins[k]
+      ∧ isWellFormedBinPointers w bins bins[k] k
 
 /--
 A combination of an EarleyBins with a well-formedness Invariant about it.
@@ -267,6 +268,16 @@ omit [LawfulBEq (EarleyItem T N)] in
 @[simp]
 lemma updateBin_nil (xs : List (BinItem T N)) : updateBin xs [] = xs := by simp [updateBin]
 
+-- TODO: I probably dont want to annotate this and similar lemmas with grind?
+-- maybe a very specific grind multipattern
+-- TODO: this is unused? unclear if there is a place where I would use this over deconstructing
+omit [BEq T] [BEq N] in
+lemma wfItem_of_wfBins {G : ContextFreeGrammarList T N} {w : List T} {k : Nat}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (x : BinItem T N) (hk : k < bins.size) (hmem : x ∈ bins[k]) :
+    isWellFormed G.rules (w.map Symbol.terminal) x.item ∧ x.item.endIdx = k := by
+  grind
+
 theorem mem_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N) (x : EarleyItem T N)
     (hmem : x ∈ items (updateBinAux xs y)) : x ∈ items xs ∨ x = y.item := by
   induction xs with
@@ -309,6 +320,15 @@ lemma wfBinItems_of_updateBinAux (G : ContextFreeGrammarList T N) (w : List T) {
   | nil => grind
   | cons x xs ih => grind [noDup_of_updateBinAux]
 
+--lemma wfBinPointers_of_updateBinAux (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
+--    (bins : EarleyBins T N (w.length + 1)) (hk : k < w.length + 1)
+--    (hwfbin : isWellFormedBinPointers w bins k hk) (y : BinItem T N)
+--    (hwfy : isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+--    isWellFormedBinPointers w (updateBinAux bins[k] y) k hk  := by
+--  induction bins[k] with
+--  | nil => grind
+--  | cons x xs ih => grind [noDup_of_updateBinAux]
+
 lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
     (xs ys : List (BinItem T N)) (hwfx : isWellFormedBinItems G w k xs)
     (hwfy : ∀ y ∈ ys, isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
@@ -317,14 +337,13 @@ lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k :
   | nil => grind
   | cons y ys ih => grind [wfBinItems_of_updateBinAux, noDup_of_updateBin]
 
--- TODO: I probably dont want to annotate this and similar lemmas with grind?
--- maybe a very specific grind multipattern
-omit [BEq T] [BEq N] in
-lemma wfItem_of_wfBins {G : ContextFreeGrammarList T N} {w : List T} {k : Nat}
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    (x : BinItem T N) (hk : k < bins.size) (hmem : x ∈ bins[k]) :
-    isWellFormed G.rules (w.map Symbol.terminal) x.item ∧ x.item.endIdx = k := by
-  grind
+--lemma wfBinPointers_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
+--    (xs ys : List (BinItem T N)) (hwfx : isWellFormedBinItems G w k xs)
+--    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+--    isWellFormedBinItems G w k (updateBin xs ys)  := by
+--  induction ys generalizing xs with
+--  | nil => grind
+--  | cons y ys ih => grind [wfBinItems_of_updateBinAux, noDup_of_updateBin]
 
 @[grind .]
 lemma wfBins_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
@@ -522,9 +541,7 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
     let b₀ := initList G
     let bins := Vector.replicate (w.length + 1) []
     let bins' := bins.set 0 b₀ (by grind)
-    have : isWellFormedBinItems G w 0 b₀ := wfBinItems_of_initList G w
-    have : isWellFormedBinPointers w bins' 0 (by grind) := by grind [initList]
-    earleyBinList G w 0 bins' (by grind) 0 (by grind)
+    earleyBinList G w 0 bins' (by grind) 0 (by grind [initList, wfBinItems_of_initList])
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
     let ⟨mBins, inv⟩ := earleyBinsList G w i (by grind)
