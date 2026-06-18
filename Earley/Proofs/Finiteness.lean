@@ -54,50 +54,40 @@ Due the WellFormed-constraints, this results in a Product Set `Top` of
 - all numbers between 0 and the length of `w` for the indices `i` and `j`
 
 The members of the Product are all individually finite, therefore the Product is also finite.
-Since the well-formed EarleyItems are simply a subset of this `Top`,
-that set also has to be finite.
-
-TODO: maybe I also do require that w is non-empty
-TODO: maybe require [Finite T] [Finite N] ?
-      This wouldnt allow types like String to represent Terminals?
-have := Finite.Set.finite_prod s t
-have := Prod.finite_iff.mpr ⟨hs',ht'⟩ <- this requires NonEmpty
+Since the well-formed EarleyItems are simply a subset of this `Top`, that set also has to be finite.
 -/
 public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (Symbol T N))
     (hempty : G.rules ≠ []) : Finite { x | isWellFormed G.rules w x } := by
   -- The maximum length of any rule
   let M := G.rules.map (fun r => r.output.length) |>.max (by simp [hempty])
+  let ruleSet := {x | x ∈ G.rules}
   -- The Set of all possible assignments of an EarleyItem with bounded rule length
-  let Top := Set.prod {x | x ∈ G.rules} (Set.prod {i | 0 ≤ i ∧ i ≤ M}
-    (Set.prod {i | 0 ≤ i ∧ i ≤ w.length} {i | 0 ≤ i ∧ i ≤ w.length}))
-  -- The product of four Finite Sets has to be finite as well
-  -- this should be like really trivial in general since these mostly are natural numbers
-  -- and therefore we have a trivial n for Fin n??
+  let Top := Set.prod ruleSet (Set.prod {i | i ≤ M}
+    (Set.prod {i | i ≤ w.length} {i | i ≤ w.length}))
+  -- The product of four Finite Sets has to be finite as well.
   have finTop : Finite Top := by
-    -- FIXME: maybe CFGₗ is actually a problem here since Lists could be infinite
-    --        logically while Finsets cannot? so maybe I do need CFG_eq_CFGₗ
-    have hFinMem: Finite {x | x ∈ G.rules} := by
-      sorry
-    have hFinM : Finite {i | 0 ≤ i ∧ i ≤ M} := by
-      simp
-      sorry
-    have hFinW : Finite {i | 0 ≤ i ∧ i ≤ w.length} := by
-      simp only [Nat.zero_le, true_and, Set.coe_setOf]
-      apply @Finite.intro _ w.length
-      have := Fin.Internal.ofNat w.length
-      sorry
-    -- amazing. very curious.
+    have hFinMem: Finite ruleSet := by
+      simp only [Set.coe_setOf, ruleSet]
+      classical
+      infer_instance
+    -- This should be like really trivial in general since these mostly are natural numbers
+    -- and therefore we have a trivial n for Fin n?? Need to prove equivalence
+    have hFinM : Finite {i | i ≤ M} := by
+      classical
+      infer_instance
+    have hFinW : Finite {i | i ≤ w.length} := by
+      classical
+      infer_instance
+    -- FIXME: very curious. Instance chaining is interesting.
     have : Finite ↑({i | i ≤ w.length}.prod {i | i ≤ w.length}) := by
       apply Finite.Set.finite_prod
     have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
       apply Finite.Set.finite_prod
-    have : Finite ↑({i | 0 ≤ i ∧ i ≤ w.length}.prod {i | 0 ≤ i ∧ i ≤ w.length}) :=  by
+    have : Finite ↑({i | i ≤ w.length}.prod {i | i ≤ w.length}) :=  by
       apply Finite.Set.finite_prod
-    have : Finite ↑({i | 0 ≤ i ∧ i ≤ M}.prod ({i | 0 ≤ i ∧ i ≤ w.length}.prod
-        {i | 0 ≤ i ∧ i ≤ w.length})) := by
+    have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
       apply Finite.Set.finite_prod
     apply Finite.Set.finite_prod
-  --have injTop : Set.InjOn item_intro Top := by grind [Set.InjOn, Top, item_intro]
   have finImageTop: Finite (Top.image item_intro) := Finite.Set.finite_image Top item_intro
   have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
     intro x hmemx
@@ -106,14 +96,8 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
       simp only [isWellFormed] at wf
       have ⟨hmem,hpos,hs,he⟩ := wf
       have : x.rule.output.length ≤ M := by
-        sorry
-      --  -- vvv This is the approach of Rau, not sure if this worthwhile here
-      --  have : x.rule.output.length ∈ { n | ∀ r, r ∈ G.rules ∧ r.output.length = n } := by
-      --    intro r
-      --    sorry
-      --  have : Finite { n | ∀ r, r ∈ G.rules ∧ r.output.length = n} := by
-      --    sorry
-      --  -- ^^^ this seems a little indirect.
+        have : x.rule.output.length ∈ List.map (fun r => r.output.length) G.rules := by grind
+        grind [List.le_max_of_mem this]
       grind
     simp only [item_intro, Set.mem_image, Prod.exists]
     grind [Set.prod, item_intro]
