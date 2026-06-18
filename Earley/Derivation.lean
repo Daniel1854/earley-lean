@@ -37,6 +37,21 @@ attribute [local grind =] List.drop_add_one_eq_tail_drop
 variable {T : Type}
 
 /--
+Returns if the grammar contains a rule with an empty rhs.
+TODO: This is required for completeness, so it makes more sense to have it over ContextFreeGrammar?
+-/
+@[grind]
+def isEpsilonFree (G : ContextFreeGrammar T) : Prop :=
+  ∀ r ∈ G.rules, !r.output.isEmpty
+
+/--
+Returns if the grammar is able to produce epsilon.
+-/
+@[simp, grind]
+public def nonEmptyDerives (G : ContextFreeGrammar T) : Prop :=
+  ∀ s, ¬ G.Derives [s] []
+
+/--
 A derivation for a CFG `G` states that `u` can be rewritten to `v` via rewriting using the
 given rule list in sequence (List is of finite length).
 -/
@@ -254,6 +269,43 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
         apply rewrites_of_exists_parts
       · rw [hb]
         exact hF
+
+lemma nonEmptyWordDerivation_of_isEpsilonFree (G : ContextFreeGrammar T) (heps : isEpsilonFree G)
+    {a : List (Symbol T G.NT)} (ha : a ≠ []) : ¬ ∃ D, Derivation G a D [] := by
+  intro h
+  rcases h with ⟨D, hD⟩
+  induction D generalizing a with
+  | nil => grind
+  | cons d D ih =>
+    simp at hD
+    rcases hD.right with ⟨w,hw⟩
+    cases w with
+    | nil =>
+      have := rewrites_iff.mp hw.left
+      simp only [List.append_assoc, List.cons_append, List.nil_append, List.nil_eq,
+        List.append_eq_nil_iff, ↓existsAndEq, and_true, true_and] at this
+      grind
+    | cons _ _ => grind
+
+lemma nonEmptyDerives_of_isEpsilonFree (G : ContextFreeGrammar T) (heps : isEpsilonFree G) :
+    nonEmptyDerives G := by
+  intro s
+  have : [s] ≠ [] := by simp
+  have := nonEmptyWordDerivation_of_isEpsilonFree G heps this
+  grind [derives_iff_Derivation]
+
+lemma isEpsilonFree_of_nonEmptyDerives (G : ContextFreeGrammar T) (h : nonEmptyDerives G) :
+    isEpsilonFree G := by
+  by_contra
+  simp only [isEpsilonFree, Bool.not_eq_eq_eq_not, Bool.not_true, List.isEmpty_eq_false_iff, ne_eq,
+    not_forall, exists_prop, Decidable.not_not] at this
+  rcases this with ⟨r, hr⟩
+  have : G.Derives [Symbol.nonterminal r.input] [] := by grind
+  grind
+
+theorem nonEmptyDerives_iff_isEpsilonFree (G : ContextFreeGrammar T) :
+    nonEmptyDerives G ↔ isEpsilonFree G := by
+  grind [nonEmptyDerives_of_isEpsilonFree, isEpsilonFree_of_nonEmptyDerives]
 
 end Utils
 end Earley

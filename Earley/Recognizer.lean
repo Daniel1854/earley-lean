@@ -114,12 +114,6 @@ def items (bin : List (BinItem T N)) : List (EarleyItem T N) :=
 def pointers (bin : List (BinItem T N)) : List Pointer :=
   bin.map (fun x => x.pointer)
 
-/--
-Returns if the grammar contains a rule with an empty rhs.
--/
-def isEpsilonFree (G : ContextFreeGrammarList T N) : Prop :=
-  ∀ r ∈ G.rules, !r.output.isEmpty
-
 section WellFormedBin
 
 /--
