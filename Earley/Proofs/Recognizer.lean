@@ -57,19 +57,57 @@ open Utils
 open ContextFreeRule
 open ContextFreeGrammar
 
-variable {T N : Type}
+variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
+
+@[grind]
+def earleyListSet (G : ContextFreeGrammarList T N) (w : List T) : Set (EarleyItem T N) :=
+  let bins := earleyList G w |>.bins
+  -- TODO: I think this doesnt mean what I think it means
+  { x | ∀ k, k ≤ w.length ∧ ((hk : k ≤ w.length) → x ∈ items (bins[k])) }
+
+section Soundness
+
+lemma earleyList_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G) :
+    earleyListSet Gₗ w ⊆ EarleySet G (w.map Symbol.terminal) := by
+  sorry
+
+/--
+The soundness criteria for the list implementation:
+Given a finished item for a word within the set, the grammar has to be able to generate that word.
+-/
+public theorem soundnessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G)
+    (hfin : recognizeList Gₗ w) : G.Generates (w.map Symbol.terminal) := by
+  have := earleyList_sub_model w h hw heps
+  simp only [recognizeList, decide_eq_true_eq] at hfin
+  rcases hfin with ⟨w,hw⟩
+  --have := soundnessEarley
+  sorry
+
+end Soundness
+
+section Completeness
+
+public theorem completenessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G)
+    (hgen : G.Generates (w.map Symbol.terminal)) : recognizeList Gₗ w := by
+  sorry
+
+end Completeness
 
 /--
 The correctness criteria for the recognizer.
-
-A word can be generated from the grammar
-iff there exists a finished item within the corresponding EarleySet.
+A word can be generated from the grammar iff the algorithm recognizes the word.
 -/
-public theorem correctnessEarleyList {G : ContextFreeGrammar T} [BEq T] [BEq G.NT] [LawfulBEq G.NT]
+public theorem correctnessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) :
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G) :
     G.Generates (w.map Symbol.terminal) ↔ recognizeList Gₗ w := by
-  sorry
+  grind [soundnessEarleyList, completenessEarleyList]
 
 end Recognizer
 end Proofs
