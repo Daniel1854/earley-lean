@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Model
 public import Earley.Proofs.Model
@@ -5,7 +10,6 @@ public import Earley.Fixpoint
 public import Earley.Filter
 public import Earley.Proofs.Finiteness
 public import Mathlib.Data.Set.Card
-@[expose] public section
 
 /-!
 This module represents a computable implementation of the Earley algorithm.
@@ -36,6 +40,8 @@ TODO: Think about how to prepare the grammar itself for efficient usage
       HashMap NT → List of rules ?
 TODO: there is potential for early returns
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Recognizer
@@ -658,7 +664,7 @@ lemma length_lte_ncard_of_superset {α : Type} (xs : List α) (s : Set α) [Fini
           grind
         have : Finite { x | x = y ∨ x ∈ ys } := by grind [Finite.Set.subset]
         have : y ∈ { x | x = y ∨ x ∈ ys } := by grind
-        have := Set.ncard_diff_singleton_add_one this
+        have := Set.ncard_sdiff_singleton_add_one this
         grind
       grind
   have hcard : { x | x ∈ xs }.ncard ≤ s.ncard := Set.ncard_le_ncard (by grind)

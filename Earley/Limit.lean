@@ -1,6 +1,10 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Model
-@[expose] public section
 
 /-!
 This module houses definitions around limits for functions that operate on Sets.
@@ -25,6 +29,8 @@ List of theorems to port:
 - limit_elem -> Rec
 - limit_idempotent -> Rec
 -/
+
+@[expose] public section
 
 -- TODO: annotate some with grind
 --#check Monotone

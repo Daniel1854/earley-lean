@@ -1,9 +1,13 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Model
 public import Earley.Fixpoint
 public import Earley.Recognizer
 public import Earley.Filter
-@[expose] public section
 
 /-!
 This module represents a functional implementation of the Earley algorithm on the production of
@@ -12,6 +16,8 @@ a parse tree from bins after recognizing a word. See `Recognizer.lean` for more 
 The implementation and its proofs follows the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Parser

@@ -1,6 +1,10 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Basic
-@[expose] public section
 
 /-!
 This module houses the definition of `filterWithIdx`, which enables you to filter a List,
@@ -12,6 +16,8 @@ TODO: Lean doesnt have lazyness for linked lists, right?
       .zip(l.length).filter(p)?
       but without lemmas, this is easier to reason with by induction hm
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Utils

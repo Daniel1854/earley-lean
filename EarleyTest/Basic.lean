@@ -1,14 +1,19 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 import Earley.Model
 import Earley.Recognizer
 
-namespace Basic
-
-/-
+/-!
 This suite tests the basic functionality around EarleyItems
 
 It plays with the general mathlib API and basic usage of the functions for the example Grammar G
   G = ({S, a}, {a}, {S -> aS | a}, S) with L(G) = a⁺
 -/
+
+namespace Basic
 
 /- Simple Usage Examples for Mathlib Types -/
 inductive N where

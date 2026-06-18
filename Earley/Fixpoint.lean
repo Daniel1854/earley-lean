@@ -1,7 +1,11 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Model
 public import Earley.Limit
-@[expose] public section
 
 /-!
 This module represents a fixpoint implementation of the Earley algorithm.
@@ -12,6 +16,8 @@ TODO: Set (EarleyItems) - how does it differ from the Model? Where does it help?
       but through sheer application of operations? The technical difference seems quite low
       But maybe there is some relation to the bins that helps!
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Fixpoint

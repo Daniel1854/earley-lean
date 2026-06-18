@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 import Earley.Model
 import Earley.Recognizer
 import Earley.Parser

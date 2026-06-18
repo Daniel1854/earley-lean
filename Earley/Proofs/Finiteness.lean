@@ -1,10 +1,14 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Mathlib.Data.Set.Finite.Basic
 public import Mathlib.Data.Set.Finite.Powerset
 public import Mathlib.Data.Finite.Prod
 public import Earley.Model
 public import Earley.Proofs.Model
-@[expose] public section
 
 /-!
 This module houses proofs surrounding Finiteness of EarleyItems
@@ -15,6 +19,8 @@ https://doi.org/10.4230/LIPIcs.ITP.2024.31
 TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
       https://leanprover-community.github.io/contribute/naming.html
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Proofs

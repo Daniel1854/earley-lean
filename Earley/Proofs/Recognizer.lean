@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Mathlib.Data.Set.Finite.Basic
 public import Mathlib.Data.Set.Finite.Powerset
@@ -10,7 +15,6 @@ public import Earley.Fixpoint
 public import Earley.Proofs.Fixpoint
 public import Earley.Recognizer
 public import Earley.Proofs.Finiteness
-@[expose] public section
 
 /-!
 This module houses the correctness proofs for the
@@ -35,6 +39,8 @@ then refine it further to the actual bins with the same idea.
 TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
       https://leanprover-community.github.io/contribute/naming.html
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Proofs

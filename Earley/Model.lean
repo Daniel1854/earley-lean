@@ -1,6 +1,10 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Basic
-@[expose] public section
 
 /-!
 This module represents the Earley parsing algorithm in a way which lends itself nicely to proofs.
@@ -15,6 +19,8 @@ from the initial nonterminal.
 The implementation follows the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Model

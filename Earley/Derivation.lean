@@ -1,11 +1,17 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Model
-@[expose] public section
 
 /-!
 This module houses the definition of `Derivation`, which states that
 you can derive `v` from `u` by following given sequence of rules.
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Utils

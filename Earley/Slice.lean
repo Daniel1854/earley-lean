@@ -1,13 +1,19 @@
+/-
+Copyright (c) 2026 Daniel Soukup. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Daniel Soukup
+-/
 module
 public import Earley.Basic
 -- TODO: what exactly do I need to import for the @[simp]/attribute to be recognized?
-@[expose] public section
 
 /-!
 This module houses an alternative slice API to `List.extract`.
 For some proofs the inductive approach instead of drop/take is easier to reason with.
 Rau also does this, but probably this is not strictly necessary.
 -/
+
+@[expose] public section
 
 namespace Earley
 namespace Utils
