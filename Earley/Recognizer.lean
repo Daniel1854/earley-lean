@@ -632,12 +632,12 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     apply Nat.sub_lt_sub_left
     · clear this bins'
       specialize hbins k (by grind)
-      let wfItemsBin := { x | isWellFormed G.rules (List.map Symbol.terminal w) x }
+      let wfItemsBin := { x | isWellFormed G.rules (w.map Symbol.terminal) x }
       have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (w.map Symbol.terminal)
       have : (items bins[k]).length ≤ wfItemsBin.ncard := by
         have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
         have ⟨⟨hNoDup, _⟩, _⟩ := hbins
-        let P := (fun x => isWellFormed G.rules (List.map Symbol.terminal w) x)
+        let P := (fun x => isWellFormed G.rules (w.map Symbol.terminal) x)
         apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
       grind
     · grind
