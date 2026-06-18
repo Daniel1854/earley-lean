@@ -11,8 +11,6 @@ public import Earley.Model
 public import Earley.Proofs.Model
 public import Earley.Slice
 public import Earley.Derivation
-public import Earley.Fixpoint
-public import Earley.Proofs.Fixpoint
 public import Earley.Recognizer
 public import Earley.Proofs.Finiteness
 
@@ -49,8 +47,6 @@ namespace Recognizer
 open Earley.Model
 open Earley.Model.EarleyItem
 open Earley.Proofs.Model
-open Earley.Fixpoint
-open Earley.Proofs.Fixpoint
 open Earley.Recognizer
 open Earley.Proofs.Finiteness
 open Utils

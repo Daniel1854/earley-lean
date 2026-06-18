@@ -5,7 +5,6 @@ Authors: Daniel Soukup
 -/
 module
 public import Earley.Model
-public import Earley.Fixpoint
 public import Earley.Recognizer
 public import Earley.Filter
 
@@ -24,7 +23,6 @@ namespace Parser
 
 open Earley.Model
 open Earley.Model.EarleyItem
-open Earley.Fixpoint
 open Earley.Recognizer
 open Earley.Utils
 

@@ -16,7 +16,6 @@ TODO: Unclear if these Repr instances are worthwhile for anything besides these 
 
 namespace Recognizer
 open Earley.Recognizer
-open Earley.Fixpoint
 open Earley.Parser
 
 variable {α β : Type} [Repr α] [Repr β] [ToString α] [ToString β]

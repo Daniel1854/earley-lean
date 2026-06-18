@@ -6,7 +6,6 @@ Authors: Daniel Soukup
 module
 public import Earley.Model
 public import Earley.Proofs.Model
-public import Earley.Fixpoint
 public import Earley.Filter
 public import Earley.Proofs.Finiteness
 public import Mathlib.Data.Set.Card
@@ -48,7 +47,6 @@ namespace Recognizer
 
 open Model
 open EarleyItem
-open Fixpoint
 open Utils
 
 /--
