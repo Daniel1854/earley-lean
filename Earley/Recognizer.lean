@@ -136,15 +136,16 @@ Since the pointers require access to previous bins, it's a bit inconvenient to m
 Think about if it should be a standalone inv in the WfEarleyBins struct.
 Think about if I need to restrict bins somehow, in theory I could reason about a slice [0:k]
 TODO: also think about shortening the names.
+TOOD: I think Rau uses `i ≤ k` for predecessor as well, but that seems simply wrong?
 -/
 @[grind]
 public def isWellFormedPointer (w : List T) (bins : EarleyBins T N (w.length + 1))
     (pointer : Pointer) (k : Nat) : Prop :=
   match pointer with
   | .null => true
-  | .predecessor i => i ≤ k ∧ k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length)
-  | .reduction ps => ∀ p ∈ ps, p.endIdxA ≤ w.length ∧ p.i ≤ w.length ∧ p.j ≤ w.length ∧
-      k ≤ w.length ∧ ((h : p.endIdxA ≤ w.length) → p.i < bins[p.endIdxA].length) ∧
+  | .predecessor i => k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length)
+  | .reduction ps => k ≤ w.length ∧ ∀ p ∈ ps, p.endIdxA ≤ w.length ∧
+      ((h : p.endIdxA ≤ w.length) → p.i < bins[p.endIdxA].length) ∧
       ((h : k ≤ w.length) → p.j < bins[k].length)
 
 @[grind]
