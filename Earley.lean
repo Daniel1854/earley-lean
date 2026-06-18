@@ -12,3 +12,4 @@ import Earley.Proofs.Model
 import Earley.Proofs.Fixpoint
 import Earley.Proofs.Finiteness
 import Earley.Proofs.Recognizer
+import Earley.Proofs.Parser
