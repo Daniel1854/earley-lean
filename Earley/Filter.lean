@@ -69,5 +69,54 @@ lemma filterWithIdx_le_length {α : Type} (l : List α) (P : α → Bool) :
   have := filterWithIdxAux_le_length l P
   grind
 
+theorem P_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α → Bool)
+    (hmem : (x, n) ∈ filterWithIdxAux P i l) : P x := by
+  induction l generalizing i with
+  | nil => grind
+  | cons head tail ih => grind
+
+theorem P_of_filterWithIdx {x : α} {n : Nat} (l : List α) (P : α → Bool)
+    (hmem : (x, n) ∈ filterWithIdx l P) : P x := by
+  grind [P_of_filterWithIdxAux]
+
+lemma filterWithIdxAuxI_le_getElem {α : Type} (l : List α) (i : Nat) (P : α → Bool) :
+    ∀ k ∈ (filterWithIdxAux P i l).map Prod.snd, i ≤ k := by
+  induction l generalizing i with
+  | nil => grind
+  | cons x xs ih => grind
+
+theorem getElem_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α → Bool)
+    (hmem : (x, n) ∈ filterWithIdxAux P i l) : l[n - i]? = some x := by
+  induction l generalizing i with
+  | nil => grind
+  | cons y ys ih =>
+    if heq : x = y  then
+      grind
+    else
+      have : (x, n) ∈ filterWithIdxAux P (i+1) ys := by grind
+      have := ih this
+      have : i + 1 ≤ n := by
+        have := filterWithIdxAuxI_le_getElem ys (i+1) P n (by grind)
+        grind
+      grind
+
+theorem getElem_of_filterWithIdx {x : α} {n : Nat} (l : List α) (P : α → Bool)
+    (hmem : (x, n) ∈ filterWithIdx l P) : l[n]? = some x := by
+  rw [filterWithIdx] at hmem
+  apply getElem_of_filterWithIdxAux l P hmem
+
+theorem memFilterWithIdxAux_of_mem {x : α} (i : Nat) {l : List α} {P : α → Bool}
+    (hmem : x ∈ l) (hp : P x) : ∃ n, (x, n) ∈ filterWithIdxAux P i l := by
+  induction l generalizing i with
+  | nil => grind
+  | cons y ys ih =>
+    specialize ih (i+1)
+    grind
+
+theorem memFilterWithIdx_of_mem {x : α} {l : List α} (P : α → Bool)
+    (hmem : x ∈ l) (hp : P x) : ∃ n, (x, n) ∈ filterWithIdx l P := by
+  rw [filterWithIdx]
+  apply memFilterWithIdxAux_of_mem 0 hmem hp
+
 end Utils
 end Earley

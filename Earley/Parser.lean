@@ -101,9 +101,10 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
 TODO: Realistically this should never return none if it gets called with a well-formed bin?
-      termination_by k obv doesnt work, there should be some sort of well-formed reasoning?
+      termination_by (w.length+1)*k + j obv doesnt work either, but in spirit
+      This requires another WF property.
 -/
-public partial def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : ¬ w.isEmpty)
+public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [])
     (bins : EarleyBins T N (w.length + 1)) (inv : isWellFormedBins G w bins) (k : Nat)
     (hk : k < w.length + 1) (j : Nat) (hj : j < bins[k].length) : Option (Tree T N) :=
   let binItem := bins[k][j]
@@ -133,6 +134,7 @@ public partial def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw :
       | Tree.node d ts => do
         let t ← buildTree G w hw bins inv k (by grind) j (by grind)
         some (Tree.node d (ts.append [t]))
+  partial_fixpoint
 
 /--
 Tries to parse a word with given grammar, and returns a parse tree if succesful.
@@ -141,7 +143,7 @@ public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (
     Option (Tree T N) :=
   -- TODO: strictly speaking, this can be inferred from the result of earleyList,
   --       but this is easier to split upon for now.
-  if hw : w.isEmpty then
+  if hw : w = [] then
     none
   else
     let ⟨bins, inv⟩ := earleyList G w
