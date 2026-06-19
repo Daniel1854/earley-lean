@@ -62,23 +62,19 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
   let M := G.rules.map (fun r => r.output.length) |>.max (by simp [hempty])
   let ruleSet := {x | x ∈ G.rules}
   -- The Set of all possible assignments of an EarleyItem with bounded rule length
-  let Top := Set.prod ruleSet (Set.prod {i | i ≤ M}
-    (Set.prod {i | i ≤ w.length} {i | i ≤ w.length}))
+  let Top := ruleSet.prod ({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length}))
   -- The product of four Finite Sets has to be finite as well.
   have finTop : Finite Top := by
     have hFinMem: Finite ruleSet := by
       simp only [Set.coe_setOf, ruleSet]
       classical
       infer_instance
-    -- This should be like really trivial in general since these mostly are natural numbers
-    -- and therefore we have a trivial n for Fin n?? Need to prove equivalence
     have hFinM : Finite {i | i ≤ M} := by
       classical
       infer_instance
     have hFinW : Finite {i | i ≤ w.length} := by
       classical
       infer_instance
-    -- FIXME: very curious. Instance chaining is interesting.
     have : Finite ↑({i | i ≤ w.length}.prod {i | i ≤ w.length}) := by
       apply Finite.Set.finite_prod
     have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
@@ -97,10 +93,10 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
       have ⟨hmem,hpos,hs,he⟩ := wf
       have : x.rule.output.length ≤ M := by
         have : x.rule.output.length ∈ List.map (fun r => r.output.length) G.rules := by grind
-        grind [List.le_max_of_mem this]
-      grind
+        simp [List.le_max_of_mem this, M]
+      omega
     simp only [item_intro, Set.mem_image, Prod.exists]
-    grind [Set.prod, item_intro]
+    grind [Set.prod]
   exact Finite.Set.subset (Top.image item_intro) this
 
 /--
