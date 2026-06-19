@@ -80,6 +80,22 @@ def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
   let ⟨graph, _⟩ := toGraphvizAux "Digraph tree {" 1 t
   graph ++ "\n}"
 
+
+-- TODO: A bit curious that grind isn't able to extract that information well
+omit [BEq T] [BEq N] in
+lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
+    {endIdxA i j m n : Nat} {ps : List ReductionPointer}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (hm : m < w.length + 1) (hn : n < bins[m].length)
+    (h : bins[m][n].pointer = Pointer.reduction (⟨endIdxA, i, j⟩::ps)) :
+    endIdxA ≤ w.length ∧ j < bins[m].length ∧
+    ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length := by
+  have ⟨_, pInv⟩:= hbins m (by grind)
+  simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
+  have := pInv bins[m][n] (by grind)
+  simp only [h, List.mem_cons, forall_eq_or_imp] at this
+  grind
+
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
 TODO: Realistically this should never return none if it gets called with a well-formed bin?
@@ -104,36 +120,16 @@ public partial def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw :
       some (Tree.node d (ts.append [Tree.leaf (Symbol.terminal w[k-1])]))
   | .reduction ps =>
     -- Add sub tree starting from non-terminal
-    match hps : ps with
+    match ps with
     | [] => none
-    -- TODO: Any reduction pointer is sufficient since we simply take one of the parse trees?
+    -- We simply take the first possible parse tree.
     | ⟨endIdxA,i,j⟩ :: _ => do
-      -- TODO: This is rather ugly. I should introduce a lemma to unfold WFPointers
-      --       if I know the item. Grind doesnt seem to be able to reason about reduction pointers
-      --       without simp/extra lemmas, that cannot be used by grind itself.
-      have hEnd : endIdxA < w.length + 1 := by
-        have ⟨_, pInv⟩:= inv k (by grind)
-        simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
-        have := pInv binItem (by grind)
-        simp only [hp, List.mem_cons, forall_eq_or_imp] at this
-        grind
-      have hi : i < bins[endIdxA].length := by
-        have ⟨_, pInv⟩:= inv k (by grind)
-        simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
-        have := pInv binItem (by grind)
-        simp only [hp, List.mem_cons, forall_eq_or_imp] at this
-        grind
-      let t ← buildTree G w hw bins inv endIdxA hEnd i hi
+      have := wfPointerAux_of_redPointer inv _ _ hp
+      let t ← buildTree G w hw bins inv endIdxA (by grind) i (by grind)
       match t with
       | Tree.leaf d => none
       | Tree.node d ts => do
-        have hj : j < bins[k].length := by
-          have ⟨_, pInv⟩:= inv k (by grind)
-          simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
-          have := pInv binItem (by grind)
-          simp only [hp, List.mem_cons, forall_eq_or_imp] at this
-          grind
-        let t ← buildTree G w hw bins inv k (by grind) j hj
+        let t ← buildTree G w hw bins inv k (by grind) j (by grind)
         some (Tree.node d (ts.append [t]))
 
 /--
@@ -141,7 +137,8 @@ Tries to parse a word with given grammar, and returns a parse tree if succesful.
 -/
 public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : List T) :
     Option (Tree T N) :=
-  -- TODO: strictly speaking, this can be inferred from the result of earleyList
+  -- TODO: strictly speaking, this can be inferred from the result of earleyList,
+  --       but this is easier to split upon for now.
   if hw : w.isEmpty then
     none
   else
