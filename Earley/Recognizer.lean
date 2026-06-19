@@ -165,7 +165,7 @@ A combination of an EarleyBins with a well-formedness Invariant about it.
 -/
 public structure WfEarleyBins (T N : Type) (G : ContextFreeGrammarList T N) (w : List T) where
   bins : EarleyBins T N (w.length + 1)
-  itemInv : isWellFormedBins G w bins
+  inv : isWellFormedBins G w bins
 
 /--
 List-based implementation of the .init operation.
