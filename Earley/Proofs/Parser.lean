@@ -89,7 +89,7 @@ theorem updateBinAux_of_updRed (xs xs' : List (BinItem T N)) (y : BinItem T N) (
     (hy : y.pointer = Pointer.reduction yP) (hxs' : xs' = updateBinAux xs y) :
     xs'.length = xs.length ∧ ((hlen : xs'.length = xs.length) →
     xs'[i].pointer = Pointer.reduction (xP.append yP) ∧
-    (∀ j, (hj : j < xs'.length ∧ i ≠ j) → xs'[j] = xs[j]'(by grind))) := by
+    (∀ j, (hj : j < xs'.length ∧ i ≠ j) → xs'[j] = xs[j]'(by lia))) := by
   induction xs generalizing i y xs' with
   | nil => grind
   | cons x xs ih =>
@@ -127,7 +127,6 @@ lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {w : List T} 
   have := pInv bins[k][j] (by simp)
   grind
 
-
 section Soundness
 
 /--
@@ -140,7 +139,7 @@ public theorem soundnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G
   simp only [parse, Option.dite_none_left_eq_some] at ht
   rcases ht with ⟨t, hnEmpty, ht⟩
   split at ht
-  · grind
+  · simp at ht
   · rename_i x idx bins hf
     apply soundnessEarleyList w h hw heps
     simp only [recognizeList, decide_eq_true_eq]
@@ -167,7 +166,8 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k :
   unfold buildTree
   simp only [List.append_eq, Option.bind_eq_bind]
   split
-  · grind
+  · use Symbol.nonterminal bins[k][j].item.rule.input
+    use []
   · rename_i i heq
     -- TODO: this is required for termination, and has to be handled through isWellFormedPointers
     --       predecessor can only exist through .scan, and thus k has to have been incremented
@@ -179,9 +179,9 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k :
     | [] => grind
     | ⟨endIdxA, pi, pj⟩ :: ps =>
       have := wfPointerAux_of_redPointer hbins _ _ heq
-      have := someNode_of_buildTree G w pi endIdxA hbins (by grind) (by grind) hw
+      have := someNode_of_buildTree G w pi endIdxA hbins (by lia) (by lia) hw
       rcases this with ⟨d,ts,ht⟩
-      have := someNode_of_buildTree G w pj k hbins (by grind) (by grind) hw
+      have := someNode_of_buildTree G w pj k hbins (by lia) (by lia) hw
       grind
 -- If we go away from the two-dimensional view of the bins to a one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
@@ -212,8 +212,8 @@ decreasing_by
 lemma some_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j : Nat)
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (hj : j < bins[w.length].length) (hw : w ≠ []) :
-    ∃ t, buildTree G w hw bins hbins w.length (by grind) j hj = some t := by
-  have := someNode_of_buildTree G w j w.length hbins (by grind) (by grind) hw
+    ∃ t, buildTree G w hw bins hbins w.length (by simp) j hj = some t := by
+  have := someNode_of_buildTree G w j w.length hbins (by simp) (by lia) hw
   rcases this with ⟨d, ts, h⟩
   use Tree.node d ts
 

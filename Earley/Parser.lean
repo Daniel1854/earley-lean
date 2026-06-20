@@ -89,11 +89,11 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
     (h : bins[m][n].pointer = Pointer.reduction (⟨endIdxA, i, j⟩::ps)) :
     endIdxA ≤ w.length ∧ j < bins[m].length ∧
     ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length := by
-  have ⟨_, pInv⟩:= hbins m (by grind)
+  have ⟨_, pInv⟩:= hbins m (by lia)
   simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
   have := pInv bins[m][n] (by grind)
   simp only [h, List.mem_cons, forall_eq_or_imp] at this
-  grind
+  lia
 
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
@@ -108,12 +108,12 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
     some (Tree.node (Symbol.nonterminal binItem.item.rule.input) [])
   | .predecessor i => do
     -- Add sub tree starting from terminal
+    have : k - 1 < w.length := by grind
     have : i < bins[k - 1].length := by grind
-    let t ← buildTree G w hw bins inv (k-1) (by grind) i this
+    let t ← buildTree G w hw bins inv (k-1) (by lia) i this
     match t with
     | Tree.leaf d => none
     | Tree.node d ts =>
-      have : k - 1 < w.length := by grind
       some (Tree.node d (ts.append [Tree.leaf (Symbol.terminal w[k-1])]))
   | .reduction ps =>
     -- Add sub tree starting from non-terminal
@@ -122,11 +122,11 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
     -- We simply take the first possible parse tree.
     | ⟨endIdxA,i,j⟩ :: _ => do
       have := wfPointerAux_of_redPointer inv _ _ hp
-      let t ← buildTree G w hw bins inv endIdxA (by grind) i (by grind)
+      let t ← buildTree G w hw bins inv endIdxA (by lia) i (by lia)
       match t with
       | Tree.leaf d => none
       | Tree.node d ts => do
-        let t ← buildTree G w hw bins inv k (by grind) j (by grind)
+        let t ← buildTree G w hw bins inv k (by lia) j (by lia)
         some (Tree.node d (ts.append [t]))
 -- If we go away from the two-dimensional view of the bins to a one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
@@ -173,7 +173,7 @@ public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (
     | [] => none
     | (_, i)::_ =>
       have := filterWithIdx_le_length bins[w.length] P i (by grind)
-      buildTree G w hw bins inv w.length (by grind) i this
+      buildTree G w hw bins inv w.length (by simp) i this
 
 end Parser
 end Earley
