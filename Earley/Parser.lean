@@ -82,7 +82,6 @@ def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
   let ⟨graph, _⟩ := toGraphvizAux "Digraph tree {" 1 t
   graph ++ "\n}"
 
-
 -- TODO: A bit curious that grind isn't able to extract that information well
 omit [BEq T] [BEq N] in
 lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
@@ -100,9 +99,6 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
 
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
-TODO: Realistically this should never return none if it gets called with a well-formed bin?
-      termination_by (w.length+1)*k + j obv doesnt work either, but in spirit
-      This requires another WF property.
 -/
 public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [])
     (bins : EarleyBins T N (w.length + 1)) (inv : isWellFormedBins G w bins) (k : Nat)
@@ -134,7 +130,33 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
       | Tree.node d ts => do
         let t ← buildTree G w hw bins inv k (by grind) j (by grind)
         some (Tree.node d (ts.append [t]))
-  partial_fixpoint
+-- If we go away from the two-dimensional view of the bins to a one-dimensional one,
+-- then each recursive call accesses a smaller index of the bin.
+termination_by ((bins.map List.length).extract 0 k).foldl Add.add 0 + j
+decreasing_by
+  -- Predecessor i: since k gets decremented, this is trivially true.
+  · have : i < bins[k-1].length + j := by lia
+    -- TODO: some foldl Lemma
+    have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k) =
+           Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 (k - 1)) +
+      bins[k-1].length := by sorry
+    lia
+  -- Tree for the original item to be completed: bins[endIdxA][i]
+  · rename Nat => pj
+    -- With an epsilonfree grammar, the `or` would not be necessary?
+    -- TODO: This should be part of isWellFormedPointer.
+    have : endIdxA < k ∨ (endIdxA = k ∧ i < j) := by sorry
+    rcases this with h | h
+    · have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 endIdxA)
+             + bins[endIdxA].length ≤
+             Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k)
+        := by sorry
+      lia
+    · lia
+  -- Tree for the finished item within the same bin: bins[k][pj]
+  · rename Nat => pj
+    have : pj < j := by sorry
+    simp [this]
 
 /--
 Tries to parse a word with given grammar, and returns a parse tree if succesful.

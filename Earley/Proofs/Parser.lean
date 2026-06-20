@@ -56,6 +56,7 @@ lemma eqLength_of_updateBinAux_of_mem (xs : List (BinItem T N)) (y : BinItem T N
   | nil => grind
   | cons x xs ih => grind
 
+-- TODO: these are all unused but I can see them becoming useful for concise recognizer proofs
 lemma updateBinAux_of_Red_of_eqItem (xs : List (BinItem T N)) (y : BinItem T N) {i j : Nat}
     (hNoDup : (items xs).Nodup) {yP : List ReductionPointer} (hy : y.pointer = Pointer.reduction yP)
     (hi : i < xs.length) (hx : xs[i].pointer = Pointer.null ∨ xs[i].pointer = Pointer.predecessor j)
@@ -82,7 +83,6 @@ lemma updateBinAux_of_Red_of_neqItem (xs : List (BinItem T N)) (y : BinItem T N)
       grind [List.nodup_iff_getElem?_ne_getElem?]
     grind [updateBinAux_of_Red_of_neqItemAux]
 
--- TODO: this is unused, but I can see it being useful hm
 theorem updateBinAux_of_updRed (xs xs' : List (BinItem T N)) (y : BinItem T N) (i : Nat)
     (hNoDup : (items xs).Nodup) {xP yP : List ReductionPointer}
     (hi : i < xs.length) (hx : xs[i].pointer = Pointer.reduction xP) (heq : y.item = xs[i].item)
@@ -116,6 +116,18 @@ theorem updateBinAux_of_updRed (xs xs' : List (BinItem T N)) (y : BinItem T N) (
       have := updateBinAux_of_Red_of_neqItem (x::xs) y i j
       grind
 
+omit [BEq T] [BEq N] in
+lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {w : List T} {i k j : Nat}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (hm : k < w.length + 1) (hn : j < bins[k].length)
+    (h : bins[k][j].pointer = Pointer.predecessor i) :
+    k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length) := by
+  have ⟨_, pInv⟩:= hbins k (by simp [hm])
+  simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
+  have := pInv bins[k][j] (by simp)
+  grind
+
+
 section Soundness
 
 /--
@@ -145,24 +157,8 @@ end Soundness
 section Completeness
 
 /--
-A call to buildTree for well-formed bins never returns none.
-TODO: this should be quite close to the termination argument?
--/
-lemma someNode_of_buildTree_partialFixpoint (G : ContextFreeGrammarList T N) (w : List T)
-    (j k : Nat) {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    (hk : k < w.length + 1) (hj : j < bins[k].length) (hw : w ≠ []) :
-    ∃ d ts, buildTree G w hw bins hbins k hk j hj = some (Tree.node d ts) := by
-  apply buildTree.partial_correctness G w hw bins hbins
-    (motive := fun k hk j hj t =>
-     ∃ d ts, buildTree G w hw bins hbins k hk j hj = some (Tree.node d ts))
-  · intro f g k hk j hj t hwhat
-    sorry
-  · sorry
-  · sorry
-
-/--
-A call to buildTree for well-formed bins never returns none.
-TODO: this should be quite close to the termination argument?
+A call to buildTree for well-formed bins never returns none or even a Tree.leaf.
+This follows the structure of buildTree quite closely, and the same termination argument holds.
 -/
 lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k : Nat)
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
@@ -173,17 +169,45 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k :
   split
   · grind
   · rename_i i heq
-    -- this is required for termination, and has to be handled through isWellFormedPointers
-    -- predecessor can only exist through scan, and k gets incremented
+    -- TODO: this is required for termination, and has to be handled through isWellFormedPointers
+    --       predecessor can only exist through .scan, and thus k has to have been incremented
     have : 0 < k := by sorry
     have := someNode_of_buildTree G w i (k-1) hbins
     grind
   · rename_i ps heq
-    -- this is an unfortunate side effect of not having pointers as
-    -- ReductionPointer → List ReductionPointer
-    have : ps ≠ [] := by sorry
-      --let t ← buildTree G w hw bins inv endIdxA (by grind) i (by grind)
-    sorry
+    match ps with
+    | [] => grind
+    | ⟨endIdxA, pi, pj⟩ :: ps =>
+      have := wfPointerAux_of_redPointer hbins _ _ heq
+      have := someNode_of_buildTree G w pi endIdxA hbins (by grind) (by grind) hw
+      rcases this with ⟨d,ts,ht⟩
+      have := someNode_of_buildTree G w pj k hbins (by grind) (by grind) hw
+      grind
+-- If we go away from the two-dimensional view of the bins to a one-dimensional one,
+-- then each recursive call accesses a smaller index of the bin.
+termination_by ((bins.map List.length).extract 0 k).foldl Add.add 0 + j
+decreasing_by
+  -- Predecessor i: since k gets decremented, this is trivially true.
+  · rename Nat => i
+    have : i < bins[k-1].length + j := by lia
+    -- TODO: some foldl Lemma
+    have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k) =
+           Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 (k - 1)) +
+      bins[k-1].length := by sorry
+    lia
+  -- Tree for the original item to be completed: bins[endIdxA][i]
+  · have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by sorry
+    rcases this with h | h
+    · have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 endIdxA)
+             + bins[endIdxA].length ≤
+             Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k)
+        := by sorry
+      lia
+    · lia
+  -- Tree for the finished item within the same bin: bins[k][pj]
+  · rename Nat => pj
+    have : pj < j := by sorry
+    simp [this]
 
 lemma some_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j : Nat)
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)

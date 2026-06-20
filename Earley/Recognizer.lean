@@ -144,7 +144,7 @@ public def isWellFormedPointer (w : List T) (bins : EarleyBins T N (w.length + 1
   match pointer with
   | .null => true
   | .predecessor i => k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length)
-  | .reduction ps => k ≤ w.length ∧ ∀ p ∈ ps, p.endIdxA ≤ w.length ∧
+  | .reduction ps => k ≤ w.length ∧ ps ≠ [] ∧ ∀ p ∈ ps, p.endIdxA ≤ w.length ∧
       ((h : p.endIdxA ≤ w.length) → p.i < bins[p.endIdxA].length) ∧
       ((h : k ≤ w.length) → p.j < bins[k].length)
 
@@ -388,6 +388,10 @@ lemma wfBinPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
         have hxP : x.pointer = Pointer.reduction xP := by grind
         have hx2 : x = ⟨x.item, Pointer.reduction xP⟩ := by grind
         have hy2 : y = ⟨x.item, Pointer.reduction yP⟩ := by grind
+        simp [isWellFormedPointer, hy2] at hwfy
+        have : xP ++ yP ≠ [] := by
+          have : yP ≠ [] := by grind
+          simp [this]
         grind
       · grind
     · split <;> grind
@@ -525,7 +529,7 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} {w : List T} (
   rcases hmemx with ⟨z,zIdx,⟨hmemz,hx⟩⟩
   have xP : x.pointer = Pointer.reduction [{ endIdxA := y.startIdx, i := zIdx, j := j }] := by grind
   simp only [xP, List.mem_cons, List.not_mem_nil, or_false, forall_eq]
-  refine ⟨by grind, by grind, ?_, by grind⟩
+  refine ⟨by grind, by grind, by grind, ?_, by grind⟩
   intro hbounds
   have := filterWithIdx_le_length bins[y.startIdx]
     (fun x => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)) zIdx (by grind)
@@ -629,20 +633,20 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
       updateBins bins k newItems (by omega)
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList G w k bins' (by omega) (j+1) this
-  termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x }.ncard + 1 - j
-  decreasing_by
-    apply Nat.sub_lt_sub_left
-    · clear this bins'
-      specialize hbins k (by grind)
-      let wfItemsBin := { x | isWellFormed G.rules (w.map Symbol.terminal) x }
-      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (w.map Symbol.terminal)
-      have : (items bins[k]).length ≤ wfItemsBin.ncard := by
-        have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
-        have ⟨⟨hNoDup, _⟩, _⟩ := hbins
-        let P := (fun x => isWellFormed G.rules (w.map Symbol.terminal) x)
-        apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
-      grind
-    · grind
+termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x }.ncard + 1 - j
+decreasing_by
+  apply Nat.sub_lt_sub_left
+  · clear this bins'
+    specialize hbins k (by grind)
+    let wfItemsBin := { x | isWellFormed G.rules (w.map Symbol.terminal) x }
+    have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (w.map Symbol.terminal)
+    have : (items bins[k]).length ≤ wfItemsBin.ncard := by
+      have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
+      have ⟨⟨hNoDup, _⟩, _⟩ := hbins
+      let P := (fun x => isWellFormed G.rules (w.map Symbol.terminal) x)
+      apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
+    grind
+  · grind
 
 /--
 Computes up to the k-th bin.
