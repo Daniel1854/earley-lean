@@ -141,7 +141,7 @@ public def isWellFormedPointer (w : List T) (bins : EarleyBins T N (w.length + 1
     (pointer : Pointer) (k : Nat) : Prop :=
   match pointer with
   | .null => true
-  | .predecessor i => k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length)
+  | .predecessor i => k ≠ 0 ∧ k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length)
   | .reduction ps => k ≤ w.length ∧ ps ≠ [] ∧ ∀ p ∈ ps, p.endIdxA ≤ w.length ∧
       ((h : p.endIdxA ≤ w.length) → p.i < bins[p.endIdxA].length) ∧
       ((h : k ≤ w.length) → p.j < bins[k].length)

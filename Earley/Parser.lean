@@ -91,8 +91,8 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
     ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length := by
   have ⟨_, pInv⟩:= hbins m (by lia)
   simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
-  have := pInv bins[m][n] (by grind)
-  simp only [h, List.mem_cons, forall_eq_or_imp] at this
+  specialize pInv bins[m][n] (by simp)
+  simp only [h, List.mem_cons, forall_eq_or_imp] at pInv
   lia
 
 lemma foldl_add_nth {α : Type} (xs : List (List α)) (m k : Nat) (hk : k < xs.length) :
@@ -177,8 +177,7 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
 -- then each recursive call accesses a smaller index of the bin.
 termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
 decreasing_by
-  · have : k ≠ 0 := by sorry -- TODO: extended WFPointer
-    have : i < bins[k-1].length + j := by lia
+  · have : k ≠ 0 := by grind
     have : ((bins.toList.map List.length).take (k - 1)).foldl Add.add 0 + bins[k-1].length =
         ((bins.toList.map List.length).take k).foldl Add.add 0 := by
       have := foldl_add_nth bins.toList 0 (k-1) (by grind)
