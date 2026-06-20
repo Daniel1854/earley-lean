@@ -155,6 +155,8 @@ end Soundness
 
 section Completeness
 
+-- TODO: care about this.
+omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 /--
 A call to buildTree for well-formed bins never returns none or even a Tree.leaf.
 This follows the structure of buildTree quite closely, and the same termination argument holds.
@@ -169,9 +171,6 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k :
   · use Symbol.nonterminal bins[k][j].item.rule.input
     use []
   · rename_i i heq
-    -- TODO: this is required for termination, and has to be handled through isWellFormedPointers
-    --       predecessor can only exist through .scan, and thus k has to have been incremented
-    have : 0 < k := by sorry
     have := someNode_of_buildTree G w i (k-1) hbins
     grind
   · rename_i ps heq
@@ -185,30 +184,29 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k :
       grind
 -- If we go away from the two-dimensional view of the bins to a one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
-termination_by ((bins.map List.length).extract 0 k).foldl Add.add 0 + j
+termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
 decreasing_by
-  -- Predecessor i: since k gets decremented, this is trivially true.
   · rename Nat => i
+    have : k ≠ 0 := by sorry -- TODO: extended WFPointer
     have : i < bins[k-1].length + j := by lia
-    -- TODO: some foldl Lemma
-    have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k) =
-           Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 (k - 1)) +
-      bins[k-1].length := by sorry
+    have : ((bins.toList.map List.length).take (k - 1)).foldl Add.add 0 + bins[k-1].length =
+        ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+      have := foldl_add_nth bins.toList 0 (k-1) (by grind)
+      grind
     lia
-  -- Tree for the original item to be completed: bins[endIdxA][i]
-  · have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by sorry
+  · have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by sorry -- TODO: extended WFPointer
     rcases this with h | h
-    · have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 endIdxA)
-             + bins[endIdxA].length ≤
-             Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k)
-        := by sorry
+    · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
+             ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+        have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
+        grind
       lia
     · lia
-  -- Tree for the finished item within the same bin: bins[k][pj]
   · rename Nat => pj
-    have : pj < j := by sorry
+    have : pj < j := by sorry -- TODO: extended WFPointer
     simp [this]
 
+omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma some_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j : Nat)
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (hj : j < bins[w.length].length) (hw : w ≠ []) :
