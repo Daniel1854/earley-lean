@@ -95,6 +95,51 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
   simp only [h, List.mem_cons, forall_eq_or_imp] at this
   lia
 
+lemma foldl_add_nth {α : Type} (xs : List (List α)) (m k : Nat) (hk : k < xs.length) :
+    ((xs.map List.length).take k).foldl Add.add m + xs[k].length =
+    ((xs.map List.length).take (k+1)).foldl Add.add m := by
+  induction xs generalizing m k with
+  | nil => grind
+  | cons x xs ih =>
+    if h : k = 0 then
+      simp only [h, List.map_cons, List.take_zero, List.foldl_nil, List.getElem_cons_zero, zero_add,
+        List.take_succ_cons, List.foldl_cons]
+      lia
+    else
+      have := ih x.length (k-1) (by grind)
+      grind
+
+lemma foldl_le_acc (xs : List Nat) (n : Nat) : n ≤ xs.foldl Add.add n := by
+  induction xs generalizing n with
+  | nil => grind
+  | cons head tail ih => grind
+
+lemma foldl_le_of_le (xs : List Nat) (m k j : Nat) (hk : k < xs.length) (hjk : j < k) :
+    (xs.take j).foldl Add.add m + xs[j] ≤ (xs.take k).foldl Add.add m := by
+  induction xs generalizing m k j with
+  | nil => grind
+  | cons x xs ih =>
+    if h : k = 0 then
+      lia
+    else if hj : j = 0 then
+      simp only [hj, List.take_zero, List.foldl_nil, List.getElem_cons_zero]
+      have := @List.take_succ_cons _ x xs (k-1)
+      grind [foldl_le_acc]
+    else
+      specialize ih (m+x) (k-1) (j-1) (by grind) (by grind)
+      have := @List.take_succ_cons _ x xs (k-1)
+      have heq : k - 1 + 1 = k := by lia
+      rw [heq] at this
+      simp only [this, List.foldl_cons, ge_iff_le]
+      have := @List.take_succ_cons _ x xs (j-1)
+      have heq : j - 1 + 1 = j := by lia
+      rw [heq] at this
+      simp only [this, List.foldl_cons, ge_iff_le]
+      have : j - 1 < xs.length := by grind
+      have : (x::xs)[j] = xs[j-1] := by grind
+      rw [this]
+      apply ih
+
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
 -/
@@ -128,32 +173,28 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
       | Tree.node d ts => do
         let t ← buildTree G w hw bins inv k (by lia) j (by lia)
         some (Tree.node d (ts.append [t]))
--- If we go away from the two-dimensional view of the bins to a one-dimensional one,
+-- Idea: if we go think of the two-dimensional bins as a continuous one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
-termination_by ((bins.map List.length).extract 0 k).foldl Add.add 0 + j
+termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
 decreasing_by
-  -- Predecessor i: since k gets decremented, this is trivially true.
-  · have : i < bins[k-1].length + j := by lia
-    -- TODO: some foldl Lemma
-    have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k) =
-           Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 (k - 1)) +
-      bins[k-1].length := by sorry
+  · have : k ≠ 0 := by sorry -- TODO: extended WFPointer
+    have : i < bins[k-1].length + j := by lia
+    have : ((bins.toList.map List.length).take (k - 1)).foldl Add.add 0 + bins[k-1].length =
+        ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+      have := foldl_add_nth bins.toList 0 (k-1) (by grind)
+      grind
     lia
-  -- Tree for the original item to be completed: bins[endIdxA][i]
   · rename Nat => pj
-    -- With an epsilonfree grammar, the `or` would not be necessary?
-    -- TODO: This should be part of isWellFormedPointer.
-    have : endIdxA < k ∨ (endIdxA = k ∧ i < j) := by sorry
+    have : endIdxA < k ∨ (endIdxA = k ∧ i < j) := by sorry -- TODO: extended WFPointer
     rcases this with h | h
-    · have : Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 endIdxA)
-             + bins[endIdxA].length ≤
-             Vector.foldl Add.add 0 ((Vector.map List.length bins).extract 0 k)
-        := by sorry
+    · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
+             ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+        have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
+        grind
       lia
     · lia
-  -- Tree for the finished item within the same bin: bins[k][pj]
   · rename Nat => pj
-    have : pj < j := by sorry
+    have : pj < j := by sorry -- TODO: extended WFPointer
     simp [this]
 
 /--
