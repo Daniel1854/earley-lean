@@ -88,11 +88,15 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
     (hm : m < w.length + 1) (hn : n < bins[m].length)
     (h : bins[m][n].pointer = Pointer.reduction (⟨endIdxA, i, j⟩::ps)) :
     endIdxA ≤ w.length ∧ j < bins[m].length ∧
-    ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length := by
-  have ⟨_, pInv⟩:= hbins m (by lia)
+    ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length ∧
+    (endIdxA < m ∨ (endIdxA = m ∧ i < n)) ∧ j < n := by
+  have ⟨_, pInv, sInv⟩:= hbins m (by lia)
   simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
   specialize pInv bins[m][n] (by simp)
   simp only [h, List.mem_cons, forall_eq_or_imp] at pInv
+  simp only [isSoundPointer] at sInv
+  specialize sInv n (by grind)
+  simp only [h, List.mem_cons, forall_eq_or_imp] at sInv
   lia
 
 lemma foldl_add_nth {α : Type} (xs : List (List α)) (m k : Nat) (hk : k < xs.length) :
@@ -184,7 +188,7 @@ decreasing_by
       grind
     lia
   · rename Nat => pj
-    have : endIdxA < k ∨ (endIdxA = k ∧ i < j) := by sorry -- TODO: extended WFPointer
+    have : endIdxA < k ∨ (endIdxA = k ∧ i < j) := by grind [wfPointerAux_of_redPointer]
     rcases this with h | h
     · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
              ((bins.toList.map List.length).take k).foldl Add.add 0 := by
@@ -193,7 +197,7 @@ decreasing_by
       lia
     · lia
   · rename Nat => pj
-    have : pj < j := by sorry -- TODO: extended WFPointer
+    have : pj < j := by grind [wfPointerAux_of_redPointer]
     simp [this]
 
 /--

@@ -55,7 +55,7 @@ lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {w : List T} 
     (hm : k < w.length + 1) (hn : j < bins[k].length)
     (h : bins[k][j].pointer = Pointer.predecessor i) :
     k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length) := by
-  have ⟨_, pInv⟩:= hbins k (by simp [hm])
+  have ⟨_, pInv, _⟩ := hbins k (by simp [hm])
   simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
   specialize pInv bins[k][j] (by simp)
   grind
@@ -126,7 +126,7 @@ decreasing_by
       have := foldl_add_nth bins.toList 0 (k-1) (by grind)
       grind
     lia
-  · have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by sorry -- TODO: extended WFPointer
+  · have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind [wfPointerAux_of_redPointer]
     rcases this with h | h
     · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
              ((bins.toList.map List.length).take k).foldl Add.add 0 := by
@@ -135,7 +135,7 @@ decreasing_by
       lia
     · lia
   · rename Nat => pj
-    have : pj < j := by sorry -- TODO: extended WFPointer
+    have : pj < j := by grind [wfPointerAux_of_redPointer]
     simp [this]
 
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
