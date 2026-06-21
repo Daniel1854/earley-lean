@@ -34,23 +34,18 @@ open ContextFreeGrammar
 
 variable {T N : Type}
 /--
-Takes a terrible Prod and turns it into an EarleyItem.
-TODO: this doesnt feel much like lean
+Takes a Prod and turns it into an EarleyItem.
 -/
-def item_intro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
+def itemIntro (input : (ContextFreeRule T N × ℕ × ℕ × ℕ)) : EarleyItem T N :=
   ⟨input.1,input.2.1,input.2.2.1,input.2.2.2⟩
-
-public theorem setFiniteProd_of_Finite {α β : Type} (s : Set α) (t : Set β) [Finite s]
-    [Finite t] : Finite (Set.prod s t) := by
-  apply Finite.Set.finite_prod s t
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific non-empty grammar and word.
 
 In essence we define the superset of all possible EarleyItems ⟨rule, pos, i, j⟩.
 Due the WellFormed-constraints, this results in a Product Set `Top` of
-- all rule of G
-- all position for the value range of 0 to the maximum length of any of the rules
+- all rules of G
+- all positions for the value range of 0 to the maximum length of any of the rules
 - all numbers between 0 and the length of `w` for the indices `i` and `j`
 
 The members of the Product are all individually finite, therefore the Product is also finite.
@@ -84,8 +79,8 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
     have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
       apply Finite.Set.finite_prod
     apply Finite.Set.finite_prod
-  have finImageTop: Finite (Top.image item_intro) := Finite.Set.finite_image Top item_intro
-  have : { x | isWellFormed G.rules w x } ⊆ Top.image item_intro := by
+  have finImageTop: Finite (Top.image itemIntro) := Finite.Set.finite_image Top itemIntro
+  have : { x | isWellFormed G.rules w x } ⊆ Top.image itemIntro := by
     intro x hmemx
     have : x.position ≤ M := by
       have wf : isWellFormed G.rules w x := by grind
@@ -95,9 +90,9 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
         have : x.rule.output.length ∈ List.map (fun r => r.output.length) G.rules := by grind
         simp [List.le_max_of_mem this, M]
       omega
-    simp only [item_intro, Set.mem_image, Prod.exists]
+    simp only [itemIntro, Set.mem_image, Prod.exists]
     grind [Set.prod]
-  exact Finite.Set.subset (Top.image item_intro) this
+  exact Finite.Set.subset (Top.image itemIntro) this
 
 /--
 There is only a finite number of well-formed EarleyItems for a specific grammar and word.
