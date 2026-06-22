@@ -86,17 +86,17 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
     {endIdxA i j m n : Nat} {ps : List ReductionPointer}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (hm : m < w.length + 1) (hn : n < bins[m].length)
-    (h : bins[m][n].pointer = Pointer.reduction (⟨endIdxA, i, j⟩::ps)) :
+    (h : bins[m][n].pointer = Pointer.reduction ⟨endIdxA, i, j⟩ ps) :
     endIdxA ≤ w.length ∧ j < bins[m].length ∧
     ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length ∧
     (endIdxA < m ∨ (endIdxA = m ∧ i < n)) ∧ j < n := by
   have ⟨_, pInv, sInv⟩:= hbins m (by lia)
   simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
   specialize pInv bins[m][n] (by simp)
-  simp only [h, List.mem_cons, forall_eq_or_imp] at pInv
+  simp only [h] at pInv
   simp only [isSoundPointer] at sInv
   specialize sInv n (by grind)
-  simp only [h, List.mem_cons, forall_eq_or_imp] at sInv
+  simp only [h] at sInv
   lia
 
 lemma foldl_add_nth {α : Type} (xs : List (List α)) (m k : Nat) (hk : k < xs.length) :
@@ -164,19 +164,15 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
     | Tree.leaf d => none
     | Tree.node d ts =>
       some (Tree.node d (ts.append [Tree.leaf (Symbol.terminal w[k-1])]))
-  | .reduction ps =>
-    -- Add sub tree starting from non-terminal
-    match ps with
-    | [] => none
+  | .reduction ⟨endIdxA,i,j⟩ ps => do
     -- We simply take the first possible parse tree.
-    | ⟨endIdxA,i,j⟩ :: _ => do
-      have := wfPointerAux_of_redPointer inv _ _ hp
-      let t ← buildTree G w hw bins inv endIdxA (by lia) i (by lia)
-      match t with
-      | Tree.leaf d => none
-      | Tree.node d ts => do
-        let t ← buildTree G w hw bins inv k (by lia) j (by lia)
-        some (Tree.node d (ts.append [t]))
+    have := wfPointerAux_of_redPointer inv _ _ hp
+    let t ← buildTree G w hw bins inv endIdxA (by lia) i (by lia)
+    match t with
+    | Tree.leaf d => none
+    | Tree.node d ts => do
+      let t ← buildTree G w hw bins inv k (by lia) j (by lia)
+      some (Tree.node d (ts.append [t]))
 -- Idea: if we go think of the two-dimensional bins as a continuous one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
 termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j

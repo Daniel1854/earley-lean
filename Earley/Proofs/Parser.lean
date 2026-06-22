@@ -106,15 +106,12 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k :
   · rename_i i heq
     have := someNode_of_buildTree G w i (k-1) hbins
     grind
-  · rename_i ps heq
-    match ps with
-    | [] => grind
-    | ⟨endIdxA, pi, pj⟩ :: ps =>
-      have := wfPointerAux_of_redPointer hbins _ _ heq
-      have := someNode_of_buildTree G w pi endIdxA hbins (by lia) (by lia) hw
-      rcases this with ⟨d,ts,ht⟩
-      have := someNode_of_buildTree G w pj k hbins (by lia) (by lia) hw
-      grind
+  · rename_i endIdxA pi pj _ heq
+    have := wfPointerAux_of_redPointer hbins _ _ heq
+    have := someNode_of_buildTree G w pi endIdxA hbins (by lia) (by lia) hw
+    rcases this with ⟨d,ts,ht⟩
+    have := someNode_of_buildTree G w pj k hbins (by lia) (by lia) hw
+    grind
 -- If we go away from the two-dimensional view of the bins to a one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
 termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
@@ -126,7 +123,8 @@ decreasing_by
       have := foldl_add_nth bins.toList 0 (k-1) (by grind)
       grind
     lia
-  · have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind [wfPointerAux_of_redPointer]
+  · rename_i endIdxA pi pj _ _ _ _
+    have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind [wfPointerAux_of_redPointer]
     rcases this with h | h
     · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
              ((bins.toList.map List.length).take k).foldl Add.add 0 := by
