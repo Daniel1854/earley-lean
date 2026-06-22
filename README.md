@@ -27,9 +27,6 @@ and you can look at the rendered file.
   - [x] EarleyItem
   - [x] EarleySet
   - [x] Correctness Proof
-- [x] Fixpoint Iteration
-  - [x] Implement
-  - [ ] Refinement Correctness Proof
 - [x] Recognizer
   - [x] Implement
   - [x] Termination Proof
@@ -37,8 +34,8 @@ and you can look at the rendered file.
 - [x] Parser
   - [x] Implementation
   - [x] Graphviz
-  - [ ] Termination Proof
-  - [ ] Correctness Proof
+  - [x] Termination Proof
+  - [x] Correctness Proof
 - [ ] Evaluation/Benchmark
 - [ ] Performance Improvements?
 
