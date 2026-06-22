@@ -38,7 +38,7 @@ instance : Repr Pointer where
  reprPrec sym _ := match sym with
    | Pointer.null => "null"
    | Pointer.predecessor i => s!"pre {i}"
-   | Pointer.reduction ps => s!"red {reprStr ps}"
+   | Pointer.reduction p ps => s!"red {reprStr p}::{reprStr ps}"
 
 instance : Repr (ContextFreeRule α β) where
   reprPrec rule _ := s!"{reprStr rule.input} → {reprStr rule.output}"
@@ -110,7 +110,7 @@ info: [((N.S → [T.a] @ [], 0, 1), pre 0),
 /--
 info: [((N.S → [T.a] @ [], 1, 2), pre 2),
  ((N.S → [T.a] @ [N.S], 1, 2), pre 3),
- ((N.S → [T.a, N.S] @ [], 0, 2), red [(1,1,0)]),
+ ((N.S → [T.a, N.S] @ [], 0, 2), red (1,1,0)::[]),
  ((N.S → [] @ [T.a], 2, 2), null),
  ((N.S → [] @ [T.a, N.S], 2, 2), null)]
 -/
@@ -119,10 +119,10 @@ info: [((N.S → [T.a] @ [], 1, 2), pre 2),
 /--
 info: [((N.S → [T.a] @ [], 2, 3), pre 3),
  ((N.S → [T.a] @ [N.S], 2, 3), pre 4),
- ((N.S → [T.a, N.S] @ [], 1, 3), red [(2,1,0)]),
+ ((N.S → [T.a, N.S] @ [], 1, 3), red (2,1,0)::[]),
  ((N.S → [] @ [T.a], 3, 3), null),
  ((N.S → [] @ [T.a, N.S], 3, 3), null),
- ((N.S → [T.a, N.S] @ [], 0, 3), red [(1,1,2)])]
+ ((N.S → [T.a, N.S] @ [], 0, 3), red (1,1,2)::[])]
 -/
 #guard_msgs in
 #eval! (earleyList G exW2).bins[3]
