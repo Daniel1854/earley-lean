@@ -57,28 +57,14 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
   let M := G.rules.map (fun r => r.output.length) |>.max (by simp [hempty])
   let ruleSet := {x | x ∈ G.rules}
   -- The Set of all possible assignments of an EarleyItem with bounded rule length
-  let Top := ruleSet.prod ({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length}))
+  let Top := ruleSet ×ˢ ({i | i ≤ M} ×ˢ  ({i | i ≤ w.length} ×ˢ {i | i ≤ w.length}))
   -- The product of four Finite Sets has to be finite as well.
   have finTop : Finite Top := by
     have hFinMem: Finite ruleSet := by
       simp only [Set.coe_setOf, ruleSet]
       classical
       infer_instance
-    have hFinM : Finite {i | i ≤ M} := by
-      classical
-      infer_instance
-    have hFinW : Finite {i | i ≤ w.length} := by
-      classical
-      infer_instance
-    have : Finite ↑({i | i ≤ w.length}.prod {i | i ≤ w.length}) := by
-      apply Finite.Set.finite_prod
-    have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
-      apply Finite.Set.finite_prod
-    have : Finite ↑({i | i ≤ w.length}.prod {i | i ≤ w.length}) :=  by
-      apply Finite.Set.finite_prod
-    have : Finite ↑({i | i ≤ M}.prod ({i | i ≤ w.length}.prod {i | i ≤ w.length})) := by
-      apply Finite.Set.finite_prod
-    apply Finite.Set.finite_prod
+    infer_instance
   have finImageTop: Finite (Top.image itemIntro) := Finite.Set.finite_image Top itemIntro
   have : { x | isWellFormed G.rules w x } ⊆ Top.image itemIntro := by
     intro x hmemx

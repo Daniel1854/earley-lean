@@ -41,8 +41,7 @@ and you can look at the rendered file.
 
 Possible improvements upon the results of Rau depending on my pace:
 - worst-case O(n^3), caching stuff/improving accesses through some indexed datastructures?
-- compute multiple parse trees (meh, is that useful? how would you combat cyclic grammars?)
-- handle epsilon derivations
+- handle epsilon derivations: precompute null-able items in a fixpoint iteration?
 - more exciting proofs about the parse tree?
 
 ## Benchmark
