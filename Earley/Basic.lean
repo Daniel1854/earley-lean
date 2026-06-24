@@ -40,7 +40,7 @@ public abbrev CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T) (Gₗ : ContextF
 /--
 A CFG is equal to a CFGₗ iff their initial symbols and their rules match.
 -/
-@[simp]
+@[simp, grind =]
 public theorem eq_of_CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T)
     (Gₗ : ContextFreeGrammarList T G.NT) : CFGEqCFGₗ G Gₗ ↔
     G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules := by
