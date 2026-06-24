@@ -36,6 +36,7 @@ then refine it further to the actual bins with the same idea.
 
 TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
       https://leanprover-community.github.io/contribute/naming.html
+TODO: think about where to stop using List T for w
 -/
 
 @[expose] public section
@@ -55,17 +56,122 @@ open ContextFreeGrammar
 
 variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 
+/--
+I want something like this:
+{ x | ∃ k ≤ w.length, x ∈ items bins[k] }
+but then I dont got the proof that k is actually le w.length
+
+This doesnt mean the same thing as far as I understand it:
+{ x | ∃ k, (hk : k ≤ w.length) → x ∈ items bins[k] }
+The implication holds even if hk doesnt hold, so getting the witness is somewhat useless.
+
+After giving it some more thought, maybe the problem would be resolved through:
+{ x | ∃ k, ∃ (hk : k ≤ w.length), x ∈ items bins[k] }
+
+The flatten version seems fine, and I can further refine it by restricting the endidx of k anyway.
+
+  -- it means "all x that are in bins[k] for each k"
+  -- but I want "all x that are in bins[k] for some k
+
+Maybe it should be the bins without the invariant?
+-/
+@[grind]
+def setOfBins {n : Nat} (bins : EarleyBins T N n) : Set (EarleyItem T N) :=
+  { x | x ∈ items bins.toList.flatten}
+
+@[grind]
+def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (k : Nat) : Set (EarleyItem T N) :=
+  { x | x ∈ items bins.toList.flatten ∧ x.endIdx = k}
+
+-- think about if I want something like this, need a shorter but more concise name then
+-- kModel G w k
+@[grind]
+def setOfModelK (G : ContextFreeGrammar T) (w : List T) (k : Nat) : Set (EarleyItem T G.NT) :=
+  {x | x ∈ EarleySet G (mapT w) ∧ x.endIdx ≤ k}
+
 @[grind]
 def earleyListSet (G : ContextFreeGrammarList T N) (w : List T) : Set (EarleyItem T N) :=
-  let bins := earleyList G w |>.bins
-  -- TODO: I think this doesnt mean what I think it means
-  { x | ∀ k, k ≤ w.length ∧ ((hk : k ≤ w.length) → x ∈ items (bins[k])) }
+  earleyList G w |>.bins |> setOfBins
+
+section WellFormed
+
+lemma memIdx_of_memFlatten {α : Type} (x : α) (n : Nat) (xs : Vector (List α) n)
+    (hmemx : x ∈ xs.toList.flatten) : ∃ i, ∃ (hk : i < n) , x ∈ xs.toList[i]'(by grind) := by
+  have := List.exists_of_mem_flatten hmemx
+  rcases this with ⟨bin,hmemb⟩
+  have := List.getElem_of_mem hmemb.left
+  rcases this with ⟨i,hi,hmem⟩
+  use i
+  grind
+
+omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
+lemma memBinIdx_of_memFlatten {G : ContextFreeGrammarList T N} {w : List T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    {x : EarleyItem T N} (hmemx : x ∈ items bins.toList.flatten) :
+    ∃ k, ∃ (hk : k < w.length + 1) , x ∈ items bins[k] ∧ x.endIdx = k:= by
+  grind [memIdx_of_memFlatten]
+
+omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
+@[grind →]
+lemma isWellFormed_of_memWfBins {G : ContextFreeGrammarList T N} {w : List T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    {x : EarleyItem T N} (hmemx : x ∈ items bins.toList.flatten) :
+    isWellFormed G.rules (mapT w) x := by
+  grind [memIdx_of_memFlatten]
+
+end WellFormed
 
 section Soundness
 
-lemma earleyList_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+lemma initList_sub_initModel {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (k : Nat) (hk : k < w.length + 1) :
+  --"bins (Init\<^sub>L \<G> \<omega>) = Init\<^sub>F \<G>"
+    { x | x ∈ items (initList Gₗ)} ⊆ setOfModelK G w k := by
+  sorry
+
+lemma step_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (k : Nat) (hk : k < w.length + 1) :
+    setOfBinsK (earleyBinsList Gₗ w k hk).bins k ⊆ setOfModelK G w k := by
+  induction k with
+  | zero =>
+    simp only [setOfBinsK, setOfModelK, nonpos_iff_eq_zero, Set.setOf_subset_setOf]
+    intro x hmem
+    refine ⟨?_, hmem.right⟩
+    have : isWellFormed G.rules.toList (mapT w) x := by
+      have := (earleyBinsList Gₗ w 0 hk).inv
+      grind
+    sorry
+  | succ n ih =>
+    simp only [setOfBinsK, setOfModelK, Set.setOf_subset_setOf]
+    intro x hmem
+    refine ⟨?_, by lia⟩
+    sorry
+
+
+lemma earleyBinsListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (k : Nat) (hk : k < w.length + 1) :
+    setOfBinsK (earleyBinsList Gₗ w k hk).bins k ⊆ setOfModelK G w k := by
+  induction k with
+  | zero =>
+    simp only [setOfBinsK, setOfModelK, nonpos_iff_eq_zero, Set.setOf_subset_setOf]
+    intro x hmem
+    have : isWellFormed G.rules (mapT w) x := by sorry
+    sorry
+  | succ n ih =>
+    simp only [setOfBinsK, setOfModelK, Set.setOf_subset_setOf]
+    intro x hmem
+    sorry
+
+-- This is wrong:
+-- setOfBins (earleyBinsList Gₗ w k hk).bins ⊆ setOfModelK G w k := by
+lemma earleyListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) : earleyListSet Gₗ w ⊆ EarleySet G (mapT w) := by
+  simp only [earleyListSet, earleyList]
+  have := earleyBinsListSet_sub_model w h w.length (by lia)
   sorry
 
 /--
@@ -74,12 +180,17 @@ Given a finished item for a word within the set, the grammar has to be able to g
 -/
 public theorem soundnessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hfin : recognizeList Gₗ w) : G.Generates (mapT w) := by
-  have := earleyList_sub_model w h
-  simp only [recognizeList, decide_eq_true_eq] at hfin
-  rcases hfin with ⟨w,hw⟩
-  --have := soundnessEarley
-  sorry
+    (h : CFGEqCFGₗ G Gₗ) (hex : recognizeList Gₗ w) : G.Generates (mapT w) := by
+  simp only [recognizeList, decide_eq_true_eq] at hex
+  rcases hex with ⟨x, ⟨hmem, hfin⟩⟩
+  have := earleyListSet_sub_model w h
+  apply soundnessEarley (x := x.item)
+  · have : {x | x ∈ items (earleyList Gₗ w).bins[w.length]}
+        ⊆ {x | x ∈ items (Vector.toList (earleyList Gₗ w).bins).flatten} := by
+      intro x hmem
+      grind [Vector.mem_toList_iff]
+    grind [Vector.mem_toList_iff, Set.setOf_subset_setOf]
+  · grind
 
 end Soundness
 
