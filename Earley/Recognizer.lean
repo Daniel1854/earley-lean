@@ -185,7 +185,7 @@ public structure WfEarleyBins (G : ContextFreeGrammarList T N) (w : List T) wher
 List-based implementation of the .init operation.
 Returns a list filled with all possible .init states.
 -/
-def initList (G : ContextFreeGrammarList T N) : List (BinItem T N) :=
+public def initList (G : ContextFreeGrammarList T N) : List (BinItem T N) :=
   let rules := G.rules.filter (fun r => r.input == G.initial)
   rules.map (fun r => ⟨⟨r,0,0,0⟩, Pointer.null⟩)
 
@@ -197,8 +197,8 @@ if `a` matches the word for given index `k`.
 TODO: Think about if Option is more sensible.
       This maybe makes sense if I dont switch to Arrays for the inner (expensive append)
 -/
-def scanList (w : List T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.length) (pre : Nat) :
-    List (BinItem T N) :=
+public def scanList (w : List T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.length)
+    (pre : Nat) : List (BinItem T N) :=
   if w[k] == a then
     [⟨incItem x (x.endIdx+1), Pointer.predecessor pre⟩]
   else
@@ -209,8 +209,7 @@ List-based implementation of the .predict operation.
 
 Returns a fresh item for each rule, which got `A` as its lhs.
 -/
-def predictList (G : ContextFreeGrammarList T N) (A : N) (k : Nat) :
-    List (BinItem T N) :=
+public def predictList (G : ContextFreeGrammarList T N) (A : N) (k : Nat) : List (BinItem T N) :=
   let rules := G.rules.filter (fun r => r.input == A)
   rules.map (fun r => ⟨⟨r,0,k,k⟩, Pointer.null⟩)
 
@@ -220,8 +219,8 @@ List-based implementation of the .complete operation.
 Returns items for each successful completion of item `y` using its startIdx for bins.
 `j` is the index of y in its bin.
 -/
-def completeList (y : EarleyItem T N) (n : Nat) (bins : EarleyBins T N n) (h : y.startIdx < n)
-    (j : Nat) : List (BinItem T N) :=
+public def completeList (y : EarleyItem T N) (n : Nat) (bins : EarleyBins T N n)
+    (h : y.startIdx < n) (j : Nat) : List (BinItem T N) :=
   -- The origin bin filtered for matchings with y
   let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
     (fun x => nextSymbol x.item == some (Symbol.nonterminal y.rule.input))
@@ -235,7 +234,7 @@ while also merging any reduction pointers for duplicate items.
 Predecessor pointers are unique, so duplicate items can be safely discarded
 -/
 @[inline, grind]
-def updateBinAux : List (BinItem T N) → BinItem T N → List (BinItem T N)
+public def updateBinAux : List (BinItem T N) → BinItem T N → List (BinItem T N)
   | [], y => [y]
   | x::xs, y => match (x,y) with
     | (⟨xItem, Pointer.reduction xp xP⟩,⟨yItem, Pointer.reduction yp yP⟩) =>
@@ -258,7 +257,7 @@ Add given list one by one into `xs`, if they are not already part of `xs`,
 while also merging any reduction pointers.
 -/
 @[inline, grind]
-def updateBin (xs : List (BinItem T N)) : List (BinItem T N) → List (BinItem T N)
+public def updateBin (xs : List (BinItem T N)) : List (BinItem T N) → List (BinItem T N)
   | [] => xs
   | y::ys => updateBin (updateBinAux xs y) ys
 
@@ -266,7 +265,7 @@ def updateBin (xs : List (BinItem T N)) : List (BinItem T N) → List (BinItem T
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
-def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (newBin : List (BinItem T N))
+public def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (newBin : List (BinItem T N))
     (hk : k < n) : EarleyBins T N n :=
   let newBin := updateBin bins[k] newBin
   bins.set k newBin hk
@@ -852,8 +851,9 @@ decreasing_by
 Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
+@[grind]
 public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
-    (h : k ≤ w.length) : WfEarleyBins G w :=
+    (h : k < w.length + 1) : WfEarleyBins G w :=
   match h : k with
   | 0 =>
     -- Initialize the first bin by using .init for all G.rules
@@ -869,6 +869,7 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
 /--
 Returns the bins after trying to recognize `w` by using `G`.
 -/
+@[grind]
 public def earleyList (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBins G w :=
   earleyBinsList G w w.length (by simp)
 
@@ -877,6 +878,7 @@ Returns if a given word gets recognized by the Grammar by using a variant of the
 
 TODO: what code gets compiled from `∃ x ∈ Array ?
 -/
+@[grind]
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
   let bins := earleyList G w |>.bins
   ∃ x ∈ bins[w.length], isFinished G.initial (w.map Symbol.terminal) x.item
