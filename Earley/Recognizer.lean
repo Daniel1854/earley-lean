@@ -175,7 +175,7 @@ public def isWellFormedBins (G : ContextFreeGrammarList T N) (w : List T)
 /--
 A combination of an EarleyBins with a well-formedness Invariant about it.
 -/
-public structure WfEarleyBins (T N : Type) (G : ContextFreeGrammarList T N) (w : List T) where
+public structure WfEarleyBins (G : ContextFreeGrammarList T N) (w : List T) where
   bins : EarleyBins T N (w.length + 1)
   inv : isWellFormedBins G w bins
 
@@ -805,7 +805,7 @@ Computes the k-th bin starting from index j and returns the updated bins.
 -/
 public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     (bins : EarleyBins T N (w.length + 1)) (h : k < bins.size) (j : Nat)
-    (hbins : isWellFormedBins G w bins) : WfEarleyBins T N G w :=
+    (hbins : isWellFormedBins G w bins) : WfEarleyBins G w :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].length then
     ⟨bins, hbins⟩
@@ -851,7 +851,7 @@ Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
-    (h : k ≤ w.length) : WfEarleyBins T N G w :=
+    (h : k ≤ w.length) : WfEarleyBins G w :=
   match h : k with
   | 0 =>
     -- Initialize the first bin by using .init for all G.rules
@@ -867,7 +867,7 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
 /--
 Returns the bins after trying to recognize `w` by using `G`.
 -/
-public def earleyList (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBins T N G w :=
+public def earleyList (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBins G w :=
   earleyBinsList G w w.length (by simp)
 
 /--
