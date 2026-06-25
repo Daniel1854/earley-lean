@@ -136,5 +136,10 @@ theorem limit_idempotent (f : Set α → Set α) (I : Set α) (h : Regular f) :
   simp [limit, natUnion]
   sorry
 
+
+theorem limit_upperbound (f : Set α → Set α) (I G : Set α) (h : ∀ J, J ⊆ G → f J ⊆ G)
+    (hsub : I ⊆ G) : limit f I ⊆ G := by
+  sorry
+
 end Limit
 end Earley
