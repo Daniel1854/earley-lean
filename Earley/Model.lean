@@ -157,15 +157,15 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   Every EarleyItem part of the set, where the next symbol matches the next input symbol,
   introduces an EarleyItem parsing that extra symbol.
   -/
-  | scan (x : EarleyItem T G.NT) (rule : ContextFreeRule T G.NT) (pos i j : Nat)
-      (a : Symbol T G.NT) (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
+  | scan {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat}
+      {a : Symbol T G.NT} (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
       (hbounds : j < w.length) (hw : w[j] = a) (hnext : nextSymbol x = some a) :
       EarleySet G w ⟨rule,pos+1,i,j+1⟩
   /--
   Every EarleyItem part of set, where the next symbol matches the NT of another rule,
   introduces an EarleyItem where that rule gets followed through.
   -/
-  | predict (x : EarleyItem T G.NT) (rule1 rule2 : ContextFreeRule T G.NT) (pos i j : Nat)
+  | predict {x : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {pos i j : Nat}
       (hx : x = ⟨rule1,pos,i,j⟩) (hmemx : x ∈ EarleySet G w)
       (hmemr2 : rule2 ∈ G.rules) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
       EarleySet G w ⟨rule2,0,j,j⟩
@@ -173,8 +173,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   Every completed EarleyItem part of the set introduces EarleyItems for where
   the rule could have originated from.
   -/
-  | complete (x y : EarleyItem T G.NT) (rule1 rule2 : ContextFreeRule T G.NT)
-      (posx posy i j k : Nat)
+  | complete {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT}
+      {posx posy i j k : Nat}
       (hx : x = ⟨rule1,posx,i,j⟩) (hmemx : x ∈ EarleySet G w)
       (hy : y = ⟨rule2,posy,j,k⟩) (hmemy : y ∈ EarleySet G w)
       (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
