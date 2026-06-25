@@ -103,16 +103,16 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
   unfold isWellFormed
   induction hmem with
   | init rule hmem hstart => grind
-  | scan x rule pos i j a hx hmem hbounds hw hnext ih =>
+  | scan hx hmem hbounds hw hnext ih =>
     simp only
     have := bounds_of_nextSymbol_eq_some hnext
     simp only [hx] at ih this
     refine ⟨ih.left,this,by omega⟩
-  | predict x rule1 rule2 pos i j hx hmem hr2 hnext ih =>
+  | predict hx hmem hr2 hnext ih =>
     simp only
     simp only [hx] at ih
     refine ⟨hr2,by omega⟩
-  | complete x y rule1 rule2 posx posy i j k hx hmemx hy hmemy hcomp hnext ihx ihy =>
+  | complete hx hmemx hy hmemy hcomp hnext ihx ihy =>
     simp only
     have := bounds_of_nextSymbol_eq_some hnext
     simp only [hx] at ihx this
@@ -243,11 +243,11 @@ public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (
   induction hmem with
   | init _ hmem =>
     exact soundItemPosZero _ _ hmem
-  | scan _ _ _ _ _ _ hx hmem hbounds hw hnext ih =>
+  | scan hx hmem hbounds hw hnext ih =>
     exact soundItemScan _ _ hx hmem hbounds hw hnext ih
-  | predict _ _ _ _ _ _ hx hmemx hmemr2 hnext =>
+  | predict hx hmemx hmemr2 hnext =>
     exact soundItemPosZero _ _ hmemr2
-  | complete x y rule1 rule2 posx posy i j k hx hmemx hy hmemy hcomp hnext ihx ihy =>
+  | complete hx hmemx hy hmemy hcomp hnext ihx ihy =>
     exact soundItemComplete _ _ hx hmemx hy hmemy hcomp hnext ihx ihy
 
 /--
@@ -397,7 +397,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
         simp [hkj, this] at hD
         simp [hD]
       rw [hkj]
-      apply EarleySet.scan x rule pos i j a hx hmemx hlenj this hnext
+      apply EarleySet.scan hx hmemx hlenj this hnext
     | cons r rs =>
       simp only [Derivation_succ] at hD
       rcases hD.right with ⟨u, hu⟩
@@ -423,7 +423,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
         simp only [y]
         have hr := rule_of_rewrite_step G r hu.left
         rw [hr] at hD
-        apply EarleySet.predict x rule ⟨A,u⟩ pos i j hx hmemx hD.left hnext
+        apply EarleySet.predict hx hmemx hD.left hnext
       -- Through partial completeness of y, we know that there is a complete version of y,
       -- which we can use in combination with x for a completion rule
       let z : EarleyItem T G.NT := ⟨⟨A,u⟩, u.length, j, k⟩
@@ -432,7 +432,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
           (by omega) (by omega) y _ hmemy (wfEarley G w) hrs hcompk
         · exact 0
         · simp [y]
-      apply EarleySet.complete x z rule ⟨A, u⟩ pos u.length i j k hx hmemx
+      apply EarleySet.complete (rule2 := ⟨A,u⟩) (posy := u.length) hx hmemx
         (by simp [z]) hmemz (by simp [isComplete, z]) hnext
 
 /--
