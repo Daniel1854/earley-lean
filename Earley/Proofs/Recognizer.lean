@@ -69,8 +69,7 @@ section Soundness
 
 lemma earleyList_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G) :
-    earleyListSet Gₗ w ⊆ EarleySet G (w.map Symbol.terminal) := by
+    (h : CFGEqCFGₗ G Gₗ) : earleyListSet Gₗ w ⊆ EarleySet G (mapT w) := by
   sorry
 
 /--
@@ -79,9 +78,8 @@ Given a finished item for a word within the set, the grammar has to be able to g
 -/
 public theorem soundnessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G)
-    (hfin : recognizeList Gₗ w) : G.Generates (w.map Symbol.terminal) := by
-  have := earleyList_sub_model w h hw heps
+    (h : CFGEqCFGₗ G Gₗ) (hfin : recognizeList Gₗ w) : G.Generates (mapT w) := by
+  have := earleyList_sub_model w h
   simp only [recognizeList, decide_eq_true_eq] at hfin
   rcases hfin with ⟨w,hw⟩
   --have := soundnessEarley
@@ -93,8 +91,8 @@ section Completeness
 
 public theorem completenessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G)
-    (hgen : G.Generates (w.map Symbol.terminal)) : recognizeList Gₗ w := by
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
+    (hgen : G.Generates (mapT w)) : recognizeList Gₗ w := by
   sorry
 
 end Completeness
@@ -105,8 +103,8 @@ A word can be generated from the grammar iff the algorithm recognizes the word.
 -/
 public theorem correctnessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G) :
-    G.Generates (w.map Symbol.terminal) ↔ recognizeList Gₗ w := by
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G) :
+    G.Generates (mapT w) ↔ recognizeList Gₗ w := by
   grind [soundnessEarleyList, completenessEarleyList]
 
 end Recognizer

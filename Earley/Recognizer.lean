@@ -126,7 +126,7 @@ The items of an EarleyBin are well-formed, if
 public def isWellFormedBinItems (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     (bin : List (BinItem T N)) : Prop :=
   (items bin).Nodup ∧
-    ∀ x ∈ bin, isWellFormed G.rules (w.map Symbol.terminal) x.item ∧ x.item.endIdx = k
+    ∀ x ∈ bin, isWellFormed G.rules (mapT w) x.item ∧ x.item.endIdx = k
 
 /--
 The pointers of an EarleyBin are well-formed, if
@@ -287,7 +287,7 @@ omit [BEq T] [BEq N] in
 lemma wfItem_of_wfBins {G : ContextFreeGrammarList T N} {w : List T} {k : Nat}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (x : BinItem T N) (hk : k < bins.size) (hmem : x ∈ bins[k]) :
-    isWellFormed G.rules (w.map Symbol.terminal) x.item ∧ x.item.endIdx = k := by
+    isWellFormed G.rules (mapT w) x.item ∧ x.item.endIdx = k := by
   grind
 
 theorem memItem_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N) (x : EarleyItem T N)
@@ -340,7 +340,7 @@ theorem noDup_of_updateBin (xs ys : List (BinItem T N)) (hx : (items xs).Nodup)
 
 lemma wfBinItems_of_updateBinAux (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
     (bin : List (BinItem T N)) (hwfbin : isWellFormedBinItems G w k bin) (y : BinItem T N)
-    (hwfy : isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+    (hwfy : isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k) :
     isWellFormedBinItems G w k (updateBinAux bin y)  := by
   induction bin with
   | nil => grind
@@ -473,7 +473,7 @@ lemma wfBinPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
 
 lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
     (xs ys : List (BinItem T N)) (hwfx : isWellFormedBinItems G w k xs)
-    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k) :
+    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k) :
     isWellFormedBinItems G w k (updateBin xs ys)  := by
   induction ys generalizing xs with
   | nil => grind
@@ -566,7 +566,7 @@ lemma soundPointers_of_updateBin (w : List T) (k : Nat) (bins : EarleyBins T N (
 lemma wfBins_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
     (bins : EarleyBins T N (w.length + 1)) (hwf : isWellFormedBins G w bins)
     (ys : List (BinItem T N)) (hk : k < w.length + 1)
-    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k)
+    (hwfy : ∀ y ∈ ys, isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k)
     (hwfPy : isWellFormedBinPointers w bins ys k)
     (hwfSy : ∀ y ∈ ys, isSoundPointer y.pointer k bins[k].length) :
     isWellFormedBins G w (updateBins bins k ys hk)  := by
@@ -607,7 +607,7 @@ lemma wfItems_of_scanList {G : ContextFreeGrammarList T N} {w : List T} (j k : N
     (x : EarleyItem T N) (hk : k < w.length) (hmemx : x ∈ (items bins[k]))
     (hnext : nextSymbol x = some (Symbol.terminal a))
     (y : BinItem T N) (hmemy : y ∈ scanList w x a k hk j) :
-    isWellFormed G.rules (w.map Symbol.terminal) y.item ∧ y.item.endIdx = k + 1 := by
+    isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k + 1 := by
   grind [scanList]
 
 -- hk more restrictive since we bump k by 1
@@ -640,7 +640,7 @@ lemma wfBins_of_scanList {G : ContextFreeGrammarList T N} {w : List T} {j k : Na
 omit [BEq T] [LawfulBEq (EarleyItem T N)] in
 lemma wfItems_of_predictList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat) (A : N)
     (hk : k ≤ w.length) (y : EarleyItem T N) (hmemy : y ∈ (items (predictList G A k))) :
-    isWellFormed G.rules (w.map Symbol.terminal) y ∧ y.endIdx = k := by
+    isWellFormed G.rules (mapT w) y ∧ y.endIdx = k := by
   grind [predictList]
 
 omit [BEq T] [LawfulBEq (EarleyItem T N)] in
@@ -670,7 +670,7 @@ lemma wfItems_of_completeList {G : ContextFreeGrammarList T N} {w : List T} (j k
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (y : EarleyItem T N) (hk : k < bins.size) (hmemy : y ∈ (items bins[k]))
     (x : EarleyItem T N) (hmemx : x ∈ (items (completeList y (w.length + 1) bins (by grind) j))) :
-    isWellFormed G.rules (w.map Symbol.terminal) x ∧ x.endIdx = k := by
+    isWellFormed G.rules (mapT w) x ∧ x.endIdx = k := by
   simp only [completeList, items, List.map_map, List.mem_map, Function.comp_apply,
     Prod.exists] at hmemx
   let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
@@ -832,17 +832,17 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
       updateBins bins k newItems (by omega)
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList G w k bins' (by omega) (j+1) this
-termination_by { x | isWellFormed G.rules (w.map Symbol.terminal) x }.ncard + 1 - j
+termination_by { x | isWellFormed G.rules (mapT w) x }.ncard + 1 - j
 decreasing_by
   apply Nat.sub_lt_sub_left
   · clear this bins'
     specialize hbins k (by lia)
-    let wfItemsBin := { x | isWellFormed G.rules (w.map Symbol.terminal) x }
-    have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (w.map Symbol.terminal)
+    let wfItemsBin := { x | isWellFormed G.rules (mapT w) x }
+    have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w)
     have : (items bins[k]).length ≤ wfItemsBin.ncard := by
       have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
       have ⟨⟨hNoDup, _⟩, _⟩ := hbins
-      let P := (fun x => isWellFormed G.rules (w.map Symbol.terminal) x)
+      let P := (fun x => isWellFormed G.rules (mapT w) x)
       apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
     grind
   · simp
@@ -881,7 +881,7 @@ TODO: what code gets compiled from `∃ x ∈ Array ?
 @[grind]
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
   let bins := earleyList G w |>.bins
-  ∃ x ∈ bins[w.length], isFinished G.initial (w.map Symbol.terminal) x.item
+  ∃ x ∈ bins[w.length], isFinished G.initial (mapT w) x.item
 
 end Recognizer
 end Earley

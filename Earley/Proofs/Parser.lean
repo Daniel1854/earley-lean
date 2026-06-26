@@ -67,18 +67,17 @@ Given the existance of a parse tree for a word, the word can be generated from t
 -/
 public theorem soundnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G)
-    (ht : ∃ t, parse Gₗ w = some t) : G.Generates (w.map Symbol.terminal) := by
+    (h : CFGEqCFGₗ G Gₗ) (ht : ∃ t, parse Gₗ w = some t) : G.Generates (mapT w) := by
   simp only [parse, Option.dite_none_left_eq_some] at ht
   rcases ht with ⟨t, hnEmpty, ht⟩
   split at ht
   · simp at ht
   · rename_i x idx bins hf
-    apply soundnessEarleyList w h hw heps
+    apply soundnessEarleyList w h
     simp only [recognizeList, decide_eq_true_eq]
     use x
     let finalBin := (earleyList Gₗ w).bins[w.length]
-    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial (List.map Symbol.terminal w) x.item
+    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial (mapT w) x.item
     have hmem : (x, idx) ∈ (filterWithIdx finalBin P) := by grind
     have := P_of_filterWithIdx finalBin P hmem
     have := getElem_of_filterWithIdx finalBin P hmem
@@ -150,8 +149,8 @@ Given a word can be generated from the grammar, then there also exists a parse t
 -/
 public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G)
-    (hgen : G.Generates (w.map Symbol.terminal)) : ∃ t, parse Gₗ w = some t := by
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
+    (hgen : G.Generates (mapT w)) : ∃ t, parse Gₗ w = some t := by
   have hnEmpty : w ≠ [] := by
     have := nonEmptyDerives_of_isEpsilonFree G heps
     grind [Generates]
@@ -161,7 +160,7 @@ public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
   split
   · rename_i heq
     rcases this with ⟨x,hx⟩
-    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial (List.map Symbol.terminal w) x.item
+    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial (mapT w) x.item
     have : x  ∈ (filterWithIdx (earleyList Gₗ w).bins[w.length] P).map Prod.fst := by
       have := memFilterWithIdx_of_mem P hx.left hx.right
       grind
@@ -177,8 +176,8 @@ A word can be generated from the grammar iff there exists a parse tree for that 
 -/
 public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (w.map Symbol.terminal)) (heps : isEpsilonFree G) :
-    G.Generates (w.map Symbol.terminal) ↔ ∃ t, parse Gₗ w = some t := by
+    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G) :
+    G.Generates (mapT w) ↔ ∃ t, parse Gₗ w = some t := by
   grind [soundnessParse, completenessParse]
 
 end Parser
