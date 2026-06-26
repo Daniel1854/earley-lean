@@ -45,3 +45,12 @@ public theorem eq_of_CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T)
     (Gₗ : ContextFreeGrammarList T G.NT) : CFGEqCFGₗ G Gₗ ↔
     G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules := by
   grind
+
+public abbrev mapT {T N : Type} (w : List T) : List (Symbol T N) :=
+  w.map Symbol.terminal
+
+-- TOOD: since mapT is an abbrev, this doesn't do anything for grind right?
+@[simp, grind =]
+public theorem map_of_mapT {T N : Type} (w : List T) :
+    (mapT w : List (Symbol T N)) = w.map Symbol.terminal := by
+  simp [mapT]

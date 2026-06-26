@@ -208,7 +208,7 @@ public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (
   else
     let ⟨bins, inv⟩ := earleyList G w
     -- Find the finished item, and follow its pointers.
-    let P := fun x => isFinished G.initial (w.map Symbol.terminal) x.item
+    let P := fun x => isFinished G.initial (mapT w) x.item
     match h : filterWithIdx bins[w.length] P with
     | [] => none
     | (_, i)::_ =>
