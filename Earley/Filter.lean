@@ -118,5 +118,16 @@ theorem memFilterWithIdx_of_mem {x : α} {l : List α} (P : α → Bool)
   rw [filterWithIdx]
   apply memFilterWithIdxAux_of_mem 0 hmem hp
 
+theorem mem_of_memFilterWithIdxAux {x : α} {i n : Nat} {l : List α} {P : α → Bool}
+    (hmem : (x, n) ∈ filterWithIdxAux P i l) : x  ∈ l := by
+  induction l generalizing i with
+  | nil => grind
+  | cons y ys ih => grind
+
+theorem mem_of_memFilterWithIdx {x : α} {n : Nat} {l : List α} {P : α → Bool}
+    (hmem : (x, n) ∈ filterWithIdx l P) : x  ∈ l := by
+  rw [filterWithIdx] at hmem
+  apply mem_of_memFilterWithIdxAux hmem
+
 end Utils
 end Earley

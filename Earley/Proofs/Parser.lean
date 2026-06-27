@@ -47,7 +47,7 @@ open Utils
 open ContextFreeRule
 open ContextFreeGrammar
 
-variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
+variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 
 omit [BEq T] [BEq N] in
 lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {w : List T} {i k j : Nat}

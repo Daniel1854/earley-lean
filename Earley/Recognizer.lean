@@ -315,7 +315,7 @@ Using updateBinAux on a List with no duplicates, results in a list with no dupli
 lemma noDup_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N)
     [LawfulBEq (EarleyItem T N)] (hx : (items xs).Nodup) :
     items (updateBinAux xs y) |>.Nodup := by
-  induction xs,y using updateBinAux.induct with
+  fun_induction updateBinAux xs y with
   | case1 => grind
   | case2 => grind
   | case3 x xs y xItem xP yItem yP hxy h ih =>
@@ -332,7 +332,7 @@ Using updateBin on a List with no duplicates, results in a list with no duplicat
 -/
 theorem noDup_of_updateBin (xs ys : List (BinItem T N)) (hx : (items xs).Nodup)
     [LawfulBEq (EarleyItem T N)] : items (updateBin xs ys) |>.Nodup := by
-  induction xs,ys using updateBin.induct with
+  fun_induction updateBin xs ys with
   | case1 xs => grind
   | case2 xs y ys ih1 => grind [noDup_of_updateBinAux xs y]
 

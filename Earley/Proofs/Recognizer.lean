@@ -41,6 +41,8 @@ TODO: think about where to stop using List T for w
 
 @[expose] public section
 
+-- FIXME: when everythign is done
+
 namespace Earley
 namespace Proofs
 namespace Recognizer
@@ -54,37 +56,19 @@ open Utils
 open ContextFreeRule
 open ContextFreeGrammar
 
-variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
+variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 
-/--
-I want something like this:
-{ x | ∃ k ≤ w.length, x ∈ items bins[k] }
-but then I dont got the proof that k is actually le w.length
-
-This doesnt mean the same thing as far as I understand it:
-{ x | ∃ k, (hk : k ≤ w.length) → x ∈ items bins[k] }
-The implication holds even if hk doesnt hold, so getting the witness is somewhat useless.
-
-After giving it some more thought, maybe the problem would be resolved through:
-{ x | ∃ k, ∃ (hk : k ≤ w.length), x ∈ items bins[k] }
-
-The flatten version seems fine, and I can further refine it by restricting the endidx of k anyway.
-
-  -- it means "all x that are in bins[k] for each k"
-  -- but I want "all x that are in bins[k] for some k
-
-Maybe it should be the bins without the invariant?
--/
 @[grind]
 def setOfBins {n : Nat} (bins : EarleyBins T N n) : Set (EarleyItem T N) :=
-  { x | x ∈ items bins.toList.flatten}
+  { x | ∃ k, ∃ (hk : k < n), x ∈ items bins[k] }
 
 @[grind]
-def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (k : Nat) : Set (EarleyItem T N) :=
-  { x | x ∈ items bins.toList.flatten ∧ x.endIdx = k}
+def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (k : Nat) (hk : k < n) : Set (EarleyItem T N) :=
+  { x | x ∈ items bins[k] }
 
--- think about if I want something like this, need a shorter but more concise name then
--- kModel G w k
+-- Unclear where to use this since
+-- `setOfBins (earleyBinsList Gₗ w k hk).bins ⊆ setOfModelK G w k`
+-- is sadly wrong due to scan
 @[grind]
 def setOfModelK (G : ContextFreeGrammar T) (w : List T) (k : Nat) : Set (EarleyItem T G.NT) :=
   {x | x ∈ EarleySet G (mapT w) ∧ x.endIdx ≤ k}
@@ -93,86 +77,229 @@ def setOfModelK (G : ContextFreeGrammar T) (w : List T) (k : Nat) : Set (EarleyI
 def earleyListSet (G : ContextFreeGrammarList T N) (w : List T) : Set (EarleyItem T N) :=
   earleyList G w |>.bins |> setOfBins
 
-section WellFormed
+section Subsets
 
-lemma memIdx_of_memFlatten {α : Type} (x : α) (n : Nat) (xs : Vector (List α) n)
-    (hmemx : x ∈ xs.toList.flatten) : ∃ i, ∃ (hk : i < n) , x ∈ xs.toList[i]'(by grind) := by
-  have := List.exists_of_mem_flatten hmemx
-  rcases this with ⟨bin,hmemb⟩
-  have := List.getElem_of_mem hmemb.left
-  rcases this with ⟨i,hi,hmem⟩
-  use i
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+theorem updateBinAux_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
+    items xs ⊆ items (updateBinAux xs y) := by
+  induction xs generalizing y with
+  | nil => grind
+  | cons x xs ih => grind
+
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+theorem updateBin_extensive (xs ys : List (BinItem T N)) : items xs ⊆ items (updateBin xs ys) := by
+  induction ys generalizing xs with
+  | nil => grind
+  | cons y ys ih => grind [updateBinAux_extensive]
+
+-- Grind can solve most of this proof, but it takes way too long on its own.
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+lemma updateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
+    (k : Nat) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
+    setOfBins bins ⊆ setOfBins (updateBins bins k newBin hk) := by
+  intro x hmem
+  rw [updateBins]
+  have := updateBin_extensive bins[k] newBin
+  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmem
+  rcases hmem with ⟨k,hk,hmem⟩
+  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq]
+  use k, hk
   grind
 
-omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
-lemma memBinIdx_of_memFlatten {G : ContextFreeGrammarList T N} {w : List T}
+omit [LawfulBEq T] in
+lemma earleyBinSetList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    {x : EarleyItem T N} (hmemx : x ∈ items bins.toList.flatten) :
-    ∃ k, ∃ (hk : k < w.length + 1) , x ∈ items bins[k] ∧ x.endIdx = k:= by
-  grind [memIdx_of_memFlatten]
+    (k j : Nat) (hk : k < w.length + 1) :
+    setOfBins bins ⊆ setOfBins (earleyBinList G w k bins hk j hbins).bins := by
+  fun_induction earleyBinList G w k bins hk j hbins with
+  | case1 bins hk j hbins hj => grind
+  | case2 bins hk j hbins hj x bins' hbins' =>
+    rename_i ih
+    apply subset_trans _ ih
+    clear ih
+    simp only [ge_iff_le, bins']
+    match hnext : x.item.nextSymbol with
+    | none => apply updateBins_extensive k hk
+    | some s =>
+      match hS : s with
+      | .terminal t =>
+        if hw : w.length ≤ k then
+          simp [hw]
+        else
+          simp only [hw, ↓reduceDIte]
+          apply updateBins_extensive (k+1)
+      | .nonterminal n => apply updateBins_extensive k hk
 
-omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
-@[grind →]
-lemma isWellFormed_of_memWfBins {G : ContextFreeGrammarList T N} {w : List T}
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    {x : EarleyItem T N} (hmemx : x ∈ items bins.toList.flatten) :
-    isWellFormed G.rules (mapT w) x := by
-  grind [memIdx_of_memFlatten]
+omit [LawfulBEq T] in
+lemma updateBinAux_sub {s : Set (EarleyItem T N)} (xs : List (BinItem T N)) (y : BinItem T N)
+    (hx : {x | x ∈ items xs} ⊆ s) (hy : y.item ∈ s) :
+    {z | z ∈ items (updateBinAux xs y) } ⊆ s := by
+  induction xs generalizing y with
+  | nil => grind
+  | cons x xs ih => grind
 
-end WellFormed
+omit [LawfulBEq T] in
+lemma updateBin_sub {s : Set (EarleyItem T N)} (xs ys : List (BinItem T N))
+    (hx : {x | x ∈ items xs} ⊆ s) (hy : {y | y ∈ items ys} ⊆ s) :
+    {z | z ∈ items (updateBin xs ys) } ⊆ s := by
+  induction ys generalizing xs with
+  | nil => grind
+  | cons y ys ih => grind [updateBinAux_sub]
+
+omit [LawfulBEq T] in
+lemma updateBins_sub {w : List T} {bins : EarleyBins T N (w.length + 1)}
+    {s : Set (EarleyItem T N)} (hb : setOfBins bins ⊆ s)
+    (newBin : List (BinItem T N)) (k : Nat) (hk : k < w.length + 1)
+    (hn : {y | y ∈ items newBin} ⊆ s) : setOfBins (updateBins bins k newBin hk) ⊆ s := by
+  intro z hmemz
+  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmemz
+  rcases hmemz with ⟨i,hi,hmem⟩
+  if heq : i = k then
+    have hb : {x | x ∈ items bins[k]} ⊆ s := by
+      intro x hmemx
+      apply hb
+      simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq]
+      use k, by lia
+      apply hmemx
+    have := updateBin_sub bins[k] newBin hb hn
+    have hmem : z ∈ {z | z ∈ items (updateBin bins[k] newBin)} := by grind
+    apply Set.mem_of_mem_of_subset hmem this
+  else
+    grind
+
+end Subsets
 
 section Soundness
 
-lemma initList_sub_initModel {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+omit [LawfulBEq T] in
+lemma initList_sub_Model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (k : Nat) (hk : k < w.length + 1) :
-  --"bins (Init\<^sub>L \<G> \<omega>) = Init\<^sub>F \<G>"
-    { x | x ∈ items (initList Gₗ)} ⊆ setOfModelK G w k := by
-  sorry
+    (h : CFGEqCFGₗ G Gₗ) : { x | x ∈ items (initList Gₗ)} ⊆ EarleySet G (mapT w) := by
+  intro x hmem
+  simp only [items, initList, List.map_map, List.mem_map, List.mem_filter, beq_iff_eq,
+    Function.comp_apply, Set.mem_setOf_eq] at hmem
+  rcases hmem with ⟨r,hmemr,hx⟩
+  have hmemx : r ∈ G.rules := by grind [Finset.mem_toList]
+  have hstart : r.input = G.initial := by grind
+  rw [← hx]
+  apply EarleySet.init r hmemx hstart
 
-lemma step_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+-- TODO: unclear if its better to refactor the operations into separate proofs
+lemma earleyBinListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (k : Nat) (hk : k < w.length + 1) :
-    setOfBinsK (earleyBinsList Gₗ w k hk).bins k ⊆ setOfModelK G w k := by
-  induction k with
-  | zero =>
-    simp only [setOfBinsK, setOfModelK, nonpos_iff_eq_zero, Set.setOf_subset_setOf]
-    intro x hmem
-    refine ⟨?_, hmem.right⟩
-    have : isWellFormed G.rules.toList (mapT w) x := by
-      have := (earleyBinsList Gₗ w 0 hk).inv
-      grind
-    sorry
-  | succ n ih =>
-    simp only [setOfBinsK, setOfModelK, Set.setOf_subset_setOf]
-    intro x hmem
-    refine ⟨?_, by lia⟩
-    sorry
+    (h : CFGEqCFGₗ G Gₗ) (bins : EarleyBins T G.NT (w.length + 1))
+    (hbins : isWellFormedBins Gₗ w bins) (hsub : setOfBins bins ⊆ EarleySet G (mapT w))
+    (k j : Nat) (hk : k < w.length + 1) :
+    setOfBins (earleyBinList Gₗ w k bins hk j hbins).bins ⊆ EarleySet G (mapT w) := by
+  fun_induction earleyBinList Gₗ w k bins hk j hbins with
+  | case1 bins hk j hbins hj => grind [earleyBinList]
+  | case2 bins hk j hbins hj x bins' hbins' =>
+    rename_i ih
+    apply ih
+    simp only [ge_iff_le, bins']
+    clear ih hbins' bins'
+    match hnext : x.item.nextSymbol with
+    | none =>
+      simp only
+      apply updateBins_sub hsub
+      rename' x => y
+      -- x is the original item to be completed, y isComplete, z is the completed item
+      intro z
+      simp only [items, completeList, incItem, List.map_map, List.mem_map, Function.comp_apply,
+        Prod.exists, exists_and_right, Set.mem_setOf_eq, map_of_mapT, forall_exists_index, and_imp]
+      intro x xIdx hF hz
+      have hcomp : y.item.isComplete = true := by
+        clear hF hz hsub
+        grind
+      have := mem_of_memFilterWithIdx hF
+      have hx : x.item = ⟨x.item.rule, x.item.position, x.item.startIdx, y.item.startIdx⟩ := by
+        have : x.item.endIdx = y.item.startIdx := by grind
+        rw [← this]
+      have hmemx : x.item ∈ EarleySet G (List.map Symbol.terminal w) := by
+        apply Set.mem_of_mem_of_subset (by grind) hsub
+      have hE : y.item.endIdx = k := by grind
+      have hy : y.item = ⟨y.item.rule, y.item.position, y.item.startIdx, k⟩ := by rw [← hE]
+      have hmemy : y.item ∈ EarleySet G (List.map Symbol.terminal w) := by
+        apply Set.mem_of_mem_of_subset (by grind) hsub
+      have hnext : x.item.nextSymbol = some (Symbol.nonterminal y.item.rule.input) := by
+        have := P_of_filterWithIdx (bins[y.item.startIdx]'(by grind)) (fun x : BinItem T G.NT =>
+          x.item.nextSymbol == some (Symbol.nonterminal y.item.rule.input)) hF
+        simp only [beq_iff_eq] at this
+        apply this
+      rw [← hz]
+      rw [hE]
+      apply EarleySet.complete hx hmemx hy hmemy hcomp hnext
+    | some s =>
+      match hS : s with
+      | .terminal t =>
+        if hw : w.length ≤ k then
+          simp [hw, hsub]
+        else
+          simp only [hw, ↓reduceDIte]
+          apply updateBins_sub hsub
+          if ht : w[k] = t then
+            simp only [items, scanList, ht, BEq.rfl, ↓reduceIte, incItem, List.map_cons,
+              List.map_nil, List.mem_cons, List.not_mem_nil, or_false, Set.setOf_eq_eq_singleton,
+              map_of_mapT, Set.singleton_subset_iff]
+            apply EarleySet.scan (by simp) (by grind) (by grind) (by grind) hnext
+          else
+            simp [items, scanList, ht]
+      | .nonterminal n =>
+        simp only
+        apply updateBins_sub hsub
+        intro y
+        simp only [items, predictList, List.map_map, List.mem_map, List.mem_filter, beq_iff_eq,
+          Function.comp_apply, Set.mem_setOf_eq, map_of_mapT, forall_exists_index, and_imp]
+        intro r hmemr hr hy
+        have hx : x.item = ⟨x.item.rule, x.item.position, x.item.startIdx, k⟩ := by
+          have : x.item.endIdx = k := by grind
+          rw [← this]
+        rw [← hy]
+        rw [← hr] at hnext
+        have : r ∈ G.rules := by grind [Finset.mem_toList]
+        apply EarleySet.predict hx (by grind) this hnext
 
+lemma earleyBinListZeroSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (bins : EarleyBins T G.NT (w.length + 1))
+    (hbins : isWellFormedBins Gₗ w bins) (k : Nat) (hk : k < w.length + 1)
+    (hsub : setOfBins bins ⊆ EarleySet G (mapT w)) :
+    setOfBins (earleyBinList Gₗ w k bins hk 0 hbins).bins ⊆ EarleySet G (mapT w) := by
+  grind [earleyBinListSet_sub_model]
 
 lemma earleyBinsListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) (k : Nat) (hk : k < w.length + 1) :
-    setOfBinsK (earleyBinsList Gₗ w k hk).bins k ⊆ setOfModelK G w k := by
+    setOfBins (earleyBinsList Gₗ w k hk).bins ⊆ EarleySet G (mapT w) := by
   induction k with
   | zero =>
-    simp only [setOfBinsK, setOfModelK, nonpos_iff_eq_zero, Set.setOf_subset_setOf]
+    simp only [earleyBinsList]
     intro x hmem
-    have : isWellFormed G.rules (mapT w) x := by sorry
-    sorry
-  | succ n ih =>
-    simp only [setOfBinsK, setOfModelK, Set.setOf_subset_setOf]
+    let bins := (Vector.replicate (w.length + 1) []).set 0 (initList Gₗ) (by simp)
+    have hbins : isWellFormedBins Gₗ w bins := by grind [initList, wfBinItems_of_initList]
+    have : setOfBins bins ⊆ EarleySet G (mapT w) := by
+      simp only [setOfBins, Order.lt_add_one_iff, map_of_mapT, bins]
+      intro x hmem
+      rcases hmem with ⟨k,hk,hmem⟩
+      grind [initList_sub_Model w h]
+    apply earleyBinListZeroSet_sub_model w h bins hbins 0 (by simp) this (by grind)
+  | succ k ih =>
     intro x hmem
-    sorry
+    let hbins := (earleyBinsList Gₗ w k (by lia)).inv
+    apply earleyBinListZeroSet_sub_model w h (earleyBinsList Gₗ w k (by lia)).bins hbins (k+1)
+    · intro y hmemy
+      have := ih (by lia)
+      apply Set.mem_of_mem_of_subset hmemy this
+    · simp only [earleyBinsList] at hmem
+      grind [earleyBinSetList_extensive]
+    · lia
 
--- This is wrong:
--- setOfBins (earleyBinsList Gₗ w k hk).bins ⊆ setOfModelK G w k := by
 lemma earleyListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) : earleyListSet Gₗ w ⊆ EarleySet G (mapT w) := by
   simp only [earleyListSet, earleyList]
   have := earleyBinsListSet_sub_model w h w.length (by lia)
-  sorry
+  grind
 
 /--
 The soundness criteria for the list implementation:
