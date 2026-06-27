@@ -874,12 +874,13 @@ public def earleyList (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBi
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
 
-TODO: what code gets compiled from `∃ x ∈ Array ?
+TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 @[grind]
-public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) : Bool :=
+public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) [LawfulBEq T] : Bool :=
   let bins := earleyList G w |>.bins
-  ∃ x ∈ bins[w.length], isFinished G.initial (mapT w) x.item
+  let finalItems := items bins[w.length]
+  ∃ x ∈ finalItems, isFinished G.initial (mapT w) x
 
 end Recognizer
 end Earley

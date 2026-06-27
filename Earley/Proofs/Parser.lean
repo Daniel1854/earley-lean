@@ -75,7 +75,7 @@ public theorem soundnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G
   · rename_i x idx bins hf
     apply soundnessEarleyList w h
     simp only [recognizeList, decide_eq_true_eq]
-    use x
+    use x.item
     let finalBin := (earleyList Gₗ w).bins[w.length]
     let P := fun x : BinItem T G.NT => isFinished Gₗ.initial (mapT w) x.item
     have hmem : (x, idx) ∈ (filterWithIdx finalBin P) := by grind
@@ -160,11 +160,8 @@ public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
   split
   · rename_i heq
     rcases this with ⟨x,hx⟩
-    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial (mapT w) x.item
-    have : x  ∈ (filterWithIdx (earleyList Gₗ w).bins[w.length] P).map Prod.fst := by
-      have := memFilterWithIdx_of_mem P hx.left hx.right
-      grind
-    grind
+    let P := fun y : EarleyItem T G.NT => isFinished Gₗ.initial (mapT w) y
+    grind [notP_of_emptyFilterWithIdx]
   · rename_i x idx bins hf
     apply some_of_buildTree Gₗ w idx
 

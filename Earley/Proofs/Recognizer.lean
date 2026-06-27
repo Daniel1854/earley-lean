@@ -41,8 +41,6 @@ TODO: think about where to stop using List T for w
 
 @[expose] public section
 
--- FIXME: when everythign is done
-
 namespace Earley
 namespace Proofs
 namespace Recognizer
@@ -311,7 +309,7 @@ public theorem soundnessEarleyList {G : ContextFreeGrammar T} [BEq G.NT] [Lawful
   simp only [recognizeList, decide_eq_true_eq] at hex
   rcases hex with ⟨x, ⟨hmem, hfin⟩⟩
   have := earleyListSet_sub_model w h
-  apply soundnessEarley (x := x.item)
+  apply soundnessEarley (x := x)
   · have : {x | x ∈ items (earleyList Gₗ w).bins[w.length]}
         ⊆ {x | x ∈ items (Vector.toList (earleyList Gₗ w).bins).flatten} := by
       intro x hmem
