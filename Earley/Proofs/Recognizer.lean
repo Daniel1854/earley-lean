@@ -67,7 +67,7 @@ def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (m : Nat) (hm : m < n) : Set 
 
 @[grind]
 def setOfModelK (G : ContextFreeGrammar T) (w : List T) (k : Nat) : Set (EarleyItem T G.NT) :=
-  { x | x ∈ EarleySet G (mapT w) ∧ x.endIdx ≤ k}
+  { x | x ∈ EarleySet G (mapT w) ∧ x.endIdx = k}
 
 @[grind]
 def earleyListSet (G : ContextFreeGrammarList T N) (w : List T) : Set (EarleyItem T N) :=
@@ -138,6 +138,28 @@ lemma earleyBinSetList_extensive {G : ContextFreeGrammarList T N} {w : List T}
           simp only [hw, ↓reduceDIte]
           apply updateBins_extensive (k+1)
       | .nonterminal n => apply updateBins_extensive k hk
+
+omit [LawfulBEq T] in
+lemma earleyBinsList_extensiveAux (G : ContextFreeGrammarList T N) (w : List T) (k n : Nat)
+    (hi : k ≤ n) (hk : n < w.length) {x : EarleyItem T N}
+    (hmem : x ∈ items (earleyBinsList G w n (by lia)).bins[k]) :
+    x ∈ items (earleyBinsList G w (n+1) (by lia)).bins[k] := by
+  grind [earleyBinList_extensive]
+
+omit [LawfulBEq T] in
+lemma earleyBinsList_extensive (G : ContextFreeGrammarList T N) (w : List T) {k n m : Nat}
+    (hk : k ≤ n) (hn : n ≤ m) (hm : m < w.length + 1) {x : EarleyItem T N}
+    (hmem : x ∈ items (earleyBinsList G w n (by lia)).bins[k]) :
+    x ∈ items (earleyBinsList G w m (by lia)).bins[k] := by
+  induction m with
+  | zero =>
+    grind [earleyBinsList_extensiveAux]
+  | succ m ih =>
+    if h : n = m+1 then
+      grind
+    else
+      specialize ih (by grind) (by lia) hmem
+      apply earleyBinsList_extensiveAux G w k m (by lia) (by lia) ih
 
 omit [LawfulBEq T] in
 lemma updateBinAux_sub {s : Set (EarleyItem T N)} (xs : List (BinItem T N)) (y : BinItem T N)
@@ -355,7 +377,7 @@ lemma initModel_sub_initL {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
   grind [Finset.mem_toList]
 
 -- TODO: not really the right name, but somewhat close.
--- TODO: can I set j to 0? overlapping names with EarleyItem a bit annoying. maybe it _should_ be ik
+-- TODO: j should not make much of a difference? could stay at 0?
 --       (hj : j < bins[k].length) ? difficult to prove hm. unclear if I will need it
 --       for the zero case we can prove it since there is an element mem of it
 lemma predictModel_sub_predictL {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
@@ -427,31 +449,21 @@ lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [BEq G.NT] [Lawful
     setOfModelK G w (k + 1) ⊆ setOfBins (earleyBinsList Gₗ w (k + 1) (by lia)).bins := by
   simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf,
     and_imp]
-  intro x hmemx hke
-  use x.endIdx, (by lia)
-  induction hmemx with
-  | init r hmem hr =>
-    let wfBins := initBins Gₗ w
-    let wfBins' := earleyBinList Gₗ w 0 wfBins.bins (by simp) 0 wfBins.inv
-    have hsub := initModel_sub_initL h hmem hr
-    have : items wfBins.bins[0] ⊆ items wfBins'.bins[0] := by
-      apply earleyBinList_extensive (hi := by simp)
-    simp
-    sorry
-    --apply @Set.mem_of_mem_of_subset _ ⟨r,0,0,0⟩ _ _ hsub this
+  intro x hmemx
+  induction hmemx generalizing k with
+  | init r hmem hr => simp
   | scan hx hmem hbounds hw hnext ih =>
     rename_i x r pos i j a
-    specialize ih (by grind)
+    --use x.endIdx+1, (by lia)
+    --specialize ih (by grind)
     sorry
   | predict hx hmemx hmemr2 hnext ih =>
     rename_i x r1 r2 pos i j
-    specialize ih (by grind)
+    --specialize ih
     sorry
   | complete hx hmemx hy hmemy hcomp hnext hmemx_ih hmemy_ih =>
-    rename_i x y r1 r2 posx posy i j k
-    specialize hmemx_ih (by grind)
-    specialize hmemy_ih (by grind)
-    simp at hke
+    rename_i x y r1 r2 posx posy i j k'
+    --specialize hmemy_ih (by grind)
     sorry
 
 lemma modelK_sub_earleyListSetK {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
@@ -475,10 +487,18 @@ lemma model_sub_earleyListSet {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G) :
     EarleySet G (mapT w) ⊆ earleyListSet Gₗ w := by
-  have := modelK_sub_earleyListSetK w h hw heps w.length (by lia)
-  simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf,
+  intro x hmem
+  simp only [earleyListSet, setOfBins, earleyList, Order.lt_add_one_iff, Set.mem_setOf_eq]
+  have := modelK_sub_earleyListSetK w h hw heps
+  simp only [Order.lt_add_one_iff, setOfModelK, map_of_mapT, setOfBins, Set.setOf_subset_setOf,
     and_imp] at this
-  grind
+  specialize this x.endIdx (by grind) x hmem (by grind)
+  rcases this with ⟨k,hk,hmem⟩
+  use k, hk
+  apply earleyBinsList_extensive Gₗ w (k := k) (n := x.endIdx) (m := w.length) _ _ (by lia) hmem
+  · have := (earleyBinsList Gₗ w x.endIdx (by grind)).inv
+    grind
+  · grind
 
 lemma model_eq_earleyListSet {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
