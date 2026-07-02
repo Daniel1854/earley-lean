@@ -845,6 +845,16 @@ decreasing_by
   · simp
 
 /--
+Initialize bins by constructing the first bin through using .init for all G.rules.
+-/
+@[grind]
+public def initBins (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBins G w :=
+  let b₀ := initList G
+  let bins := Vector.replicate (w.length + 1) []
+  let bins' := bins.set 0 b₀ (by simp)
+  ⟨bins', (by grind [initList, wfBinItems_of_initList])⟩
+
+/--
 Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
@@ -853,11 +863,8 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
     (h : k < w.length + 1) : WfEarleyBins G w :=
   match h : k with
   | 0 =>
-    -- Initialize the first bin by using .init for all G.rules
-    let b₀ := initList G
-    let bins := Vector.replicate (w.length + 1) []
-    let bins' := bins.set 0 b₀ (by simp)
-    earleyBinList G w 0 bins' (by simp) 0 (by grind [initList, wfBinItems_of_initList])
+    let wfBins := initBins G w
+    earleyBinList G w 0 wfBins.bins (by simp) 0 wfBins.inv
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
     let ⟨mBins, inv⟩ := earleyBinsList G w i (by lia)

@@ -287,7 +287,7 @@ lemma nonEmptyWordDerivation_of_isEpsilonFree (G : ContextFreeGrammar T) (heps :
       grind
     | cons _ _ => grind
 
-lemma nonEmptyDerives_of_isEpsilonFree (G : ContextFreeGrammar T) (heps : isEpsilonFree G) :
+lemma nonEmptyDerives_of_isEpsilonFree {G : ContextFreeGrammar T} (heps : isEpsilonFree G) :
     nonEmptyDerives G := by
   intro s
   have : [s] ≠ [] := by simp

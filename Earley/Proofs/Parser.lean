@@ -152,7 +152,7 @@ public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBE
     (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
     (hgen : G.Generates (mapT w)) : ∃ t, parse Gₗ w = some t := by
   have hnEmpty : w ≠ [] := by
-    have := nonEmptyDerives_of_isEpsilonFree G heps
+    have := nonEmptyDerives_of_isEpsilonFree heps
     grind [Generates]
   have := completenessEarleyList w h hw heps hgen
   simp only [recognizeList, decide_eq_true_eq] at this

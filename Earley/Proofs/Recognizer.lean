@@ -60,16 +60,14 @@ variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 def setOfBins {n : Nat} (bins : EarleyBins T N n) : Set (EarleyItem T N) :=
   { x | ∃ k, ∃ (hk : k < n), x ∈ items bins[k] }
 
+-- TODO: unused, unclear if this restriction will be relevant for some induction proof
 @[grind]
-def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (k : Nat) (hk : k < n) : Set (EarleyItem T N) :=
-  { x | x ∈ items bins[k] }
+def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (m : Nat) (hm : m < n) : Set (EarleyItem T N) :=
+  { x | ∃ k, ∃ (hk : k ≤ m), x ∈ items bins[k] }
 
--- Unclear where to use this since
--- `setOfBins (earleyBinsList Gₗ w k hk).bins ⊆ setOfModelK G w k`
--- is sadly wrong due to scan
 @[grind]
 def setOfModelK (G : ContextFreeGrammar T) (w : List T) (k : Nat) : Set (EarleyItem T G.NT) :=
-  {x | x ∈ EarleySet G (mapT w) ∧ x.endIdx ≤ k}
+  { x | x ∈ EarleySet G (mapT w) ∧ x.endIdx ≤ k}
 
 @[grind]
 def earleyListSet (G : ContextFreeGrammarList T N) (w : List T) : Set (EarleyItem T N) :=
@@ -103,6 +101,19 @@ lemma updateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
   simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq]
   use k, hk
   grind
+
+omit [LawfulBEq T] in
+lemma earleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (k j i : Nat) (hk : k < w.length + 1) (hi : i ≤ k) :
+    items bins[i] ⊆ items (earleyBinList G w k bins hk j hbins).bins[i] := by
+  fun_induction earleyBinList G w k bins hk j hbins with
+  | case1 bins hk j hbins hj => grind
+  | case2 bins hk j hbins hj x bins' hbins' =>
+    rename_i ih
+    apply subset_trans _ ih
+    clear ih
+    grind [updateBin_extensive]
 
 omit [LawfulBEq T] in
 lemma earleyBinSetList_extensive {G : ContextFreeGrammarList T N} {w : List T}
@@ -169,6 +180,8 @@ end Subsets
 
 section Soundness
 
+-- TODO: maybe this should be/there should exist initBins_sub_model hm.
+-- Not sure if I require that result more than once
 omit [LawfulBEq T] in
 lemma initList_sub_Model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
@@ -273,14 +286,13 @@ lemma earleyBinsListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
   | zero =>
     simp only [earleyBinsList]
     intro x hmem
-    let bins := (Vector.replicate (w.length + 1) []).set 0 (initList Gₗ) (by simp)
-    have hbins : isWellFormedBins Gₗ w bins := by grind [initList, wfBinItems_of_initList]
-    have : setOfBins bins ⊆ EarleySet G (mapT w) := by
-      simp only [setOfBins, Order.lt_add_one_iff, map_of_mapT, bins]
+    let wfBins := initBins Gₗ w
+    have : setOfBins wfBins.bins ⊆ EarleySet G (mapT w) := by
+      simp only [setOfBins, Order.lt_add_one_iff, map_of_mapT, wfBins]
       intro x hmem
       rcases hmem with ⟨k,hk,hmem⟩
       grind [initList_sub_Model w h]
-    apply earleyBinListZeroSet_sub_model w h bins hbins 0 (by simp) this (by grind)
+    apply earleyBinListZeroSet_sub_model w h wfBins.bins wfBins.inv 0 (by simp) this (by grind)
   | succ k ih =>
     intro x hmem
     let hbins := (earleyBinsList Gₗ w k (by lia)).inv
