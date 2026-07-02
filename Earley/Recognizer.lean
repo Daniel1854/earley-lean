@@ -217,7 +217,7 @@ List-based implementation of the .complete operation.
 Returns items for each successful completion of item `y` using its startIdx for bins.
 `j` is the index of y in its bin.
 -/
-public def completeList (y : EarleyItem T N) (n : Nat) (bins : EarleyBins T N n)
+public def completeList (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
     (h : y.startIdx < n) (j : Nat) : List (BinItem T N) :=
   -- The origin bin filtered for matchings with y
   let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
@@ -667,7 +667,7 @@ omit [LawfulBEq (EarleyItem T N)] in
 lemma wfItems_of_completeList {G : ContextFreeGrammarList T N} {w : List T} (j k : Nat)
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (y : EarleyItem T N) (hk : k < bins.size) (hmemy : y ∈ (items bins[k]))
-    (x : EarleyItem T N) (hmemx : x ∈ (items (completeList y (w.length + 1) bins (by grind) j))) :
+    (x : EarleyItem T N) (hmemx : x ∈ (items (completeList y bins (by grind) j))) :
     isWellFormed G.rules (mapT w) x ∧ x.endIdx = k := by
   simp only [completeList, items, List.map_map, List.mem_map, Function.comp_apply,
     Prod.exists] at hmemx
@@ -685,7 +685,7 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} {w : List T} (
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (y : EarleyItem T N) (hk : k < bins.size) (hmemy : y ∈ (items bins[k]))
     (hj : j < bins[k].length) :
-    isWellFormedBinPointers w bins (completeList y (w.length + 1) bins (by grind) j) k := by
+    isWellFormedBinPointers w bins (completeList y bins (by grind) j) k := by
   simp only [isWellFormedBinPointers]
   intro x hmemx
   simp only [completeList, List.mem_map, Prod.exists] at hmemx
@@ -708,8 +708,7 @@ lemma soundPointers_of_completeList (G : ContextFreeGrammarList T N) {w : List T
     (bins : EarleyBins T N (w.length + 1)) (hbins : isWellFormedBins G w bins)
     (y : EarleyItem T N) (hk : k < bins.size) (hmemy : y ∈ (items bins[k]))
     (hj : j < bins[k].length) :
-    ∀ x ∈ completeList y (w.length + 1) bins (by grind) j,
-    isSoundPointer x.pointer k bins[k].length := by
+    ∀ x ∈ completeList y bins (by grind) j, isSoundPointer x.pointer k bins[k].length := by
   simp only [isSoundPointer]
   intro x hmemx
   simp only [completeList, List.mem_map, Prod.exists] at hmemx
@@ -736,8 +735,8 @@ lemma wfBins_of_completeList {G : ContextFreeGrammarList T N} {w : List T} {j k 
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (y : EarleyItem T N) (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].length))
     (hy : y = bins[k][j].item) : isWellFormedBins G w
-    (updateBins bins k (completeList y (w.length + 1) bins (by grind) j) (by lia)) := by
-  apply wfBins_of_updateBin G w bins hbins (completeList y (w.length + 1) bins (by grind) j) hk
+    (updateBins bins k (completeList y bins (by grind) j) (by lia)) := by
+  apply wfBins_of_updateBin G w bins hbins (completeList y bins (by grind) j) hk
   · grind [wfItems_of_completeList j k hbins y]
   · grind [wfPointers_of_completeList j k hbins y hk (by grind) (by omega)]
   · grind [soundPointers_of_completeList G j k bins hbins y hk]
@@ -759,7 +758,7 @@ lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (j k
             let newItem := scanList w x.item a k (by omega) j
             updateBins bins (k + 1) newItem (by omega)
       | none =>
-        let newItems := completeList x.item (w.length + 1) bins (by grind) j
+        let newItems := completeList x.item bins (by grind) j
         updateBins bins k newItems (by omega)) :
     isWellFormedBins G w bins' := by
   simp only [h, ge_iff_le]
@@ -826,7 +825,7 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
           updateBins bins (k+1) newItem (by omega)
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      let newItems := completeList x.item (w.length + 1) bins (by grind) j
+      let newItems := completeList x.item bins (by grind) j
       updateBins bins k newItems (by omega)
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList G w k bins' (by omega) (j+1) this
