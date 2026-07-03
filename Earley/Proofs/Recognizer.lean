@@ -39,6 +39,7 @@ TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
 TODO: think about where or if to stop using List T for w
 TODO: order of i j k k' is a mess since there is heavy overlap.
       Need to choose unique ident for everything.
+TODO: remove usage of w solely for Vec length
 -/
 
 @[expose] public section
@@ -89,47 +90,65 @@ lemma binIdx_of_endIdx (G : ContextFreeGrammarList T N) (w : List T)
 section Subsets
 
 omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
-theorem updateBinAux_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
-    items xs ⊆ items (updateBinAux xs y) := by
+theorem updateBinAux_IsPrefix (xs : List (BinItem T N)) (y : BinItem T N) :
+    List.IsPrefix (items xs) (items (updateBinAux xs y)) := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
 
 omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
-theorem updateBin_extensive (xs ys : List (BinItem T N)) : items xs ⊆ items (updateBin xs ys) := by
+theorem updateBinAux_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
+    items xs ⊆ items (updateBinAux xs y) :=
+  List.IsPrefix.subset (updateBinAux_IsPrefix xs y)
+
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+theorem updateBin_IsPrefix (xs ys : List (BinItem T N)) :
+    List.IsPrefix (items xs) (items (updateBin xs ys)) := by
   induction ys generalizing xs with
   | nil => grind
-  | cons y ys ih => grind [updateBinAux_extensive]
+  | cons y ys ih => grind [updateBinAux_IsPrefix]
 
--- Grind can solve most of this proof, but it takes way too long on its own.
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+theorem updateBin_extensive (xs ys : List (BinItem T N)) : items xs ⊆ items (updateBin xs ys) :=
+  List.IsPrefix.subset (updateBin_IsPrefix xs ys)
+
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+theorem updateBins_IsPrefix {w : List T} {bins : EarleyBins T N (w.length + 1)} (i k : Nat)
+    (hi : i < w.length + 1) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
+    List.IsPrefix (items bins[i]) (items (updateBins bins k newBin hk)[i]) := by
+  grind [updateBin_IsPrefix]
+
 omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
 lemma updateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
+    (k i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) (newBin : List (BinItem T N)) :
+    items bins[i] ⊆ items (updateBins bins k newBin hk)[i] :=
+  List.IsPrefix.subset (updateBins_IsPrefix i k hi hk newBin)
+
+omit [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
+lemma setOfBinsUpdateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k : Nat) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
     setOfBins bins ⊆ setOfBins (updateBins bins k newBin hk) := by
-  intro x hmem
-  rw [updateBins]
-  have := updateBin_extensive bins[k] newBin
-  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmem
-  rcases hmem with ⟨k,hk,hmem⟩
-  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq]
-  use k, hk
-  grind
+  grind [updateBins_IsPrefix]
+
+omit [LawfulBEq T] in
+theorem earleyBinList_IsPrefix {G : ContextFreeGrammarList T N} {w : List T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (k j i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) :
+    List.IsPrefix (items bins[i]) (items (earleyBinList G w k bins hk j hbins).bins[i]) := by
+  fun_induction earleyBinList G w k bins hk j hbins with
+  | case1 bins hk j hbins hj => grind
+  | case2 bins hk j hbins hj x bins' hbins' => grind [updateBins_IsPrefix]
 
 omit [LawfulBEq T] in
 lemma earleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (k j i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) :
-    items bins[i] ⊆ items (earleyBinList G w k bins hk j hbins).bins[i] := by
-  fun_induction earleyBinList G w k bins hk j hbins with
-  | case1 bins hk j hbins hj => grind
-  | case2 bins hk j hbins hj x bins' hbins' =>
-    rename_i ih
-    apply subset_trans _ ih
-    clear ih
-    grind [updateBin_extensive]
+    items bins[i] ⊆ items (earleyBinList G w k bins hk j hbins).bins[i] :=
+  List.IsPrefix.subset (earleyBinList_IsPrefix hbins k j i hk hi)
 
 -- I could prove it more general, but I need it like this
 -- FIXME: this is actually quite troublesome huh
+-- maybe I need some sublist property?
 lemma earleyBinList_sub_earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (m k j : Nat) (hm : m < w.length + 1) (hk : k < w.length + 1) :
@@ -138,14 +157,25 @@ lemma earleyBinList_sub_earleyBinList {G : ContextFreeGrammarList T N} {w : List
   induction j with
   | zero => grind
   | succ n ih =>
-    rw [earleyBinList]
     apply subset_trans _ ih
     clear ih
-    intro x hmem
-    sorry
+    fun_induction earleyBinList G w m bins hm n hbins with
+    | case1 bins hk j hbins hj =>
+      rw [earleyBinList]
+      have : j + 1 ≥ bins[m].length := by omega
+      simp [this]
+    | case2 bins hk j hbins hj x bins' hbins' =>
+      rename_i ih
+      clear ih
+      -- maybe should prove that earleyBinList IsPrefix ? But it isnt!
+      rw [earleyBinList]
+      rw [earleyBinList]
+      simp only [items, ge_iff_le]
+      --have := earleyBinList_IsPrefix
+      sorry
 
 omit [LawfulBEq T] in
-lemma earleyBinSetList_extensive {G : ContextFreeGrammarList T N} {w : List T}
+lemma setOfBinsEarleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (k j : Nat) (hk : k < w.length + 1) :
     setOfBins bins ⊆ setOfBins (earleyBinList G w k bins hk j hbins).bins := by
@@ -157,7 +187,7 @@ lemma earleyBinSetList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     clear ih
     simp only [ge_iff_le, bins']
     match hnext : x.item.nextSymbol with
-    | none => apply updateBins_extensive k hk
+    | none => apply setOfBinsUpdateBins_extensive k hk
     | some s =>
       match hS : s with
       | .terminal t =>
@@ -165,8 +195,8 @@ lemma earleyBinSetList_extensive {G : ContextFreeGrammarList T N} {w : List T}
           simp [hw]
         else
           simp only [hw, ↓reduceDIte]
-          apply updateBins_extensive (k+1)
-      | .nonterminal n => apply updateBins_extensive k hk
+          apply setOfBinsUpdateBins_extensive (k+1)
+      | .nonterminal n => apply setOfBinsUpdateBins_extensive k hk
 
 section Unused
 -- I think I should never reason on that level about extensive ?
@@ -357,7 +387,7 @@ lemma earleyBinsListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
       have := ih (by lia)
       apply Set.mem_of_mem_of_subset hmemy this
     · simp only [earleyBinsList] at hmem
-      grind [earleyBinSetList_extensive]
+      grind [setOfBinsEarleyBinList_extensive]
     · lia
 
 lemma earleyListSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
