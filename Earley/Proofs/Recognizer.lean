@@ -154,16 +154,6 @@ lemma earleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     items bins[i] ⊆ items (earleyBinList G w k bins hk j hbins).bins[i] :=
   List.IsPrefix.subset (earleyBinList_IsPrefix hbins k j i hk hi)
 
--- todo: unclear if this helps with earleyBinListJ_sub_earleyBinList or is even easier to prove.
-lemma earleyBinList_sub_earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
-    {bins bins' : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    (hbins' : isWellFormedBins G w bins')
-    (m k j : Nat) (hm : m < w.length + 1) (hk : k < w.length + 1)
-    (hsub : ∀ i, ∃ (hi : i < w.length + 1), items bins[i] ⊆ items bins'[i]) :
-    items (earleyBinList G w m bins hm j hbins).bins[k] ⊆
-    items (earleyBinList G w m bins' hm 0 hbins').bins[k] := by
-  sorry
-
 -- I could prove it more general, but I need it like this
 -- FIXME: this is actually quite troublesome huh
 -- maybe I need some sublist property?
@@ -173,23 +163,30 @@ lemma earleyBinListJ_sub_earleyBinList {G : ContextFreeGrammarList T N} {w : Lis
     (m k j : Nat) (hm : m < w.length + 1) (hk : k < w.length + 1) :
     items (earleyBinList G w m bins hm j hbins).bins[k] ⊆
     items (earleyBinList G w m bins hm 0 hbins).bins[k] := by
-  induction j generalizing bins with
-  | zero => grind
-  | succ n ih =>
-    apply subset_trans _ (ih hbins)
-    clear ih
-    intro x hmem
+  fun_induction earleyBinList with
+  | case1 bins hk j hbins hj => grind [earleyBinList_extensive]
+  | case2 bins hk j hbins hj x bins' hbins' =>
+    rename_i ih
+    apply subset_trans ih _
+    -- this seems to be an idempotency argument? but very non-tangible
     rw [earleyBinList]
-    if hj : n ≥ bins[m].length then
-      simp [ge_iff_le, hj, ↓reduceDIte]
-      have : n + 1 ≥ bins[m].length := by omega
-      rw [earleyBinList] at hmem
-      simp [this] at hmem
-      grind [earleyBinList_extensive]
-    else
-      simp [hj]
-      --have := earleyBinList_sub_earleyBinList
-      sorry
+    sorry
+  --induction j generalizing bins with
+  --| zero => grind
+  --| succ n ih =>
+  --  apply subset_trans _ (ih hbins)
+  --  clear ih
+  --  intro x hmem
+  --  rw [earleyBinList]
+  --  if hj : n ≥ bins[m].length then
+  --    simp [ge_iff_le, hj, ↓reduceDIte]
+  --    have : n + 1 ≥ bins[m].length := by omega
+  --    rw [earleyBinList] at hmem
+  --    simp [this] at hmem
+  --    grind [earleyBinList_extensive]
+  --  else
+  --    simp [hj]
+  --    sorry
 
 lemma setOfBinsEarleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
