@@ -149,12 +149,12 @@ Given a word can be generated from the grammar, then there also exists a parse t
 -/
 public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
-    (hgen : G.Generates (mapT w)) : ∃ t, parse Gₗ w = some t := by
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) (hgen : G.Generates (mapT w)) :
+    ∃ t, parse Gₗ w = some t := by
   have hnEmpty : w ≠ [] := by
     have := nonEmptyDerives_of_isEpsilonFree heps
     grind [Generates]
-  have := completenessEarleyList w h hw heps hgen
+  have := completenessEarleyList w h heps hgen
   simp only [recognizeList, decide_eq_true_eq] at this
   simp only [parse, hnEmpty, ↓reduceDIte]
   split
@@ -173,7 +173,7 @@ A word can be generated from the grammar iff there exists a parse tree for that 
 -/
 public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G) :
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) :
     G.Generates (mapT w) ↔ ∃ t, parse Gₗ w = some t := by
   grind [soundnessParse, completenessParse]
 
