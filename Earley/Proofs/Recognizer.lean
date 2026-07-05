@@ -40,6 +40,7 @@ TODO: think about where or if to stop using List T for w
 TODO: order of i j k k' is a mess since there is heavy overlap.
       Need to choose unique ident for everything.
 TODO: remove usage of w solely for Vec length
+TODO: remove isWord requirement. It can be simped at the appropriate time.
 -/
 
 @[expose] public section
@@ -64,11 +65,6 @@ variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Ea
 @[grind]
 def setOfBins {n : Nat} (bins : EarleyBins T N n) : Set (EarleyItem T N) :=
   { x | ∃ k, ∃ (hk : k < n), x ∈ items bins[k] }
-
--- TODO: unused, unclear if this restriction will be relevant for some induction proof
-@[grind]
-def setOfBinsK {n : Nat} (bins : EarleyBins T N n) (m : Nat) (hm : m < n) : Set (EarleyItem T N) :=
-  { x | ∃ k, ∃ (hk : k ≤ m), x ∈ items bins[k] }
 
 -- While `= k` might seem more direct, `≤ k` helps with the induction on the elements within the set
 -- I need to be able to showcase that the original items also exist in that set, and they can have
@@ -188,6 +184,14 @@ lemma earleyBinListJ_sub_earleyBinList {G : ContextFreeGrammarList T N} {w : Lis
   --    simp [hj]
   --    sorry
 
+lemma earleyBinList_idem_of_lower_idx {G : ContextFreeGrammarList T N} {w : List T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (k j n : Nat) (hk : k < w.length + 1) (hj : j < k) :
+    (earleyBinList G w k bins hk n hbins).bins[j] = bins[j] := by
+  fun_induction earleyBinList G w k bins hk n hbins with
+  | case1 bins hk j hbins hj => grind
+  | case2 bins hk j hbins hj x bins' hbins' => grind
+
 lemma setOfBinsEarleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (k j : Nat) (hk : k < w.length + 1) :
@@ -212,8 +216,8 @@ lemma setOfBinsEarleyBinList_extensive {G : ContextFreeGrammarList T N} {w : Lis
       | .nonterminal n => apply setOfBinsUpdateBins_extensive k hk
 
 section Unused
--- I think I should never reason on that level about extensive ?
 
+-- I think I should never reason on that level about extensive ?
 lemma earleyBinsList_extensiveAux (G : ContextFreeGrammarList T N) (w : List T) (k n : Nat)
     (hi : k ≤ n) (hk : n < w.length) {x : EarleyItem T N}
     (hmem : x ∈ items (earleyBinsList G w n (by lia)).bins[k]) :
@@ -501,57 +505,61 @@ lemma scanModel_sub_scanL {G : ContextFreeGrammarList T N} {w : List T}
     apply subset_trans hscanJ hJ0
   apply Set.mem_of_mem_of_subset hmemT this (x := ⟨r, pos+1, i, k+1⟩)
 
+-- 0 is simply a superset of j, so extendable!
+-- have hJ0 := earleyBinListJ_sub_earleyBinList hbins k k j (by lia) (by lia)
+-- apply subset_trans this hJ0
 lemma predictMem_of_earleyBinListIndex {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    (k j : Nat) (hk : k < w.length + 1) (hj : ¬ (j ≥ bins[k].length))
-    (A : N) (hnext : bins[k][j].item.nextSymbol = some (Symbol.nonterminal A)) :
+    (k j : Nat) (hk : k < w.length + 1)
+    (hj : ¬ (j ≥ (earleyBinList G w k bins (by lia) 0 hbins).bins[k].length))
+    (A : N)
+    (hnext : (earleyBinList G w k bins (by lia) 0 hbins).bins[k][j].item.nextSymbol =
+    some (Symbol.nonterminal A)) :
     items (predictList G A k) ⊆
-    items ((earleyBinList G w k bins (by lia) j hbins).bins[k]'(by grind)) := by
+    items ((earleyBinList G w k bins (by lia) 0 hbins).bins[k]'(by grind)) := by
   intro y hmemy
-  rw [earleyBinList]
-  simp only [ge_iff_le, hj, ↓reduceDIte, hnext]
-  have : y ∈ items (updateBins bins k (predictList G A k) (by grind))[k] := by
-    grind [updateBinsNewBin_extensive]
-  have : isWellFormedBins G w (updateBins bins k (predictList G A k) (by grind)) := by
-    grind [wfBins_of_earleyBinList]
-  have : y ∈ items (earleyBinList G w k (updateBins bins k (predictList G A k) (by lia))
-    (by lia) (j + 1) this).bins[k] := by grind [earleyBinList_extensive]
-  grind
+  --rw [earleyBinList]
+  --simp [ge_iff_le, hj, ↓reduceDIte, hnext]
+  --have : y ∈ items (updateBins bins k (predictList G A k) (by grind))[k] := by
+  --  grind [updateBinsNewBin_extensive]
+  --have : isWellFormedBins G w (updateBins bins k (predictList G A k) (by grind)) := by
+  --  grind [wfBins_of_earleyBinList]
+  --have : y ∈ items (earleyBinList G w k (updateBins bins k (predictList G A k) (by lia))
+  --  (by lia) (j + 1) this).bins[k] := by grind [earleyBinList_extensive]
+  --grind
+  sorry
 
--- (ih : x ∈ items ((earleyBinList Gₗ w k bins (by lia) 0 hbins).bins[k]'(by grind))) :
--- maybe? at some point I will require earleyBinList_idem I think.
 lemma predictModel_sub_predictL {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     {k : Nat} {r2 : ContextFreeRule T N} {x : EarleyItem T N} (hk : k < w.length + 1)
-    (ih : x ∈ items bins[k]) (hmemr2 : r2 ∈ G.rules)
+    (ih : x ∈ items (earleyBinList G w k bins (by lia) 0 hbins).bins[k]) (hmemr2 : r2 ∈ G.rules)
     (hnext : x.nextSymbol = some (Symbol.nonterminal r2.input)) :
     ⟨r2, 0, k, k⟩ ∈ items ((earleyBinList G w k bins (by lia) 0 hbins).bins[k]'(by grind)) := by
   -- Get the index of x to showcase that the call upon that item triggers predictX
   have := List.getElem_of_mem ih
   rcases this with ⟨j, hjI, heq⟩
-  -- x = bins[k][j]
+  -- x = (eBL k 0 bins)[k][j]
   have hmemT : ⟨r2, 0, k, k⟩ ∈ items (predictList G r2.input k) := by
-    simp [predictList, items]
+    simp only [items, predictList, List.map_map, List.mem_map, List.mem_filter, beq_iff_eq,
+      Function.comp_apply, EarleyItem.mk.injEq, and_self, and_true, exists_eq_right]
     grind
   have : items (predictList G r2.input k) ⊆
       items (earleyBinList G w k bins (by lia) 0 hbins).bins[k] := by
-    have hj' : ¬ (j ≥ bins[k].length) := by grind
-    have heq' : x = bins[k][j].item := by grind
-    have hbins' := (earleyBinList G w k bins (by lia) 0 hbins).inv
-    have := predictMem_of_earleyBinListIndex hbins k j (by lia) hj' r2.input (by grind)
-    -- 0 is simply a superset of j, so extendable!
-    have hJ0 := earleyBinListJ_sub_earleyBinList hbins k k j (by lia) (by lia)
-    apply subset_trans this hJ0
+    have hj' : ¬ (j ≥ (earleyBinList G w k bins (by lia) 0 hbins).bins[k].length) := by grind
+    apply predictMem_of_earleyBinListIndex hbins k j (by lia) hj' r2.input (by grind)
   apply Set.mem_of_mem_of_subset hmemT this (x := ⟨r2, 0, k, k⟩)
 
+-- In theory I know that eBL on x is meaningless since j < k due to impossible complete.
 lemma completeModel_sub_completeL {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] {w : List T} {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
     {bins : EarleyBins T G.NT (w.length + 1)} (hbins : isWellFormedBins Gₗ w bins)
     {posx posy i j k : Nat} {r1 r2 : ContextFreeRule T G.NT} {x y : EarleyItem T G.NT}
-    (hk : k < w.length + 1) (hx : x = ⟨r1, posx, i, j⟩) (hy : y = ⟨r2, posy, j, k⟩)
+    (hk : k < w.length + 1) (hj : j < w.length + 1)
+    (hx : x = ⟨r1, posx, i, j⟩) (hy : y = ⟨r2, posy, j, k⟩)
     (hmemx : x ∈ EarleySet G (mapT w)) (hmemy : y ∈ EarleySet G (mapT w))
-    (hmemxL : x ∈ items (bins[j]'(by grind))) (hmemyL : y ∈ items (bins[k]'(by grind)))
+    (hmemxL : x ∈ items (earleyBinList Gₗ w k bins (by lia) 0 hbins).bins[j])
+    (hmemyL : y ∈ items (earleyBinList Gₗ w k bins (by lia) 0 hbins).bins[k])
     (hnext : x.nextSymbol = some (Symbol.nonterminal r2.input)) (hcomp : y.isComplete = true) :
     ⟨r1, posx+1, i, k⟩ ∈
     items ((earleyBinList Gₗ w k bins (by lia) 0 hbins).bins[k]'(by grind)) := by
@@ -574,7 +582,7 @@ lemma completeModel_sub_completeL {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
 
 lemma modelKZero_sub_earleyBinsListZeroSet {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G)
     {x : EarleyItem T G.NT} (hmemx : x ∈ EarleySet G (mapT w)) (hke : x.endIdx = 0) :
     x ∈ items (earleyBinsList Gₗ w 0 (by lia)).bins[0] := by
   induction hmemx with
@@ -588,10 +596,7 @@ lemma modelKZero_sub_earleyBinsListZeroSet {G : ContextFreeGrammar T} [BEq G.NT]
     rw [hke]
     rw [hke] at hx
     let wfBins := initBins Gₗ w
-    -- FIXME: so .. this usage is obv wrong
-    have : x ∈ items wfBins.bins[0] := by sorry
-    have := predictModel_sub_predictL wfBins.inv (by lia) this (by grind [Finset.mem_toList]) hnext
-    sorry
+    apply predictModel_sub_predictL wfBins.inv (by lia) ih (by grind [Finset.mem_toList]) hnext
   -- There can't exist a valid item generated through .complete in the first bin:
   -- since the grammar is epsilon free, there has to be at least a terminal consumed for a rule to
   -- be completed.
@@ -604,62 +609,87 @@ lemma modelKZero_sub_earleyBinsListZeroSet {G : ContextFreeGrammar T} [BEq G.NT]
 lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) (hw : isWord G (mapT w)) (heps : isEpsilonFree G)
-    {bins : EarleyBins T G.NT (w.length + 1)} (hbins : isWellFormedBins Gₗ w bins)
-    (k : Nat) (hk : k < w.length) (hsub : setOfModelK G w k ⊆ setOfBins bins) :
-    setOfModelK G w (k + 1) ⊆
-    setOfBins (earleyBinList Gₗ w (k + 1) bins (by lia) 0 hbins).bins := by
-  simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf,
-    and_imp]
-  intro x hmemx hke
+    (k : Nat) (hk : k < w.length)
+    (hsub : setOfModelK G w k ⊆ setOfBins (earleyBinsList Gₗ w k (by lia)).bins)
+    {x : EarleyItem T G.NT} (hmemx : x ∈ EarleySet G (mapT w)) (hke : x.endIdx ≤ k + 1) :
+    ∃ j, ∃ (hj : j ≤ w.length), x ∈ items (earleyBinsList Gₗ w (k + 1) (by lia)).bins[j] := by
   induction hmemx with
   | init r hmem hr =>
     use 0, by lia
-    simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+    simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf,
+      and_imp] at hsub
     have : ⟨r,0,0,0⟩ ∈ EarleySet G (List.map Symbol.terminal w) := EarleySet.init r hmem hr
-    specialize hsub ⟨r,0,0,0⟩ ⟨this, by grind⟩
-    rcases hsub with ⟨k',hk',hmem'⟩
-    have : ⟨r,0,0,0⟩ ∈ items bins[0] := by grind
-    apply earleyBinList_extensive hbins (k+1) 0 0 (by lia) (by lia) this
+    grind [earleyBinList_extensive]
   -- We want to show ⟨r,pos+1,i,j+1⟩ ∈ bins[j+1] from x ∈ bins[j] w/ x=⟨r,pos,i,j⟩
   | scan hx hmem hbounds hw hnext ih =>
     rename_i x r pos i j a
     use j+1, (by lia)
-    specialize ih (by grind)
-    rcases ih with ⟨k', hk', ih⟩
-    let inv := (earleyBinList Gₗ w (k + 1) bins (by lia) 0 hbins).inv
-    -- maybe I need to do
-    have hmem : x ∈ items (earleyBinList Gₗ w (k + 1) bins (by lia) 0 hbins).bins[j] := by grind
-    have := scanModel_sub_scanL inv j (by lia) hx hmem hnext hw
-    -- need some extensive lemma here
-    sorry
+    -- Scan item could be generated through the earleyBinList call
+    if hjk : j = k then
+      specialize ih (by grind)
+      rcases ih with ⟨k', hk', ih⟩
+      let inv := (earleyBinsList Gₗ w (k + 1) (by lia)).inv
+      have : ⟨r, pos + 1, i, j + 1⟩ ∈ items (earleyBinsList Gₗ w k (by lia)).bins[j + 1] := by
+        have : k' = j := by grind
+      --have hmem : x ∈ items (earleyBinList Gₗ w (k + 1) bins (by lia) 0 hbins).bins[j] := by grind
+      --have := scanModel_sub_scanL inv j (by lia) hx hmem hnext hw
+        sorry
+      grind [earleyBinList_extensive]
+    -- Scan item is already present
+    else
+      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+      specialize hsub ⟨r, pos+1, i, j+1⟩ ⟨EarleySet.scan hx hmem _ hw hnext, by grind⟩
+      grind [earleyBinList_extensive]
   -- We want to show ⟨r2,0,j,j⟩ ∈ bins[j] from x ∈ bins[j] w/ x=⟨r1,pos,i,j⟩
   | predict hx hmemx hmemr2 hnext ih =>
     rename_i x r1 r2 pos i j
     use j, by lia
-    specialize ih (by grind)
-    rcases ih with ⟨k', hk', ih⟩
-    let inv := (earleyBinList Gₗ w (k + 1) bins (by lia) 0 hbins).inv
-    -- FIXME: this usage is obv wrong
-    have : x ∈ items bins[j] := by sorry
-    have := predictModel_sub_predictL hbins (by lia) this (by grind [Finset.mem_toList])
-      hnext (k := j)
-    sorry
+    -- Predict item could be generated through the earleyBinList call
+    if hjk : j = k + 1 then
+      specialize ih (by grind)
+      rcases ih with ⟨k', hk', ih⟩
+      have : k' = j := by
+        let inv := (earleyBinsList Gₗ w (k + 1) (by lia)).inv
+        grind
+      simp only [hjk]
+      simp only [hjk, this] at ih
+      let hbins := (earleyBinsList Gₗ w k (by lia)).inv
+      apply predictModel_sub_predictL hbins (by lia) ih (by grind [Finset.mem_toList]) hnext
+    -- Predict item is already present
+    else
+      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+      specialize hsub ⟨r2,0,j,j⟩ ⟨EarleySet.predict hx (by grind) hmemr2 hnext, by grind⟩
+      grind [earleyBinList_extensive]
   -- We want to show z=⟨r1,posx+1,i,kz⟩ ∈ bins[kz] from
   -- - x ∈ bins[j]  w/ x=⟨r1,posx,i,j⟩
   -- - y ∈ bins[kz] w/ y=⟨r2,posy,j,kz⟩
   | complete hx hmemx hy hmemy hcomp hnext ihx ihy =>
     rename_i x y r1 r2 posx posy i j kz
     use kz, by lia
-    specialize ihx (by grind)
-    specialize ihy (by grind)
-    rcases ihx with ⟨kx, hkx, ihx⟩
-    rcases ihy with ⟨ky, hky, ihy⟩
-    let inv := (earleyBinList Gₗ w (k + 1) bins (by lia) 0 hbins).inv
-    -- FIXME: obviously I cant use it like that. Need to split on kz being equal to k+1?
-    --        else the ih has to handle it.
-    have := completeModel_sub_completeL h hw heps inv (by grind) hx hy
-      hmemx hmemy (by grind) (by grind) hnext hcomp
-    sorry
+    -- Complete item could be generated through the earleyBinList call
+    if hjk : kz = k + 1 then
+      specialize ihx (by grind)
+      specialize ihy (by grind)
+      rcases ihx with ⟨kx, hkx, ihx⟩
+      rcases ihy with ⟨ky, hky, ihy⟩
+      have : kx = j := by
+        let inv := (earleyBinsList Gₗ w (k + 1) (by lia)).inv
+        grind
+      simp only [this] at ihx
+      have : ky = k + 1 := by
+        let inv := (earleyBinsList Gₗ w (k + 1) (by lia)).inv
+        grind
+      simp only [this] at ihy
+      simp only [hjk] at hy
+      simp only [hjk]
+      let hbins := (earleyBinsList Gₗ w k (by lia)).inv
+      apply completeModel_sub_completeL h hw heps hbins (by lia) (by grind) hx hy
+        hmemx hmemy ihx ihy hnext hcomp
+    -- Complete item is already present
+    else
+      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+      specialize hsub ⟨r1,posx+1,i,kz⟩ ⟨EarleySet.complete hx hmemx hy hmemy hcomp hnext, by grind⟩
+      grind [earleyBinList_extensive]
 
 lemma modelK_sub_earleyListSetK {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
@@ -671,11 +701,12 @@ lemma modelK_sub_earleyListSetK {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq
     simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf, and_imp]
     intro x hmemx hke
     use 0, (by lia)
-    apply modelKZero_sub_earleyBinsListZeroSet w h hw heps hmemx (by lia)
+    apply modelKZero_sub_earleyBinsListZeroSet w h heps hmemx (by lia)
   | succ k ih =>
+    simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf, and_imp]
+    intro x hmem hk
     specialize ih (by grind)
-    let hbins := (earleyBinsList Gₗ w k (by lia)).inv
-    apply modelK_sub_earleyBinsListSet w h hw heps hbins k (by lia) ih
+    apply modelK_sub_earleyBinsListSet w h hw heps k (by lia) ih hmem hk
 
 lemma model_sub_earleyListSet {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : List T) {Gₗ : ContextFreeGrammarList T G.NT}
