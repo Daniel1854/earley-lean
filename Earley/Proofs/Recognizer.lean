@@ -43,6 +43,9 @@ TODO: remove usage of w solely for Vec length
 TODO: the whole IsPrefix thing seems to be unused, so may be better to prove it directly.
 TODO: think about setOfBins and if the approach of earleyBinList_idem isnt easier to reason and
       rewrite with: saying that for all indices a subset relation holds, seems more natural.
+TODO: there are some points where I didnt understand why I couldnt use `rw`
+      due to the proof terms not matching up after the rewrite,
+      but simp is able to rewrite within the proofs as well ?
 -/
 
 @[expose] public section
@@ -252,20 +255,138 @@ theorem updateBins_of_sub {n k : Nat} {bins : EarleyBins T N n} {newBin : List (
     items (updateBins bins k newBin hk)[k] = items bins[k] := by
   grind [updateBin_of_sub]
 
-theorem eqItems_of_earleyBinList_of_eqItems {G : ContextFreeGrammarList T N} {w : List T}
-    {bins bins' : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    (hbins' : isWellFormedBins G w bins')
-    (k j : Nat) (hk : k < w.length + 1)
-    (heq : ∀ n, ∀ (hn : n < w.length + 1), items bins[n] = items bins'[n]) :
+theorem eqItems_of_completeList_of_eqItems {w : List T}
+    {bins1 bins2 : EarleyBins T N (w.length + 1)}
+    {x : EarleyItem T N} (hxS : x.startIdx < w.length + 1) (j : Nat)
+    (heq : ∀ n, ∀ (hn : n < w.length + 1), items bins1[n] = items bins2[n]) :
+    items (completeList x bins1 hxS j) = items (completeList x bins2 hxS j) := by
+  let P := fun y : BinItem T N => y.item.nextSymbol == some (Symbol.nonterminal x.rule.input)
+  let originBin1 := bins1[x.startIdx]'(by grind)
+  let originBin2 := bins2[x.startIdx]'(by grind)
+  have heq : items originBin1 = items originBin2 := by grind
+  let filteredOriginBin1 := filterWithIdx originBin1 P
+  let filteredOriginBin2 := filterWithIdx originBin2 P
+  have : items (filteredOriginBin1.map Prod.fst) = items (filteredOriginBin2.map Prod.fst) := by
+    simp [items]
+    sorry
+  --simp [items] at this
+  sorry
+
+theorem eqItems_of_updateBinAux_of_eqEntry {xs : List (BinItem T N)} {y1 y2 : BinItem T N}
+    (heqy : y1.item = y2.item) : items (updateBinAux xs y1) = items (updateBinAux xs y2) := by
+  induction xs generalizing y1 y2 with
+  | nil => grind
+  | cons x xs ih => grind
+
+theorem eqItems_of_updateBinAux_of_eqBin {xs1 xs2 : List (BinItem T N)} {y : BinItem T N}
+    (heqx : items xs1 = items xs2) : items (updateBinAux xs1 y) = items (updateBinAux xs2 y) := by
+  induction xs1 generalizing y xs2 with
+  | nil => grind
+  | cons x1 xs1 ih =>
+    rcases xs2 with _ | ⟨x2,xs2⟩
+    · simp [items] at heqx
+    · grind
+
+theorem eqItems_of_updateBin_of_eqBin {xs1 xs2 ys : List (BinItem T N)}
+    (heqx : items xs1 = items xs2) : items (updateBin xs1 ys) = items (updateBin xs2 ys) := by
+  induction ys generalizing xs1 xs2 with
+  | nil => grind [List.map_eq_nil_iff]
+  | cons y ys ih =>
+    simp only [updateBin]
+    have hup : items (updateBinAux xs1 y) = items (updateBinAux xs2 y) := by
+      exact eqItems_of_updateBinAux_of_eqBin heqx
+    specialize ih hup
+    apply ih
+
+theorem eqItems_of_updateBin_of_eqEntry (xs ys2 : List (BinItem T N)) {ys1 : List (BinItem T N)}
+    (heqy : items ys1 = items ys2) :
+    items (updateBin xs ys1) = items (updateBin xs ys2) := by
+  induction ys1 generalizing ys2 xs with
+  | nil => grind [List.map_eq_nil_iff]
+  | cons y1 ys1 ih =>
+    rcases ys2 with _ | ⟨y2,ys2⟩
+    · simp [items] at heqy
+    · simp only [updateBin]
+      specialize ih (updateBinAux xs y1) ys2 (by grind)
+      simp only [items, List.map_cons, List.cons.injEq] at heqy
+      have hup : items (updateBinAux xs y1) = items (updateBinAux xs y2) := by
+        exact eqItems_of_updateBinAux_of_eqEntry heqy.left
+      rw [ih]
+      grind [eqItems_of_updateBin_of_eqBin]
+
+theorem eqItems_of_updateBins_of_eqItems {w : List T}
+    {bins1 bins2 : EarleyBins T N (w.length + 1)} {k : Nat} {hk : k < w.length + 1}
+    {newBin1 newBin2 : List (BinItem T N)}
+    (heqB : ∀ n, ∀ (hn : n < w.length + 1), items bins1[n] = items bins2[n])
+    (heqN : items newBin1 = items newBin2) :
     ∀ n, ∀ (hn : n < w.length + 1),
-    items (earleyBinList G w k bins hk j hbins).bins[n] =
-    items (earleyBinList G w k bins' hk j hbins').bins[n] := by
+    items (updateBins bins1 k newBin1 hk)[n] = items (updateBins bins2 k newBin2 hk)[n] := by
+  have : ∀ n, ∀ (hn : n < w.length + 1), items (updateBin bins1[n] newBin1) =
+      items (updateBin bins2[n] newBin2) := by
+    intro n hn
+    specialize heqB n hn
+    have : items (updateBin bins1[n] newBin1) = items (updateBin bins2[n] newBin1) := by
+      exact eqItems_of_updateBin_of_eqBin heqB
+    grind [eqItems_of_updateBin_of_eqEntry]
+  grind
+
+theorem eqItems_of_earleyBinList_of_eqItems {G : ContextFreeGrammarList T N} {w : List T}
+    {bins1 bins2 : EarleyBins T N (w.length + 1)} (hbins1 : isWellFormedBins G w bins1)
+    (hbins2 : isWellFormedBins G w bins2) (k j : Nat) (hk : k < w.length + 1)
+    (heq : ∀ n, ∀ (hn : n < w.length + 1), items bins1[n] = items bins2[n]) :
+    ∀ n, ∀ (hn : n < w.length + 1),
+    items (earleyBinList G w k bins1 hk j hbins1).bins[n] =
+    items (earleyBinList G w k bins2 hk j hbins2).bins[n] := by
+  -- fun_induction only wants to recurse on bins1 or bins2 but I need them to stay connected.
+  -- so I simply case split and recurse myself.
   intro n hn
-  fun_induction earleyBinList G w k bins hk j hbins with
-  | case1 bins hk j hbins hj =>
-    sorry
-  | case2 bins hk i hbins hi x bins' hbins' =>
-    sorry
+  if hj : j ≥ bins1[k].length then
+    rw [earleyBinList]
+    symm
+    rw [earleyBinList]
+    have : j ≥ bins2[k].length := by grind [List.length_map]
+    simp only [ge_iff_le, this, hj, ↓reduceDIte]
+    grind
+  else
+    rw [earleyBinList]
+    symm
+    rw [earleyBinList]
+    symm
+    have hj2 : ¬ j ≥ bins2[k].length := by grind [List.length_map]
+    have : bins1[k][j].item = bins2[k][j].item := by
+      specialize heq k hk
+      have : j < (bins1[k].map (fun x => x.item)).length := by grind [List.length_map]
+      have := List.getElem_of_eq heq this
+      grind
+    match hnext : bins2[k][j].item.nextSymbol with
+    | some s =>
+      match s with
+      | Symbol.nonterminal A =>
+        simp only [ge_iff_le, hj2, ↓reduceDIte, hnext, hj, this]
+        apply eqItems_of_earleyBinList_of_eqItems
+        apply eqItems_of_updateBins_of_eqItems heq (by simp)
+      | Symbol.terminal a =>
+        simp only [ge_iff_le, hj2, ↓reduceDIte, hnext, hj, this]
+        if h : w.length ≤ k then
+          simp only [h]
+          apply eqItems_of_earleyBinList_of_eqItems
+          exact heq
+        else
+          simp only [h]
+          apply eqItems_of_earleyBinList_of_eqItems
+          apply eqItems_of_updateBins_of_eqItems heq (by simp)
+    | none =>
+      simp only [ge_iff_le, hj2, ↓reduceDIte, hnext, hj, this]
+      apply eqItems_of_earleyBinList_of_eqItems
+      have : items (completeList bins2[k][j].item bins1 (by grind) j) =
+             items (completeList bins2[k][j].item bins2 (by grind) j) := by
+        apply eqItems_of_completeList_of_eqItems
+        exact heq
+      apply eqItems_of_updateBins_of_eqItems heq this
+termination_by { x | isWellFormed G.rules (mapT w) x }.ncard + 1 - j
+decreasing_by
+  all_goals
+  exact decreasingAux hbins1 j k hk (by lia)
 
 set_option maxHeartbeats 500000 in
  -- FIXME: this proof does way too much, but it's also a pain to parametrize.

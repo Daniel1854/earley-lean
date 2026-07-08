@@ -699,9 +699,8 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} {w : List T} (
   simp only [xP]
   refine ⟨by lia, by grind, ?_, by grind⟩
   intro hbounds
-  have := filterWithIdx_le_length bins[y.startIdx]
+  exact filterWithIdx_le_length bins[y.startIdx]
     (fun x => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)) zIdx (by grind)
-  grind
 
 omit [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_completeList (G : ContextFreeGrammarList T N) {w : List T} (j k : Nat)
@@ -798,6 +797,24 @@ lemma length_lte_ncard_of_superset {α : Type} (xs : List α) (s : Set α) [Fini
 
 end WellFormedBin
 
+omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
+lemma decreasingAux {G : ContextFreeGrammarList T N} {w : List T}
+    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    (j k : Nat) (hk : k < w.length + 1) (hj : j < bins[k].length) :
+    {x | isWellFormed G.rules (mapT w) x}.ncard + 1 - (j + 1) <
+    {x | isWellFormed G.rules (mapT w) x}.ncard + 1 - j := by
+  apply Nat.sub_lt_sub_left
+  · specialize hbins k (by lia)
+    let wfItemsBin := { x | isWellFormed G.rules (mapT w) x }
+    have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w)
+    have : (items bins[k]).length ≤ wfItemsBin.ncard := by
+      have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
+      have ⟨⟨hNoDup, _⟩, _⟩ := hbins
+      let P := (fun x => isWellFormed G.rules (mapT w) x)
+      apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
+    grind
+  · simp
+
 /--
 Computes the k-th bin starting from index j and returns the updated bins.
 -/
@@ -830,19 +847,7 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList G w k bins' (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w) x }.ncard + 1 - j
-decreasing_by
-  apply Nat.sub_lt_sub_left
-  · clear this bins'
-    specialize hbins k (by lia)
-    let wfItemsBin := { x | isWellFormed G.rules (mapT w) x }
-    have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w)
-    have : (items bins[k]).length ≤ wfItemsBin.ncard := by
-      have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
-      have ⟨⟨hNoDup, _⟩, _⟩ := hbins
-      let P := (fun x => isWellFormed G.rules (mapT w) x)
-      apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
-    grind
-  · simp
+decreasing_by exact decreasingAux hbins j k (by lia) (by lia)
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
