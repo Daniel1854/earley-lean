@@ -30,7 +30,7 @@ and you can look at the rendered file.
 - [x] Recognizer
   - [x] Implement
   - [x] Termination Proof
-  - [ ] Refinement Correctness Proof
+  - [x] Refinement Correctness Proof
 - [x] Parser
   - [x] Implementation
   - [x] Graphviz
