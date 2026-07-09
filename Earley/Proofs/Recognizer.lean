@@ -257,20 +257,10 @@ theorem updateBins_of_sub {n k : Nat} {bins : EarleyBins T N n} {newBin : List (
 
 theorem eqItems_of_completeList_of_eqItems {w : List T}
     {bins1 bins2 : EarleyBins T N (w.length + 1)}
-    {x : EarleyItem T N} (hxS : x.startIdx < w.length + 1) (j : Nat)
+    {y : EarleyItem T N} (hxS : y.startIdx < w.length + 1) (j : Nat)
     (heq : ∀ n, ∀ (hn : n < w.length + 1), items bins1[n] = items bins2[n]) :
-    items (completeList x bins1 hxS j) = items (completeList x bins2 hxS j) := by
-  let P := fun y : BinItem T N => y.item.nextSymbol == some (Symbol.nonterminal x.rule.input)
-  let originBin1 := bins1[x.startIdx]'(by grind)
-  let originBin2 := bins2[x.startIdx]'(by grind)
-  have heq : items originBin1 = items originBin2 := by grind
-  let filteredOriginBin1 := filterWithIdx originBin1 P
-  let filteredOriginBin2 := filterWithIdx originBin2 P
-  have : items (filteredOriginBin1.map Prod.fst) = items (filteredOriginBin2.map Prod.fst) := by
-    simp [items]
-    sorry
-  --simp [items] at this
-  sorry
+    items (completeList y bins1 hxS j) = items (completeList y bins2 hxS j) := by
+  grind [completeList_eq_completeListI, completeListI]
 
 theorem eqItems_of_updateBinAux_of_eqEntry {xs : List (BinItem T N)} {y1 y2 : BinItem T N}
     (heqy : y1.item = y2.item) : items (updateBinAux xs y1) = items (updateBinAux xs y2) := by

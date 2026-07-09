@@ -227,6 +227,30 @@ public def completeList (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
     ⟨incItem x.item y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 /--
+This version of completeList lends itself is easier to reason with,
+while performing worse without lazyness in linked lists.
+TODO: benchmark if there is actually a difference. Traversing the bin twice seems like it matter.
+-/
+public def completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
+    (h : y.startIdx < n) (j : Nat) : List (BinItem T N) :=
+  -- The origin bin filtered for matchings with y
+  let xMatches : List (EarleyItem T N × Nat) := filterWithIdx (items bins[y.startIdx])
+    (fun x => nextSymbol x == some (Symbol.nonterminal y.rule.input))
+  -- Matchings mapped onto a new item with the index recorded within the reduction pointer
+  xMatches.map (fun ⟨x,i⟩ =>
+    ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
+
+omit [LawfulBEq (EarleyItem T N)] in
+theorem completeList_eq_completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
+    (h : y.startIdx < n) (j : Nat) : completeList y bins h j = completeListI y bins h j := by
+  simp only [completeList, filterWithIdx, completeListI, items]
+  let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
+  fun_induction filterWithIdxAux P 0 bins[y.startIdx] with
+  | case1 => grind
+  | case2 => grind
+  | case3 => grind
+
+/--
 Returns the list appended with an element, if it is not already part of the list,
 while also merging any reduction pointers for duplicate items.
 Predecessor pointers are unique, so duplicate items can be safely discarded
