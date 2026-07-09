@@ -87,7 +87,6 @@ end Soundness
 
 section Completeness
 
--- TODO: care about this.
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 /--
 A call to buildTree for well-formed bins never returns none or even a Tree.leaf.

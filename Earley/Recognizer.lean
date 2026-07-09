@@ -32,12 +32,10 @@ so Rau only reasons about epsilon free grammars.
 The implementation and its proofs follows the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
 
-TODO: Think if there are any issues arising from the input word being simply `List T`?
 TODO: Think about the bins and how to make checking for membership efficient
       There still has to be an order, and I need an index for the parse tree
 TODO: Think about how to prepare the grammar itself for efficient usage
       HashMap NT → List of rules ?
-TODO: there is potential for early returns
 -/
 
 @[expose] public section
@@ -98,6 +96,7 @@ Outer list corresponds to the different positions for the word,
 inner list corresponds to the items of that specific position.
 
 TODO: inner list should probably be an Array as well, but lets see first
+      This seems to be mostly problematic due to filterWithIdx
 -/
 abbrev EarleyBins (T N : Type) (n : Nat) : Type :=
   Vector (List (BinItem T N)) n
@@ -292,8 +291,6 @@ public def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (newBin : Li
   let newBin := updateBin bins[k] newBin
   bins.set k newBin hk
 
--- TODO: naming scheme and more lemmas, maybe not have LawfulBEq in variables,
--- but I want grind to utilize it first.
 omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
 lemma updateBinAux_nil (y : BinItem T N) : updateBinAux [] y = [y] := by simp [updateBinAux]
@@ -302,9 +299,7 @@ omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
 lemma updateBin_nil (xs : List (BinItem T N)) : updateBin xs [] = xs := by simp [updateBin]
 
--- TODO: I probably dont want to annotate this and similar lemmas with grind?
--- maybe a very specific grind multipattern
--- TODO: this is unused? unclear if there is a place where I would use this over deconstructing
+-- TODO: This is unused. I would need a good grind multipattern to make it useful.
 omit [BEq T] [BEq N] in
 lemma wfItem_of_wfBins {G : ContextFreeGrammarList T N} {w : List T} {k : Nat}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
@@ -472,6 +467,7 @@ lemma updateBinAux_of_Red_of_eqItem (xs : List (BinItem T N)) (y : BinItem T N) 
   | nil => grind
   | cons x xs ih => grind
 
+omit [LawfulBEq (EarleyItem T N)] in
 lemma wfBinPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T N (w.length + 1))
     (xs : List (BinItem T N)) (hwfbin : isWellFormedBinPointers w bins xs k)
     (y : BinItem T N) (hwfy : isWellFormedPointer w bins y.pointer k) :
@@ -479,16 +475,11 @@ lemma wfBinPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
   induction xs with
   | nil => grind
   | cons x xs ih =>
-    simp only [updateBinAux, beq_iff_eq, List.append_eq]
-    simp only [isWellFormedBinPointers] at ih
+    simp only [updateBinAux, List.append_eq]
     split
     · split
-      · rename_i xp xP _ yp yP heq h
-        -- FIXME: this screams missing deconstruction?
+      · rename_i xp xP _ _ _ _ _
         have hxP : x.pointer = Pointer.reduction xp xP := by grind
-        have hx2 : x = ⟨x.item, Pointer.reduction xp xP⟩ := by grind
-        have hy2 : y = ⟨x.item, Pointer.reduction yp yP⟩ := by grind
-        simp only [isWellFormedPointer, hy2] at hwfy
         grind
       · grind
     · split <;> grind
@@ -501,6 +492,7 @@ lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k :
   | nil => grind
   | cons y ys ih => grind [wfBinItems_of_updateBinAux, noDup_of_updateBin]
 
+omit [LawfulBEq (EarleyItem T N)] in
 lemma wfBinPointers_of_updateBin (w : List T) {k : Nat} (bins : EarleyBins T N (w.length + 1))
     (xs : List (BinItem T N)) (hwfbin : isWellFormedBinPointers w bins xs k)
     (ys : List (BinItem T N)) (hwfy : ∀ y ∈ ys, isWellFormedPointer w bins y.pointer k) :
@@ -535,7 +527,6 @@ lemma soundPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
       have hj' : j' < bins[k].length := by grind
       match hb : bins[k][j'].pointer with
       | .null =>
-        -- FIXME: duplicate proof :|
         have := (hbins k (by grind)).left
         have heq' : y.item = bins[k][j'].item := by
           simp only [items, List.getElem_map] at heq
@@ -622,7 +613,6 @@ lemma wfBinItems_of_initList (G : ContextFreeGrammarList T N) (w : List T) :
   have := G.nodup
   grind [initList]
 
--- hk more restrictive since we bump k by 1
 omit [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfItems_of_scanList {G : ContextFreeGrammarList T N} {w : List T} (j k : Nat) {a : T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
@@ -632,7 +622,6 @@ lemma wfItems_of_scanList {G : ContextFreeGrammarList T N} {w : List T} (j k : N
     isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k + 1 := by
   grind [scanList]
 
--- hk more restrictive since we bump k by 1
 omit [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_scanList {w : List T} (j k : Nat) {a : T} {bins : EarleyBins T N (w.length + 1)}
     (x : EarleyItem T N) (hk : k < w.length) (hj : ¬ (j ≥ bins[k].length)) :
@@ -645,10 +634,6 @@ lemma soundPointers_of_scanList {w : List T} (j k : Nat) {a : T}
     ∀ y ∈ scanList w x a k hk j, isSoundPointer y.pointer (k+1) bins[k+1].length := by
   grind [scanList]
 
--- FIXME: this EarleyItem <-> BinItem & items is an issue for the automation.
--- I want to destructure everything into EarleyItems via
---  x ∈ bins[k] → x.item ∈ items (bins[k]) ?
--- hj is a negation for direct reasoning with earleyBinList
 lemma wfBins_of_scanList {G : ContextFreeGrammarList T N} {w : List T} {j k : Nat} {a : T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (x : EarleyItem T N) (hk : k < w.length) (hj : ¬ (j ≥ bins[k].length))
@@ -795,9 +780,6 @@ lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (j k
         grind [wfBins_of_scanList]
   | none => grind [wfBins_of_completeList]
 
-/--
-TODO: this is a funny lemma. Rename.
--/
 lemma length_lte_ncard_of_superset {α : Type} (xs : List α) (s : Set α) [Finite s]
     (P : α → Prop) (hs : s = { x | P x }) (hx : ∀ x ∈ xs, P x) (hNoDup : xs.Nodup) :
     xs.length ≤ s.ncard := by

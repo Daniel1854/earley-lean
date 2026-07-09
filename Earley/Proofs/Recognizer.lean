@@ -39,8 +39,6 @@ TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
 TODO: order of i j k k' is a mess since there is heavy overlap.
       Need to choose unique ident for everything.
 TODO: remove usage of w solely for Vec length
-TODO: think about setOfBins and if the approach of earleyBinList_idem isnt easier to reason and
-      rewrite with: saying that for all indices a subset relation holds, seems more natural.
 -/
 
 @[expose] public section

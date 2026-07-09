@@ -96,7 +96,6 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
 
 /--
 Any EarleyItem within an EarleySet is well-formed.
-TODO: maybe split these up like I did with `soundItemEarley`? only if I need them somewhere else
 -/
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G.rules w x := by
@@ -167,7 +166,6 @@ we only need to show that A derives α, which is exactly the rule.
 public theorem soundItemPosZero (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {rule : ContextFreeRule T G.NT} {j : Nat} (hmem : rule ∈ G.rules) :
     isSound G w ⟨rule,0,j,j⟩ := by
-  -- TODO: grind is able to prove this now, but probably wiser to keep the proof?
   unfold isSound
   simp only
   apply Produces.single

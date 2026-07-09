@@ -24,9 +24,6 @@ namespace Utils
 
 variable {α : Type}
 
-/--
-TODO
--/
 @[grind]
 def filterWithIdxAux (P : α → Bool) (i : Nat) : List α → List (α × Nat)
   | [] => []
@@ -34,16 +31,10 @@ def filterWithIdxAux (P : α → Bool) (i : Nat) : List α → List (α × Nat)
     then (x, i) :: filterWithIdxAux P (i+1) xs
     else filterWithIdxAux P (i+1) xs
 
-/--
-TODO
--/
 @[grind]
 def filterWithIdx (l : List α) (P : α → Bool) : List (α × Nat) :=
   filterWithIdxAux P 0 l
 
-/--
-TODO
--/
 theorem filterWithIdxAux_eq_zipFilter (l : List α) (P : α → Bool) (i : Nat) :
     filterWithIdxAux P i l = (l.zipIdx i).filter (fun x => P x.1) := by
   induction l generalizing i with

@@ -38,7 +38,6 @@ variable {T : Type}
 
 /--
 Returns if the grammar contains a rule with an empty rhs.
-TODO: This is required for completeness, so it makes more sense to have it over ContextFreeGrammar?
 -/
 @[grind]
 def isEpsilonFree (G : ContextFreeGrammar T) : Prop :=
