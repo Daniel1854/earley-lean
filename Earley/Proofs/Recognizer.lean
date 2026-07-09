@@ -36,16 +36,11 @@ then refine it further to the actual bins with the same idea.
 
 TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
       https://leanprover-community.github.io/contribute/naming.html
-TODO: think about where or if to stop using List T for w
 TODO: order of i j k k' is a mess since there is heavy overlap.
       Need to choose unique ident for everything.
 TODO: remove usage of w solely for Vec length
-TODO: the whole IsPrefix thing seems to be unused, so may be better to prove it directly.
 TODO: think about setOfBins and if the approach of earleyBinList_idem isnt easier to reason and
       rewrite with: saying that for all indices a subset relation holds, seems more natural.
-TODO: there are some points where I didnt understand why I couldnt use `rw`
-      due to the proof terms not matching up after the rewrite,
-      but simp is able to rewrite within the proofs as well ?
 -/
 
 @[expose] public section
@@ -97,15 +92,11 @@ lemma false_of_impossibleCompletedItem {G : ContextFreeGrammar T} [BEq G.NT] {x 
 
 section Subsets
 
-theorem updateBinAux_IsPrefix (xs : List (BinItem T N)) (y : BinItem T N) :
-    List.IsPrefix (items xs) (items (updateBinAux xs y)) := by
+theorem updateBinAux_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
+    items xs ⊆ items (updateBinAux xs y) := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
-
-theorem updateBinAux_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
-    items xs ⊆ items (updateBinAux xs y) :=
-  List.IsPrefix.subset (updateBinAux_IsPrefix xs y)
 
 theorem updateBinAuxY_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
     y.item ∈ items (updateBinAux xs y) := by
@@ -113,29 +104,20 @@ theorem updateBinAuxY_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
   | nil => grind
   | cons x xs ih => grind
 
-theorem updateBin_IsPrefix (xs ys : List (BinItem T N)) :
-    List.IsPrefix (items xs) (items (updateBin xs ys)) := by
+theorem updateBin_extensive (xs ys : List (BinItem T N)) : items xs ⊆ items (updateBin xs ys) := by
   induction ys generalizing xs with
   | nil => grind
-  | cons y ys ih => grind [updateBinAux_IsPrefix]
-
-theorem updateBin_extensive (xs ys : List (BinItem T N)) : items xs ⊆ items (updateBin xs ys) :=
-  List.IsPrefix.subset (updateBin_IsPrefix xs ys)
+  | cons y ys ih => grind [updateBinAux_extensive]
 
 theorem updateBinY_extensive (xs ys : List (BinItem T N)) : items ys ⊆ items (updateBin xs ys) := by
   induction ys generalizing xs with
   | nil => grind
   | cons y ys ih => grind [updateBinAuxY_extensive, updateBin_extensive]
 
-theorem updateBins_IsPrefix {w : List T} {bins : EarleyBins T N (w.length + 1)} (i k : Nat)
-    (hi : i < w.length + 1) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
-    List.IsPrefix (items bins[i]) (items (updateBins bins k newBin hk)[i]) := by
-  grind [updateBin_IsPrefix]
-
 lemma updateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) (newBin : List (BinItem T N)) :
-    items bins[i] ⊆ items (updateBins bins k newBin hk)[i] :=
-  List.IsPrefix.subset (updateBins_IsPrefix i k hi hk newBin)
+    items bins[i] ⊆ items (updateBins bins k newBin hk)[i] := by
+  grind [updateBin_extensive]
 
 lemma updateBinsNewBin_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k : Nat) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
@@ -145,21 +127,15 @@ lemma updateBinsNewBin_extensive {w : List T} {bins : EarleyBins T N (w.length +
 lemma setOfBinsUpdateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k : Nat) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
     setOfBins bins ⊆ setOfBins (updateBins bins k newBin hk) := by
-  grind [updateBins_IsPrefix]
-
-theorem earleyBinList_IsPrefix {G : ContextFreeGrammarList T N} {w : List T}
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
-    (k j i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) :
-    List.IsPrefix (items bins[i]) (items (earleyBinList G w k bins hk j hbins).bins[i]) := by
-  fun_induction earleyBinList G w k bins hk j hbins with
-  | case1 bins hk j hbins hj => grind
-  | case2 bins hk j hbins hj x bins' hbins' => grind [updateBins_IsPrefix]
+  grind [updateBins_extensive]
 
 lemma earleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (k j i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) :
-    items bins[i] ⊆ items (earleyBinList G w k bins hk j hbins).bins[i] :=
-  List.IsPrefix.subset (earleyBinList_IsPrefix hbins k j i hk hi)
+    items bins[i] ⊆ items (earleyBinList G w k bins hk j hbins).bins[i] := by
+  fun_induction earleyBinList G w k bins hk j hbins with
+  | case1 bins hk j hbins hj => grind
+  | case2 bins hk j hbins hj x bins' hbins' => grind [updateBins_extensive]
 
 lemma lengthNth_le_lengthEarleyBinList {G : ContextFreeGrammarList T N} {w : List T}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
