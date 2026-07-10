@@ -11,9 +11,9 @@ python plotter.py --mode grammar --grammar 4
 python plotter.py --mode grammar --grammar 5
 
 # Comparison plot of the grammars for lean
-# python plotter.py --mode comp
+python plotter.py --mode comp
 
-# TODO: Some Bar chart bin size diagram for the different grammars?
-#python plotter.py --mode bar --grammar 1
+# Comparison plot of the binsizes for each grammar
+python plotter.py --mode sizes
 
 popd > /dev/null
