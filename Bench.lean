@@ -60,7 +60,6 @@ def sizePointers {n : Nat} (bins : EarleyBins T N1 n) : Nat :=
   bins.map (fun bin => bin.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
 def benchRecognizer (G : ContextFreeGrammarList T N1) (numChars : UInt32) : IO Unit := do
-  -- FIXME: check if I can simply swap w to Array instead of List
   let t0 ← IO.monoNanosNow
   let w := List.replicate numChars.toNat T.a
   let t1 ← IO.monoNanosNow
@@ -68,10 +67,12 @@ def benchRecognizer (G : ContextFreeGrammarList T N1) (numChars : UInt32) : IO U
   let t2 ← IO.monoNanosNow
   let binSize := sizeBins bins
   let pointerSize := sizePointers bins
-  IO.println s!"num_pointers: {sizePointers bins}"
+  IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+  -- Hmm.. there is some reordering happening..
   IO.println s!"Time to create w '{t1 - t0}' ns"
   IO.println s!"Time to create bins '{t2 - t1}' ns"
-  IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+  let t3 ← IO.monoNanosNow
+  IO.println s!"Time to compute sizes '{t3 - t2}' ns"
 
 def main (args : List String) : IO UInt32 := do
   if args.length < 2 then

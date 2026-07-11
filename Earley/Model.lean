@@ -68,15 +68,6 @@ public def EarleyItem.nextSymbol (item : EarleyItem T N) : Option (Symbol T N) :
   item.rule.output[item.position]?
 
 /--
-Returns the previous symbol of the production of the item if there is one
-- A → • α returns none
-- A → α • returns some α
--/
-@[inline, grind]
-public def EarleyItem.prevSymbol (item : EarleyItem T N) : Option (Symbol T N) :=
-  item.rule.output[item.position-1]?
-
-/--
 Returns the rhs of the rule of the item up to the dot.
 - A → • β   returns []
 - A → α • β returns [α]
