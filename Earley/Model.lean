@@ -101,7 +101,7 @@ An item is finished w.r.t. a certain initial symbol and the input word w, if
 - the entire word has been recognized
 -/
 @[inline, grind]
-public def EarleyItem.isFinished (initial : N) (w : List (Symbol T N)) (item : EarleyItem T N) :
+public def EarleyItem.isFinished (initial : N) (w : List T) (item : EarleyItem T N) :
     Bool :=
   item.rule.input == initial
   && isComplete item
@@ -117,7 +117,7 @@ An item is well-formed, if
 -/
 @[grind]
 public def EarleyItem.isWellFormed {R : Type} (rules : R) [Membership (ContextFreeRule T N) R]
-    (w : List (Symbol T N)) (item : EarleyItem T N) : Prop :=
+    (w : List T) (item : EarleyItem T N) : Prop :=
   item.rule ∈ rules
   ∧ item.position <= item.rule.output.length
   ∧ item.startIdx <= item.endIdx
@@ -137,7 +137,7 @@ This the inductive definition of the Earley Set.
 Its purpose is only to prove correctness for the general judgement/ideas.
 -/
 @[grind cases]
-public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) :
+public inductive EarleySet (G : ContextFreeGrammar T) (w : List T) :
     Set (EarleyItem T G.NT) where
   /--
   Every rule with the LHS matching the initial NT introduces an EarleyItem at the starting position.
@@ -149,8 +149,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   introduces an EarleyItem parsing that extra symbol.
   -/
   | scan {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat}
-      {a : Symbol T G.NT} (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
-      (hbounds : j < w.length) (hw : w[j] = a) (hnext : nextSymbol x = some a) :
+      {a : T} (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
+      (hbounds : j < w.length) (hw : w[j] = a) (hnext : nextSymbol x = some (Symbol.terminal a)) :
       EarleySet G w ⟨rule,pos+1,i,j+1⟩
   /--
   Every EarleyItem part of set, where the next symbol matches the NT of another rule,
