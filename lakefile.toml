@@ -16,3 +16,6 @@ name = "Earley"
 
 [[lean_lib]]
 name = "EarleyTest"
+
+[[lean_exe]]
+name = "Bench"

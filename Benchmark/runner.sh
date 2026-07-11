@@ -3,7 +3,7 @@
 # Maybe a simple bash script is sufficient for the running portion.
 #
 # Example calls:
-# bash runner.sh 1 isabelle
+# bash runner.sh 1
 
 set -e
 GRAMMAR_INDEX=$1
@@ -40,8 +40,7 @@ elif [ "${GRAMMAR_INDEX}" == 5 ]; then
 fi
 
 #echo "Building Lean Project.."
-# TODO: release options? maybe it should simply be ran via lake run and then I dont need the build step
-#lake build
+lake build Bench
 
 # Init the .csv
 LOG_FILE="Benchmark/lean/lean_grammar=${1}.csv"
@@ -49,9 +48,8 @@ echo "num_chars,num_miliseconds,num_bins,num_pointers,num_total" > $LOG_FILE
 printf "Running..."
 for i in "${INPUT_SIZES[@]}"; do
   printf " $i"
-  # TODO:
-  # lake run -- $i > "lean_naive_g${i}.csv"
-  #target/universal/stage/bin/benchmarks $VARIANT $GRAMMAR_INDEX $i >> $LOG_FILE
+  # lake exe Bench $GRAMMAR_INDEX $i >> $LOG_FILE
+  .lake/build/bin/Bench $GRAMMAR_INDEX $i >> $LOG_FILE
 done
 echo ""
 echo "Done!"
