@@ -71,8 +71,7 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             Experiment(variant=variant, grammar=grammar) for variant in Variant
         ]
     else:
-        # TODO: Change this to Lean when I've gotten data :)
-        variant = Variant.ISABELLE
+        variant = Variant.LEAN
         experiments = [
             Experiment(variant=variant, grammar=grammar) for grammar in Grammar
         ]

@@ -2,8 +2,7 @@ import Earley.Recognizer
 
 open Earley.Recognizer
 
--- TODO: is matching less performant if there are more elements within the inductive type?
---       test it out with grammars 1-4
+-- Matching is indeed less performant if there are more elements within the inductive type.
 inductive N1 where
 | S : N1
 deriving BEq, ReflBEq, LawfulBEq
@@ -34,21 +33,25 @@ def rule3 : ContextFreeRule T N1 :=
 def rule4 : ContextFreeRule T N1 :=
   ⟨N1.S, [Symbol.nonterminal N1.S, Symbol.terminal T.a]⟩
 
-def fetchGrammar (grammarIdx : UInt32) : Option (ContextFreeGrammarList T N1) :=
-  match grammarIdx with
-  --S -> SS | a
-  | 1 => some ⟨N1.S, [rule0, rule1], by simp [rule0, rule1]⟩
-  --S -> aS | a
-  | 2 => some ⟨N1.S, [rule0, rule2], by simp [rule0, rule2]⟩
-  --S -> aSa | a
-  | 3 => some ⟨N1.S, [rule0, rule3], by simp [rule0, rule3]⟩
-  --S -> Sa | a
-  | 4 => some ⟨N1.S, [rule0, rule4], by simp [rule0, rule4]⟩
-  --S -> SX | a, X -> Y | Z, Y -> a, Z -> a
-  | 5 => none
-  | _ => none
+def rule5 : ContextFreeRule T N2 :=
+  ⟨N2.S, [Symbol.terminal T.a]⟩
 
-def sizeBins {n : Nat} (bins : EarleyBins T N1 n) : Nat :=
+def rule6 : ContextFreeRule T N2 :=
+  ⟨N2.S, [Symbol.nonterminal N2.S, Symbol.nonterminal N2.X]⟩
+
+def rule7 : ContextFreeRule T N2 :=
+  ⟨N2.X, [Symbol.nonterminal N2.Y]⟩
+
+def rule8 : ContextFreeRule T N2 :=
+  ⟨N2.X, [Symbol.nonterminal N2.Z]⟩
+
+def rule9 : ContextFreeRule T N2 :=
+  ⟨N2.Y, [Symbol.terminal T.a]⟩
+
+def rule10 : ContextFreeRule T N2 :=
+  ⟨N2.Z, [Symbol.terminal T.a]⟩
+
+def sizeBins {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.length) |>.sum
 
 def sizePointer (p : Pointer) : Nat :=
@@ -56,23 +59,18 @@ def sizePointer (p : Pointer) : Nat :=
   | .null | .predecessor _ => 1
   | .reduction _ ps => 1 + ps.length
 
-def sizePointers {n : Nat} (bins : EarleyBins T N1 n) : Nat :=
+def sizePointers {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
-def benchRecognizer (G : ContextFreeGrammarList T N1) (numChars : UInt32) : IO Unit := do
-  let t0 ← IO.monoNanosNow
-  let w := List.replicate numChars.toNat T.a
-  let t1 ← IO.monoNanosNow
-  let ⟨bins, _⟩ := earleyList G w
-  let t2 ← IO.monoNanosNow
-  let binSize := sizeBins bins
-  let pointerSize := sizePointers bins
+def benchRecognizer {N : Type} [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)]
+    (G : ContextFreeGrammarList T N) (numChars : UInt32) : IO Unit := do
+  let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
+  let t1 ← IO.monoMsNow
+  let ⟨bins, _⟩ ← IO.lazyPure (fun () => earleyList G w)
+  let t2 ← IO.monoMsNow
+  let binSize ← IO.lazyPure (fun () => sizeBins bins)
+  let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
   IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
-  -- Hmm.. there is some reordering happening..
-  IO.println s!"Time to create w '{t1 - t0}' ns"
-  IO.println s!"Time to create bins '{t2 - t1}' ns"
-  let t3 ← IO.monoNanosNow
-  IO.println s!"Time to compute sizes '{t3 - t2}' ns"
 
 def main (args : List String) : IO UInt32 := do
   if args.length < 2 then
@@ -87,9 +85,22 @@ def main (args : List String) : IO UInt32 := do
     return 1
   let grammarIdx := String.toNat! args[0]! |>.toUInt32
   let numChars := String.toNat! args[1]! |>.toUInt32
-  IO.println s!"Trying to parse grammar {grammarIdx} for an input length of {numChars}"
-  if let some grammar := fetchGrammar grammarIdx then
-    benchRecognizer grammar numChars
-  else
-    IO.println s!"No controlflow for grammarIdx={grammarIdx}"
+  match grammarIdx with
+  --S -> SS | a
+  | 1 => benchRecognizer ⟨N1.S, [rule0, rule1], by simp [rule0, rule1]⟩ numChars
+  --S -> aS | a
+  | 2 => benchRecognizer ⟨N1.S, [rule0, rule2], by simp [rule0, rule2]⟩ numChars
+  --S -> aSa | a
+  | 3 => benchRecognizer ⟨N1.S, [rule0, rule3], by simp [rule0, rule3]⟩ numChars
+  --S -> Sa | a
+  | 4 => benchRecognizer ⟨N1.S, [rule0, rule4], by simp [rule0, rule4]⟩ numChars
+  --S -> SX | a, X -> Y | Z, Y -> a, Z -> a
+  | 5 =>
+    let G := {
+      initial := N2.S,
+      rules := [rule5, rule6, rule7, rule8, rule9, rule10],
+      nodup := by simp [rule5, rule6, rule7, rule8, rule9, rule10]
+    }
+    benchRecognizer G numChars
+  | _ => IO.println s!"No controlflow for grammarIdx={grammarIdx}"
   return 0
