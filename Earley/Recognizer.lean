@@ -227,8 +227,10 @@ public def completeList (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
 
 /--
 This version of completeList lends itself is easier to reason with,
-while performing worse without lazyness in linked lists.
-TODO: benchmark if there is actually a difference. Traversing the bin twice seems like it matter.
+while performing worse without lazyness in linked lists or chaining maps.
+TODO: Benchmarked it, and there is no significant difference.
+      Traversing the bin twice would matter, so there is some optimization happening.
+      So maybe just replace completeList with completeListI ? Worthwhile to write about Id think
 -/
 public def completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
     (h : y.startIdx < n) (j : Nat) : List (BinItem T N) :=
