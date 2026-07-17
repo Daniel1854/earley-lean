@@ -5,9 +5,11 @@ public import Lean.LibrarySuggestions.Default
 deriving instance BEq for Symbol
 deriving instance ReflBEq for Symbol
 deriving instance LawfulBEq for Symbol
+deriving instance Hashable for Symbol
 deriving instance BEq for ContextFreeRule
 deriving instance ReflBEq for ContextFreeRule
 deriving instance LawfulBEq for ContextFreeRule
+deriving instance Hashable for ContextFreeRule
 
 -- TODO: These types don't require anything else and should be included everywhere.
 --       At least a namespace would be useful, maybe it should be a separate file regardless.

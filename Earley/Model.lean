@@ -44,7 +44,7 @@ public structure EarleyItem (T N : Type) where
   startIdx : Nat
   /-- (Exclusive) Endindex for a word, which this item recognizes. -/
   endIdx : Nat
-deriving BEq, ReflBEq, LawfulBEq, Repr
+deriving BEq, Hashable, ReflBEq, LawfulBEq, Repr
 
 variable {T N : Type} [BEq N]
 
