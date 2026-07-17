@@ -114,17 +114,17 @@ theorem updateBinY_extensive (xs ys : List (BinItem T N)) : items ys ⊆ items (
 
 lemma updateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k i : Nat) (hk : k < w.length + 1) (hi : i < w.length + 1) (newBin : List (BinItem T N)) :
-    items bins[i] ⊆ items (updateBins bins k newBin hk)[i] := by
+    items bins[i] ⊆ items (updateBins bins k hk newBin)[i] := by
   grind [updateBin_extensive]
 
 lemma updateBinsNewBin_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k : Nat) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
-    items newBin ⊆ items (updateBins bins k newBin hk)[k] := by
+    items newBin ⊆ items (updateBins bins k hk newBin)[k] := by
   grind [updateBinY_extensive]
 
 lemma setOfBinsUpdateBins_extensive {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k : Nat) (hk : k < w.length + 1) (newBin : List (BinItem T N)) :
-    setOfBins bins ⊆ setOfBins (updateBins bins k newBin hk) := by
+    setOfBins bins ⊆ setOfBins (updateBins bins k hk newBin) := by
   grind [updateBins_extensive]
 
 lemma earleyBinList_extensive {G : ContextFreeGrammarList T N} {w : List T}
@@ -157,16 +157,16 @@ lemma lengthNth_le_lengthStepNth (Gₗ : ContextFreeGrammarList T N) {w : List T
     bins[k].length ≤ (match bins[k][i].item.nextSymbol with
     | some s =>
       match s with
-      | Symbol.nonterminal A => updateBins bins k (predictList Gₗ A k) hk
+      | Symbol.nonterminal A => updateBins bins k hk (predictList Gₗ A k)
       | Symbol.terminal a =>
         if hk : k ≥ w.length then bins
-        else updateBins bins (k + 1) (scanList w bins[k][i].item a k (by lia) i) (by lia)
-    | none => updateBins bins k (completeList bins[k][i].item bins (by lia) i) hk)[k].length := by
+        else updateBins bins (k + 1) (by lia) (scanList w bins[k][i].item a k (by lia) i)
+    | none => updateBins bins k hk (completeList bins[k][i].item bins (by lia) i))[k].length := by
   grind [lengthNth_le_lengthUpdateBinNth]
 
 lemma updateBins_idem_of_lower_idx {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k i : Nat) (hk : k < w.length + 1) (hi : i < k) (newBin : List (BinItem T N)) :
-    (updateBins bins k newBin hk)[i] = bins[i] := by
+    (updateBins bins k hk newBin)[i] = bins[i] := by
   grind
 
 lemma earleyBinList_idem_of_lower_idx {G : ContextFreeGrammarList T N} {w : List T}
@@ -201,7 +201,7 @@ lemma updateBin_getElem_of_lower_idx (xs ys : List (BinItem T N)) (j : Nat) (hj 
 
 lemma updateBins_getElem_of_lower_idx {w : List T} {bins : EarleyBins T N (w.length + 1)}
     (k j : Nat) (hk : k < w.length + 1) (hj : j < bins[k].length) (newBin : List (BinItem T N)) :
-    ((updateBins bins k newBin hk)[k][j]'(by grind [lengthNth_le_lengthUpdateBinNth])).item
+    ((updateBins bins k hk newBin)[k][j]'(by grind [lengthNth_le_lengthUpdateBinNth])).item
     = bins[k][j].item := by
   grind [updateBin_getElem_of_lower_idx]
 
@@ -234,7 +234,7 @@ theorem updateBin_of_sub {xs : List (BinItem T N)} {ys : List (BinItem T N)}
 
 theorem updateBins_of_sub {n k : Nat} {bins : EarleyBins T N n} {newBin : List (BinItem T N)}
     {hk : k < n} (hmem : items newBin ⊆ items bins[k]) :
-    items (updateBins bins k newBin hk)[k] = items bins[k] := by
+    items (updateBins bins k hk newBin)[k] = items bins[k] := by
   grind [updateBin_of_sub]
 
 theorem eqItems_of_completeList_of_eqItems {w : List T}
@@ -292,7 +292,7 @@ theorem eqItems_of_updateBins_of_eqItems {w : List T}
     (heqB : ∀ n, ∀ (hn : n < w.length + 1), items bins1[n] = items bins2[n])
     (heqN : items newBin1 = items newBin2) :
     ∀ n, ∀ (hn : n < w.length + 1),
-    items (updateBins bins1 k newBin1 hk)[n] = items (updateBins bins2 k newBin2 hk)[n] := by
+    items (updateBins bins1 k hk newBin1)[n] = items (updateBins bins2 k hk newBin2)[n] := by
   have : ∀ n, ∀ (hn : n < w.length + 1), items (updateBin bins1[n] newBin1) =
       items (updateBin bins2[n] newBin2) := by
     intro n hn
@@ -425,7 +425,7 @@ lemma updateBin_sub {s : Set (EarleyItem T N)} (xs ys : List (BinItem T N))
 lemma updateBins_sub {w : List T} {bins : EarleyBins T N (w.length + 1)}
     {s : Set (EarleyItem T N)} (hb : setOfBins bins ⊆ s)
     (newBin : List (BinItem T N)) (k : Nat) (hk : k < w.length + 1)
-    (hn : {y | y ∈ items newBin} ⊆ s) : setOfBins (updateBins bins k newBin hk) ⊆ s := by
+    (hn : {y | y ∈ items newBin} ⊆ s) : setOfBins (updateBins bins k hk newBin) ⊆ s := by
   intro z hmemz
   simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmemz
   rcases hmemz with ⟨i,hi,hmem⟩
@@ -477,7 +477,7 @@ lemma scanSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     (k j : Nat) (hk : k < w.length + 1) (hj : ¬j ≥ bins[k].length) (x : BinItem T G.NT)
     (hx : x = bins[k][j]) (t : T) (hsub : setOfBins bins ⊆ EarleySet G (mapT w))
     (hnext : x.item.nextSymbol = some (Symbol.terminal t)) (hw : ¬w.length ≤ k) :
-    setOfBins (updateBins bins (k + 1) (scanList w x.item t k (by grind) j) (by grind))
+    setOfBins (updateBins bins (k + 1) (by grind) (scanList w x.item t k (by grind) j))
     ⊆ EarleySet G (mapT w) := by
   apply updateBins_sub hsub
   if ht : w[k] = t then
@@ -495,7 +495,7 @@ lemma predictSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT
     (hj : ¬j ≥ bins[k].length) (x : BinItem T G.NT) (hx : x = bins[k][j]) (n : G.NT)
     (hsub : setOfBins bins ⊆ EarleySet G (mapT w))
     (hnext : x.item.nextSymbol = some (Symbol.nonterminal n)) :
-    setOfBins (updateBins bins k (predictList Gₗ n k) hk)
+    setOfBins (updateBins bins k hk (predictList Gₗ n k))
     ⊆ EarleySet G (mapT w) := by
   apply updateBins_sub hsub
   intro y
@@ -516,7 +516,7 @@ lemma completeSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.N
     (k j : Nat) (hk : k < w.length + 1) (hj : ¬j ≥ bins[k].length) (x : BinItem T G.NT)
     (hx : x = bins[k][j]) (hsub : setOfBins bins ⊆ EarleySet G (mapT w))
     (hnext : x.item.nextSymbol = none) :
-    setOfBins (updateBins bins k (completeList x.item bins (by grind) j) hk)
+    setOfBins (updateBins bins k hk (completeList x.item bins (by grind) j))
     ⊆ EarleySet G (mapT w) := by
   apply updateBins_sub hsub
   rename' x => y
@@ -646,10 +646,10 @@ lemma completeList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     (k j n : Nat) (hk : k < w.length + 1) (hj : ¬j ≥ bins[k].length) (hn : n < w.length + 1)
     (x : BinItem T G.NT) (hx : x = bins[k][j]) (hxS : x.item.startIdx < w.length + 1)
     (hnext : x.item.nextSymbol = none)
-    (heq : bins' = updateBins bins k (completeList x.item bins hxS j) hk)
+    (heq : bins' = updateBins bins k hk (completeList x.item bins hxS j))
     (hsub : setOfBins bins ⊆ EarleySet G (mapT w)) :
-    items (updateBins (earleyBinList Gₗ w k bins' hk (j + 1) hbins').bins k
-          (completeList x.item (earleyBinList Gₗ w k bins' hk (j + 1) hbins').bins hxS j) hk)[n] =
+    items (updateBins (earleyBinList Gₗ w k bins' hk (j + 1) hbins').bins k hk
+          (completeList x.item (earleyBinList Gₗ w k bins' hk (j + 1) hbins').bins hxS j))[n] =
     items (earleyBinList Gₗ w k bins' hk (j + 1) hbins').bins[n] := by
   if hnk : n = k then
     have hsub : items (completeList x.item (earleyBinList Gₗ w k bins' hk (j + 1) hbins').bins
@@ -751,8 +751,8 @@ lemma earleyBinList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     | none =>
       simp only [hidem, hnext]
       have inv1 : isWellFormedBins Gₗ w (updateBins
-          (earleyBinList Gₗ w k bins' hk (i + 1) hbins').bins k (completeList x.item
-          (earleyBinList Gₗ w k bins' hk (i + 1) hbins').bins (by grind) j) hk) := by
+          (earleyBinList Gₗ w k bins' hk (i + 1) hbins').bins k hk (completeList x.item
+          (earleyBinList Gₗ w k bins' hk (i + 1) hbins').bins (by grind) j)) := by
         have heBL := (earleyBinList Gₗ w k bins' hk (i + 1) hbins').inv
         grind [wfBins_of_completeList]
       have inv2 := (earleyBinList Gₗ w k bins' hk (i + 1) hbins').inv
@@ -770,7 +770,7 @@ lemma earleyBinList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
         else
           simp only [hidem, hnext, hw, ↓reduceDIte]
           have inv1 : isWellFormedBins Gₗ w (updateBins (earleyBinList Gₗ w k bins' hk (i + 1)
-              hbins').bins (k+1) (scanList w x.item t k (by lia) j) (by lia)) := by
+              hbins').bins (k+1) (by lia) (scanList w x.item t k (by lia) j)) := by
             have heBL := (earleyBinList Gₗ w k bins' hk (i + 1) hbins').inv
             grind [wfBins_of_scanList]
           have inv2 := (earleyBinList Gₗ w k bins' hk (i + 1) hbins').inv
@@ -791,7 +791,7 @@ lemma earleyBinList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
       | .nonterminal nt =>
         simp only [hidem, hnext]
         have inv1 : isWellFormedBins Gₗ w (updateBins
-            (earleyBinList Gₗ w k bins' hk (i + 1) hbins').bins k (predictList Gₗ nt k) hk) := by
+            (earleyBinList Gₗ w k bins' hk (i + 1) hbins').bins k hk (predictList Gₗ nt k)) := by
           have heBL := (earleyBinList Gₗ w k bins' hk (i + 1) hbins').inv
           grind [wfBins_of_predictList]
         have inv2 := (earleyBinList Gₗ w k bins' hk (i + 1) hbins').inv
@@ -841,13 +841,14 @@ lemma scanMem_of_earleyBinListIndexAux {G : ContextFreeGrammarList T N} {w : Lis
   rw [earleyBinList]
   have : ¬ (w.length ≤ k) := by grind
   simp only [ge_iff_le, this, hj, ↓reduceDIte, hnext]
-  have : y ∈ items (updateBins bins (k+1) (scanList w x a k (by lia) j) (by grind))[k+1] := by
+  have : y ∈ items (updateBins bins (k+1) (by grind) (scanList w x a k (by lia) j))[k+1] := by
     grind [updateBinsNewBin_extensive]
   have : isWellFormedBins G w
-      (updateBins bins (k+1) (scanList w x a k (by lia) j) (by grind)) := by
+      (updateBins bins (k+1) (by grind) (scanList w x a k (by lia) j)) := by
     grind [wfBins_of_scanList]
-  have : y ∈ items (earleyBinList G w k (updateBins bins (k+1) (scanList w x a k (by lia) j)
-      (by lia)) (by lia) (j + 1) this).bins[k+1] := by grind [earleyBinList_extensive]
+  have : y ∈ items (earleyBinList G w k (updateBins bins (k+1) (by lia)
+      (scanList w x a k (by lia) j)) (by lia) (j + 1) this).bins[k+1] := by
+    grind [earleyBinList_extensive]
   grind
 
 lemma scanMem_of_earleyBinListIndex {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
@@ -914,11 +915,11 @@ lemma predictMem_of_earleyBinListIndexAux {G : ContextFreeGrammarList T N} {w : 
   intro y hmemy
   rw [earleyBinList]
   simp only [ge_iff_le, hj, ↓reduceDIte, hnext]
-  have : y ∈ items (updateBins bins k (predictList G A k) (by grind))[k] := by
+  have : y ∈ items (updateBins bins k hk (predictList G A k))[k] := by
     grind [updateBinsNewBin_extensive]
-  have : isWellFormedBins G w (updateBins bins k (predictList G A k) (by grind)) := by
+  have : isWellFormedBins G w (updateBins bins k hk (predictList G A k)) := by
     grind [wfBins_of_predictList]
-  have : y ∈ items (earleyBinList G w k (updateBins bins k (predictList G A k) (by lia))
+  have : y ∈ items (earleyBinList G w k (updateBins bins k hk (predictList G A k))
     (by lia) (j + 1) this).bins[k] := by grind [earleyBinList_extensive]
   grind
 
@@ -975,13 +976,12 @@ lemma completeMem_of_earleyBinListIndexAux {G : ContextFreeGrammarList T N} {w :
   have : bins[k][n].item.nextSymbol = none := by grind
   simp only [ge_iff_le, hn, ↓reduceDIte, this]
   have hyS : y.startIdx < w.length + 1 := by grind
-  have : z ∈ items (updateBins bins k (completeList y bins hyS n) (by grind))[k] := by
+  have : z ∈ items (updateBins bins k hk (completeList y bins hyS n))[k] := by
     grind [updateBinsNewBin_extensive]
-  have : isWellFormedBins G w (updateBins bins k
-      (completeList y bins hyS n) (by grind)) := by
+  have : isWellFormedBins G w (updateBins bins k hk (completeList y bins hyS n)) := by
     grind [wfBins_of_completeList]
-  have : z ∈ items (earleyBinList G w k (updateBins bins k
-      (completeList y bins hyS n) (by lia)) (by lia) (n + 1) this).bins[k] := by
+  have : z ∈ items (earleyBinList G w k (updateBins bins k hk (completeList y bins hyS n))
+      (by lia) (n + 1) this).bins[k] := by
     grind [earleyBinList_extensive]
   grind
 
