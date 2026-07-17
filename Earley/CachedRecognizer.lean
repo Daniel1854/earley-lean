@@ -71,7 +71,7 @@ abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
 --       right? But I cannot really reuse the other definitions anyhow?
 public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] where
-  raw : List (BinItem T N)
+  raw : Array (BinItem T N)
   items : ItemCache T N
   completions : CompletionCache T N
 
@@ -131,10 +131,10 @@ public def updateBin (xs : CachedEarleyBin T N) : List (BinItem T N) → CachedE
         | some _ =>
           -- There exists an entry: append the list with the item of y
           updateBin ⟨raw', items', xs.completions.modify n
-            (fun zs => zs.append [⟨y.item, xs.raw.length⟩])⟩ ys
+            (fun zs => zs.append [⟨y.item, xs.raw.size⟩])⟩ ys
         | none =>
           -- No entry for `n` yet: create new list for `n` with `y` as first elem.
-          updateBin ⟨raw', items', xs.completions.insert n [⟨y.item, xs.raw.length⟩]⟩ ys
+          updateBin ⟨raw', items', xs.completions.insert n [⟨y.item, xs.raw.size⟩]⟩ ys
       | _ =>
         -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
         updateBin ⟨raw', items', xs.completions⟩ ys
@@ -155,7 +155,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
     (bins : CachedEarleyBins T N (w.length + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
     (hbins : isWellFormedCachedBins G w bins) : WfEarleyBinsCached G w :=
   -- Return the bins if we are the end of the list of the current bin
-  if hj : j ≥ bins[k].raw.length then
+  if hj : j ≥ bins[k].raw.size then
     ⟨bins, hbins⟩
   else
     let x := bins[k].raw[j]
@@ -191,7 +191,7 @@ TODO: I could use of Std.HashSet.ofList and something more clever for the HashMa
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBinsCached G w :=
   let bins : Vector (CachedEarleyBin T N) (w.length + 1) :=
-    Vector.replicate (w.length + 1) ⟨[],  {},  {}⟩
+    Vector.replicate (w.length + 1) ⟨Array.empty,  {},  {}⟩
   let bins' := updateBinsCached bins 0 (by lia) (initList G)
   ⟨bins', (by sorry)⟩ --grind [initList, wfBinItems_of_initList])⟩
 
@@ -226,7 +226,7 @@ TODO: what code gets compiled from `∃ x ∈ List ?
 @[grind]
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) [LawfulBEq T] : Bool :=
   let bins := earleyList G w |>.bins
-  let finalItems := items bins[w.length].raw
+  let finalItems := bins[w.length].raw.map (fun x => x.item)
   ∃ x ∈ finalItems, isFinished G.initial (mapT w) x
 
 end CachedRecognizer

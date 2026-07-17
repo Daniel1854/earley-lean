@@ -70,7 +70,7 @@ def sizePointers {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
 def sizeCachedBins {N : Type} [BEq N] [Hashable N] {n : Nat}
     [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
     (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
-  bins.map (fun bin => bin.raw.length) |>.sum
+  bins.map (fun bin => bin.raw.size) |>.sum
 
 def sizeCachedPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
     [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
