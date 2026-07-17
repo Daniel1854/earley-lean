@@ -826,8 +826,8 @@ lemma decreasingAux {G : ContextFreeGrammarList T N} {w : List T}
 /--
 Computes the k-th bin starting from index j and returns the updated bins.
 -/
-public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
-    (bins : EarleyBins T N (w.length + 1)) (hk : k < bins.size) (j : Nat)
+public def earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
+    (bins : EarleyBins T N (w.length + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
     (hbins : isWellFormedBins G w bins) : WfEarleyBins G w :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].length then
@@ -853,7 +853,7 @@ public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
       let newItems := completeList x.item bins (by grind) j
       updateBins bins k hk newItems
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
-    earleyBinList G w k bins' (by lia) (j+1) this
+    earleyBinList bins' k hk (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w) x }.ncard + 1 - j
 decreasing_by exact decreasingAux hbins j k (by lia) (by lia)
 
@@ -877,11 +877,11 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
   match h : k with
   | 0 =>
     let wfBins := initBins G w
-    earleyBinList G w 0 wfBins.bins (by simp) 0 wfBins.inv
+    earleyBinList wfBins.bins 0 (by lia) 0 wfBins.inv
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
     let ⟨mBins, inv⟩ := earleyBinsList G w i (by lia)
-    earleyBinList G w k mBins (by lia) 0 inv
+    earleyBinList mBins k (by lia) 0 inv
 
 /--
 Returns the bins after trying to recognize `w` by using `G`.
