@@ -75,7 +75,7 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (w : List (
       have : x.rule.output.length ≤ M := by
         have : x.rule.output.length ∈ List.map (fun r => r.output.length) G.rules := by grind
         simp [List.le_max_of_mem this, M]
-      omega
+      lia
     simp only [itemIntro, Set.mem_image, Prod.exists]
     grind [Set.prod]
   exact Finite.Set.subset (Top.image itemIntro) this

@@ -92,7 +92,7 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
     {a : Symbol T G.NT} (h : nextSymbol x = some a) : x.position + 1 ≤ x.rule.output.length := by
   rw [nextSymbol] at h
   have := of_getElem?_eq_some h
-  omega
+  lia
 
 /--
 Any EarleyItem within an EarleySet is well-formed.
@@ -106,17 +106,17 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
     simp only
     have := bounds_of_nextSymbol_eq_some hnext
     simp only [hx] at ih this
-    refine ⟨ih.left,this,by omega⟩
+    refine ⟨ih.left,this,by lia⟩
   | predict hx hmem hr2 hnext ih =>
     simp only
     simp only [hx] at ih
-    refine ⟨hr2,by omega⟩
+    refine ⟨hr2,by lia⟩
   | complete hx hmemx hy hmemy hcomp hnext ihx ihy =>
     simp only
     have := bounds_of_nextSymbol_eq_some hnext
     simp only [hx] at ihx this
     simp only [hy] at ihy
-    refine ⟨ihx.left,this, by omega⟩
+    refine ⟨ihx.left,this, by lia⟩
 
 grind_pattern wfEarley => x ∈ EarleySet G w
 
@@ -325,15 +325,15 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
   | nil =>
     -- `A → α • []`: the position is given and the item is already complete.
     have hpos : pos = α.length := by
-      simp [betaItem, hx] at hbeta
+      simp only [betaItem, hx, List.drop_eq_nil_iff] at hbeta
       have := wfI x hmem
-      simp [isWellFormed, hx] at this
-      omega
+      simp only [isWellFormed, hx] at this
+      lia
     simp only [betaItem, hx, hpos, List.drop_length] at hD
     have : slice w j n = [] := Derivation_of_empty_input G hD
     have heq : j = n := by
-      simp [slice_eq_droptake] at this
-      omega
+      simp only [slice_eq_droptake, List.drop_eq_nil_iff, List.length_take, inf_le_iff] at this
+      lia
     rw [heq, hpos] at hx
     rw [hx] at hmem
     apply hmem
@@ -358,7 +358,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
       grind
     have hmemy : y ∈ I := by
       simp only [isPartiallyComplete, decide_eq_true_eq, and_imp] at hcomp
-      apply hcomp ⟨A,α⟩ pos i j k (by omega) (by omega) (by omega) hx hmem hnextx hE hlenE
+      apply hcomp ⟨A,α⟩ pos i j k hjk hkn hlen hx hmem hnextx hE hlenE
     have hrs : betaItem y = rs := by
       simp only [betaItem, y]
       have := @List.drop_add_one_eq_tail_drop _ pos α
@@ -384,14 +384,14 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
     | nil =>
       simp at hDlen
       simp only [Derivation_of_empty_rule] at hD
-      have hkw : k ≤ w.length := by omega
+      have hkw : k ≤ w.length := by lia
       have hkj : k = j + 1 := by
         have : [a].length = 1 := by simp
         rw [hD] at this
         exact succ_of_len w j k this hkw
-      have hlenj : j < w.length := by omega
+      have hlenj : j < w.length := by lia
       have : w[j] = a := by
-        have := @slice_one _ w j (by omega)
+        have := @slice_one _ w j hlenj
         simp [hkj, this] at hD
         simp [hD]
       rw [hkj]
@@ -427,7 +427,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
       let z : EarleyItem T G.NT := ⟨⟨A,u⟩, u.length, j, k⟩
       have hmemz : z ∈ EarleySet G w := by
         apply partiallyCompleteUpTo G w k (EarleySet G w)
-          (by omega) (by omega) y _ hmemy (wfEarley G w) hrs hcompk
+          hjk (by lia) y _ hmemy (wfEarley G w) hrs hcompk
         · exact 0
         · simp [y]
       apply EarleySet.complete (rule2 := ⟨A,u⟩) (posy := u.length) hx hmemx
@@ -462,7 +462,7 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
   -- Prove a finished EarleyItem exists by fully leaning on EarleySet being partially completed
   have : ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩ ∈ EarleySet G w := by
     exact partiallyCompleteUpTo G w w.length (EarleySet G w)
-      (by omega) (by omega) x hx hmemx (wfEarley G w) hD' partCompShorter
+      (by lia) (by lia) x hx hmemx (wfEarley G w) hD' partCompShorter
   use ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩
 
 end Completeness

@@ -101,7 +101,7 @@ the slice without the increment and a direct access to that endIdx.
 @[grind =]
 lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
     slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
-  have := @slice_concat _ xs i j (j+1) (by omega) (by omega)
+  have := @slice_concat _ xs i j (j+1) hle (by lia)
   rw [← this]
   have := slice_one xs hb
   simp [this]
@@ -124,21 +124,21 @@ lemma slice_concat_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice xs
     (hik : i ≤ k) : ∃ j, ys = slice xs i j ∧ zs = slice xs j k ∧ i ≤ j ∧ j ≤ k := by
   induction xs, i, k using slice.induct generalizing ys zs with
   | case1 i k =>
-    simp [slice] at h
+    simp only [slice, List.nil_eq, List.append_eq_nil_iff] at h
     simp only [h, slice_nil, true_and]
     use k
   | case2 x xs i =>
-    simp [slice] at h
-    simp [h, slice]
-    omega
+    simp only [slice, List.nil_eq, List.append_eq_nil_iff] at h
+    simp only [h, List.nil_eq, slice, Nat.le_zero_eq, true_and, exists_eq_right_right]
+    lia
   | case3 x xs k ih =>
     cases ys with
     | nil =>
       use 0
-      simp [slice] at h
+      simp only [slice, List.nil_append] at h
       simp [slice, h]
     | cons y ys =>
-      simp [slice] at h
+      simp only [slice, List.cons_append, List.cons.injEq] at h
       have := ih h.right (by simp)
       rcases this with ⟨j,hj⟩
       use j+1

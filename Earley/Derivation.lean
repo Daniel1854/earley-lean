@@ -233,7 +233,7 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
       clear ih
       rcases this with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
       use a', b', E, d::F
-      refine ⟨?_,?_,hc,by simp; omega,by simp [hlenF]⟩
+      refine ⟨?_,?_,hc,by simp; lia,by simp [hlenF]⟩
       · rw [ha]
         exact hE
       · simp only [Derivation_succ]
@@ -259,7 +259,7 @@ lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G
       clear ih
       rcases this with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
       use a', b', d::E, F
-      refine ⟨?_,?_,hc,by simp [hlenE],by simp; omega⟩
+      refine ⟨?_,?_,hc,by simp [hlenE],by simp; lia⟩
       · simp only [Derivation_succ]
         refine ⟨hmemh,?_⟩
         rw [ha]
