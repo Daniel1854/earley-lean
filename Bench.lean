@@ -1,22 +1,27 @@
 import Earley.Recognizer
+import Earley.CachedRecognizer
 
 open Earley.Recognizer
+
+inductive Variant where
+| default : Variant
+| cached : Variant
 
 -- Matching is indeed less performant if there are more elements within the inductive type.
 inductive N1 where
 | S : N1
-deriving BEq, ReflBEq, LawfulBEq
+deriving BEq, Hashable, ReflBEq, LawfulBEq
 
 inductive N2 where
 | S : N2
 | X : N2
 | Y : N2
 | Z : N2
-deriving BEq, ReflBEq, LawfulBEq
+deriving BEq, Hashable, ReflBEq, LawfulBEq
 
 inductive T where
 | a : T
-deriving BEq, ReflBEq, LawfulBEq
+deriving BEq, Hashable, ReflBEq, LawfulBEq
 
 def rule0 : ContextFreeRule T N1 :=
   ⟨N1.S, [Symbol.terminal T.a]⟩
@@ -63,18 +68,28 @@ def sizePointers {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
 def benchRecognizer {N : Type} [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)]
-    (G : ContextFreeGrammarList T N) (numChars : UInt32) : IO Unit := do
+    [Hashable (Earley.Model.EarleyItem T N)] (G : ContextFreeGrammarList T N)
+    (variant : Variant) (numChars : UInt32) : IO Unit := do
   let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
-  let t1 ← IO.monoMsNow
-  let ⟨bins, _⟩ ← IO.lazyPure (fun () => earleyList G w)
-  let t2 ← IO.monoMsNow
-  let binSize ← IO.lazyPure (fun () => sizeBins bins)
-  let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
-  IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+  match variant with
+  | .default =>
+    let t1 ← IO.monoMsNow
+    let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.Recognizer.earleyList G w)
+    let t2 ← IO.monoMsNow
+    let binSize ← IO.lazyPure (fun () => sizeBins bins)
+    let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
+    IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+  | .cached =>
+    let t1 ← IO.monoMsNow
+    let ⟨bins, _, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyList G w )
+    let t2 ← IO.monoMsNow
+    let binSize ← IO.lazyPure (fun () => sizeBins bins)
+    let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
+    IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
 
 def main (args : List String) : IO UInt32 := do
-  if args.length < 2 then
-    IO.println "Usage: Bench <grammarIdx> <numChars>"
+  if args.length < 3 then
+    IO.println "Usage: Bench <grammarIdx> <variant> <numChars>"
     IO.println ""
     IO.println "Valid values for grammarIdx range from 1-5:"
     IO.println "(1) S -> SS  | a"
@@ -82,18 +97,28 @@ def main (args : List String) : IO UInt32 := do
     IO.println "(3) S -> aSa | a"
     IO.println "(4) S -> Sa  | a"
     IO.println "(5) S -> SX  | a, X -> Y | Z, Y -> a, Z -> a"
+    IO.println ""
+    IO.println "Valid values for VARIANT are:"
+    IO.println "'lean-naive' | naive algorithm"
+    IO.println "'lean-opt'   | cache for containment check and completion filtering"
     return 1
   let grammarIdx := String.toNat! args[0]! |>.toUInt32
-  let numChars := String.toNat! args[1]! |>.toUInt32
+  let variant ← match args[1]! with
+    | "lean-naive" => pure Variant.default
+    | "lean-opt" => pure Variant.cached
+    | _ =>
+      IO.println s!"No controlflow for variant={args[1]!}"
+      return 0
+  let numChars := String.toNat! args[2]! |>.toUInt32
   match grammarIdx with
   --S -> SS | a
-  | 1 => benchRecognizer ⟨N1.S, [rule0, rule1], by simp [rule0, rule1]⟩ numChars
+  | 1 => benchRecognizer ⟨N1.S, [rule0, rule1], by simp [rule0, rule1]⟩ variant numChars
   --S -> aS | a
-  | 2 => benchRecognizer ⟨N1.S, [rule0, rule2], by simp [rule0, rule2]⟩ numChars
+  | 2 => benchRecognizer ⟨N1.S, [rule0, rule2], by simp [rule0, rule2]⟩ variant numChars
   --S -> aSa | a
-  | 3 => benchRecognizer ⟨N1.S, [rule0, rule3], by simp [rule0, rule3]⟩ numChars
+  | 3 => benchRecognizer ⟨N1.S, [rule0, rule3], by simp [rule0, rule3]⟩ variant numChars
   --S -> Sa | a
-  | 4 => benchRecognizer ⟨N1.S, [rule0, rule4], by simp [rule0, rule4]⟩ numChars
+  | 4 => benchRecognizer ⟨N1.S, [rule0, rule4], by simp [rule0, rule4]⟩ variant numChars
   --S -> SX | a, X -> Y | Z, Y -> a, Z -> a
   | 5 =>
     let G := {
@@ -101,6 +126,6 @@ def main (args : List String) : IO UInt32 := do
       rules := [rule5, rule6, rule7, rule8, rule9, rule10],
       nodup := by simp [rule5, rule6, rule7, rule8, rule9, rule10]
     }
-    benchRecognizer G numChars
+    benchRecognizer G variant numChars
   | _ => IO.println s!"No controlflow for grammarIdx={grammarIdx}"
   return 0

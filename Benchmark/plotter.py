@@ -43,10 +43,11 @@ def grammar_to_bnf(grammar: Grammar) -> str:
 
 
 class Variant(Enum):
-    LEAN = "lean"  # There is only one lean impl as of now.
+    LEAN_NAIVE = "lean-naive"  # lean with naive algorithm
+    LEAN_OPT = "lean-opt"  # lean with caches
     ISABELLE = "isabelle"  # exported isabelle code
-    SCALA_NAIVE = "functional"  # isabelle code handwritten in scala
-    SCALA_OPT = "original"  # optimized scala implementation without maintaining pointerinformation
+    SCALA_NAIVE = "scala-naive"  # isabelle code handwritten in scala
+    SCALA_OPT = "scala-opt"  # optimized scala implementation without maintaining pointerinformation
 
 
 @dataclass
@@ -55,10 +56,11 @@ class Experiment:
     grammar: Grammar
 
     def to_filename(self):
-        if self.variant is Variant.LEAN:
-            return f"lean/lean_grammar={self.grammar.value}.csv"
+        postfix = f"grammar={self.grammar.value}_variant={self.variant.value}.csv"
+        if self.variant in [Variant.LEAN_NAIVE, Variant.LEAN_OPT]:
+            return f"lean/lean_{postfix}"
         else:
-            return f"scala/scala_grammar={self.grammar.value}_variant={self.variant.value}.csv"
+            return f"scala/scala_{postfix}"
 
 
 def plot(mode: Mode, grammar: Optional[Grammar]):
@@ -71,7 +73,7 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             Experiment(variant=variant, grammar=grammar) for variant in Variant
         ]
     else:
-        variant = Variant.LEAN
+        variant = Variant.LEAN_NAIVE
         experiments = [
             Experiment(variant=variant, grammar=grammar) for grammar in Grammar
         ]
@@ -97,6 +99,8 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             marker = "s"
         elif idx == 4:
             marker = "v"
+        elif idx == 5:
+            marker = "D"
         else:
             assert False, "controlflow issue"
 
