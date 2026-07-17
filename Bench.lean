@@ -67,7 +67,17 @@ def sizePointer (p : Pointer) : Nat :=
 def sizePointers {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
-def benchRecognizer {N : Type} [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)]
+def sizeCachedBins {N : Type} [BEq N] [Hashable N] {n : Nat}
+    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+    (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
+  bins.map (fun bin => bin.raw.length) |>.sum
+
+def sizeCachedPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
+    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+    (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
+  bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
+
+def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.EarleyItem T N)]
     [Hashable (Earley.Model.EarleyItem T N)] (G : ContextFreeGrammarList T N)
     (variant : Variant) (numChars : UInt32) : IO Unit := do
   let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
@@ -81,10 +91,10 @@ def benchRecognizer {N : Type} [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)]
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
   | .cached =>
     let t1 ← IO.monoMsNow
-    let ⟨bins, _, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyList G w )
+    let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyList G w)
     let t2 ← IO.monoMsNow
-    let binSize ← IO.lazyPure (fun () => sizeBins bins)
-    let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
+    let binSize ← IO.lazyPure (fun () => sizeCachedBins bins)
+    let pointerSize ← IO.lazyPure (fun () => sizeCachedPointers bins)
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
 
 def main (args : List String) : IO UInt32 := do

@@ -53,29 +53,52 @@ open Utils
 open Recognizer
 
 /--
-A cache for the items that are within a single bin.
+A cache for checking if an items resides within a single bin.
 -/
-abbrev BinCache (T N : Type) [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)] : Type :=
+abbrev ItemCache (T N : Type) [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)] : Type :=
   Std.HashSet (EarleyItem T N)
 
 /--
-A cache about the items of each bin.
+A cache for accessing the possible rules for a completion within a single bin.
+Maps a non-terminal to all the EarleyItems that the bin contains for it and
+their index within the bin.
 -/
-abbrev BinsCache (T N : Type) [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)] (n : Nat) : Type :=
-  Vector (BinCache T N ) n
+abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
+  Std.HashMap N (List (EarleyItem T N × Nat))
 
-variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
+-- TODO: It is much more natural to have two a bin and its caches connected.
+--       But this makes it much more difficult to reuse the definitions from the naive version,
+--       right? But I cannot really reuse the other definitions anyhow?
+public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
+    [Hashable N] [Hashable (EarleyItem T N)] where
+  raw : List (BinItem T N)
+  items : ItemCache T N
+  completions : CompletionCache T N
+
+abbrev CachedEarleyBins (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
+    [Hashable N] [Hashable (EarleyItem T N)] (n : Nat) : Type :=
+  Vector (CachedEarleyBin T N) n
+
+variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] [Hashable N]
+  [Hashable (EarleyItem T N)]
+
+/--
+CachedEarleyBins are well-formed, if all of its bins and its caches are well-formed.
+-/
+@[grind]
+public def isWellFormedCachedBins (G : ContextFreeGrammarList T N) (w : List T)
+    (bins : CachedEarleyBins T N (w.length + 1)) : Prop :=
+  -- FIXME: missing invariant about the cache stating that the items correspond
+  --        to the items in each bin ? Or do I want to prove this separately?
+  sorry
+  --isWellFormedBins G w bins.raw ∧ sorry
 
 /--
 A combination of an EarleyBins with its cache and a well-formedness Invariant about it.
-TODO: see if I should layer the struct
 -/
 public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (w : List T) where
-  bins : EarleyBins T N (w.length + 1)
-  inv : isWellFormedBins G w bins
-  cache : BinsCache T N (w.length + 1)
-  -- FIXME: missing invariant about the cache stating that the items correspond
-  --        to the items in each bin
+  bins : CachedEarleyBins T N (w.length + 1)
+  inv : isWellFormedCachedBins G w bins
 
 /--
 List-based implementation of the .complete operation.
@@ -83,85 +106,94 @@ List-based implementation of the .complete operation.
 Returns items for each successful completion of item `y` using its startIdx for bins.
 `j` is the index of y in its bin.
 -/
-public def _completeList (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
+public def completeCachedList (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n)
     (h : y.startIdx < n) (j : Nat) : List (BinItem T N) :=
   -- The origin bin filtered for matchings with y
-  let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
-    (fun x => nextSymbol x.item == some (Symbol.nonterminal y.rule.input))
+  let xMatches : List (EarleyItem T N × Nat) := bins[y.startIdx].completions.getD y.rule.input []
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
-  xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x.item y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
+  xMatches.map (fun ⟨x,i⟩ => ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 /--
-Add given list one by one into `xs`, if they are not already part of `xs`,
-while also merging any reduction pointers.
+Add given list one by one into `xs`, if they are not already part of `xs`.
 -/
 @[inline, grind]
-public def updateBin (xs : List (BinItem T N)) (cache : BinCache T N) :
-    List (BinItem T N) → List (BinItem T N) × BinCache T N
-  | [] => ⟨xs, cache⟩
+public def updateBin (xs : CachedEarleyBin T N) : List (BinItem T N) → CachedEarleyBin T N
+  | [] => xs
   | y::ys =>
-    if cache.contains y.item then
-      updateBin xs cache ys
+    if xs.items.contains y.item then
+      updateBin xs ys
     else
-      updateBin (xs ++ [y]) (cache.insert y.item) ys
+      let raw' := xs.raw ++ [y]
+      let items' :=  xs.items.insert y.item
+      match y.item.nextSymbol with
+      | some (Symbol.nonterminal n) =>
+        match xs.completions[n]? with
+        | some _ =>
+          -- There exists an entry: append the list with the item of y
+          updateBin ⟨raw', items', xs.completions.modify n
+            (fun zs => zs.append [⟨y.item, xs.raw.length⟩])⟩ ys
+        | none =>
+          -- No entry for `n` yet: create new list for `n` with `y` as first elem.
+          updateBin ⟨raw', items', xs.completions.insert n [⟨y.item, xs.raw.length⟩]⟩ ys
+      | _ =>
+        -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
+        updateBin ⟨raw', items', xs.completions⟩ ys
 
 /--
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
-public def updateBinsCached {n : Nat} (bins : EarleyBins T N n) (k : Nat)
-    (newBin : List (BinItem T N)) (cache : BinsCache T N n) (hk : k < n) :
-    EarleyBins T N n × BinsCache T N n :=
-  let ⟨bin', cache'⟩ := updateBin bins[k] cache[k] newBin
-  ⟨bins.set k bin' hk, cache.set k cache' hk⟩
+public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat) (hk : k < n)
+    (newBin : List (BinItem T N)) : CachedEarleyBins T N n :=
+  let updBin := updateBin bins[k] newBin
+  bins.set k updBin hk
 
 /--
 Computes the k-th bin starting from index j and returns the updated bins.
 -/
-public def earleyBinList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat)
-    (bins : EarleyBins T N (w.length + 1)) (h : k < bins.size) (j : Nat)
-    (hbins : isWellFormedBins G w bins) (cache : BinsCache T N (w.length + 1)) :
-    WfEarleyBinsCached G w :=
+public def earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
+    (bins : CachedEarleyBins T N (w.length + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
+    (hbins : isWellFormedCachedBins G w bins) : WfEarleyBinsCached G w :=
   -- Return the bins if we are the end of the list of the current bin
-  if hj : j ≥ bins[k].length then
-    ⟨bins, hbins, cache⟩
+  if hj : j ≥ bins[k].raw.length then
+    ⟨bins, hbins⟩
   else
-    let x := bins[k][j]
-    let ⟨bins', cache'⟩ := match nextSymbol x.item with
+    let x := bins[k].raw[j]
+    let bins' := match nextSymbol x.item with
     | some s => match s with
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := predictList G A k
-        updateBinsCached bins k newItems cache (by omega)
+        updateBinsCached bins k hk newItems
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hk : k ≥ w.length then
-          ⟨bins, cache⟩
+          bins
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanList w x.item a k (by omega) j
-          updateBinsCached bins (k+1) newItem cache (by omega)
+          updateBinsCached bins (k+1) (by lia) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      let newItems := completeList x.item bins (by grind) j
-      updateBinsCached bins k newItems cache (by omega)
-    have : isWellFormedBins G w bins' := by sorry
-    earleyBinList G w k bins' (by omega) (j+1) this cache'
+      let newItems := completeCachedList x.item bins (by sorry) j
+      updateBinsCached bins k hk newItems
+    have : isWellFormedCachedBins G w bins' := by sorry
+    earleyBinList bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w) x }.ncard + 1 - j
-decreasing_by exact decreasingAux hbins j k (by lia) (by lia)
+decreasing_by --exact decreasingAux hbins j k (by lia) (by lia)
+  sorry
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
+TODO: I could use of Std.HashSet.ofList and something more clever for the HashMap cache,
+      but utilizing updateBin is easier to reason with. It shouldnt be much worse perf-wise
 -/
 @[grind]
-public def initBins (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBinsCached G w :=
-  let b₀ := initList G
-  let bins := Vector.replicate (w.length + 1) []
-  let bins' := bins.set 0 b₀ (by simp)
-  let cache : BinsCache T N (w.length + 1) := Vector.replicate (w.length + 1) {}
-  let cache' := cache.set 0 (Std.HashSet.ofList (items b₀)) (by simp)
-  ⟨bins', (by grind [initList, wfBinItems_of_initList]), cache'⟩
+public def initCachedBins (G : ContextFreeGrammarList T N) (w : List T) : WfEarleyBinsCached G w :=
+  let bins : Vector (CachedEarleyBin T N) (w.length + 1) :=
+    Vector.replicate (w.length + 1) ⟨[],  {},  {}⟩
+  let bins' := updateBinsCached bins 0 (by lia) (initList G)
+  ⟨bins', (by sorry)⟩ --grind [initList, wfBinItems_of_initList])⟩
 
 /--
 Computes up to the k-th bin.
@@ -172,12 +204,12 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : List T) (k : Nat
     (h : k < w.length + 1) : WfEarleyBinsCached G w :=
   match h : k with
   | 0 =>
-    let ⟨bins, inv, cache⟩ := initBins G w
-    earleyBinList G w 0 bins (by simp) 0 inv cache
+    let ⟨bins, inv⟩ := initCachedBins G w
+    earleyBinList bins 0 (by simp) 0 inv
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
-    let ⟨mBins, inv, cache⟩ := earleyBinsList G w i (by lia)
-    earleyBinList G w k mBins (by lia) 0 inv cache
+    let ⟨bins, inv⟩ := earleyBinsList G w i (by lia)
+    earleyBinList bins k (by lia) 0 inv
 
 /--
 Returns the bins after trying to recognize `w` by using `G`.
@@ -194,7 +226,7 @@ TODO: what code gets compiled from `∃ x ∈ List ?
 @[grind]
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) [LawfulBEq T] : Bool :=
   let bins := earleyList G w |>.bins
-  let finalItems := items bins[w.length]
+  let finalItems := items bins[w.length].raw
   ∃ x ∈ finalItems, isFinished G.initial (mapT w) x
 
 end CachedRecognizer

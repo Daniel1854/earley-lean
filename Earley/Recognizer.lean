@@ -246,10 +246,7 @@ theorem completeList_eq_completeListI (y : EarleyItem T N) {n : Nat} (bins : Ear
     (h : y.startIdx < n) (j : Nat) : completeList y bins h j = completeListI y bins h j := by
   simp only [completeList, filterWithIdx, completeListI, items]
   let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
-  fun_induction filterWithIdxAux P 0 bins[y.startIdx] with
-  | case1 => grind
-  | case2 => grind
-  | case3 => grind
+  fun_induction filterWithIdxAux P 0 bins[y.startIdx] <;> grind
 
 /--
 Returns the list appended with an element, if it is not already part of the list,
@@ -290,8 +287,8 @@ Replace `bins` at index `k` with `newBin` and return the updated bins.
 @[grind]
 public def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (hk : k < n)
     (newBin : List (BinItem T N)) : EarleyBins T N n :=
-  let newBin := updateBin bins[k] newBin
-  bins.set k newBin hk
+  let updBin := updateBin bins[k] newBin
+  bins.set k updBin hk
 
 omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
