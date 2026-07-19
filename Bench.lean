@@ -72,10 +72,13 @@ def sizeCachedBins {N : Type} [BEq N] [Hashable N] {n : Nat}
     (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.size) |>.sum
 
+set_option linter.unusedVariables false in
 def sizeCachedPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
     [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
     (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
-  bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
+  -- FIXME: currently not supporting pointers for the cached variant
+  --bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
+  0
 
 def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.EarleyItem T N)]
     [Hashable (Earley.Model.EarleyItem T N)] (G : ContextFreeGrammarList T N)
