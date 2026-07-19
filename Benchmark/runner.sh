@@ -21,8 +21,9 @@ usage() {
   echo "(5) S -> SX  | a, X -> Y | Z, Y -> a, Z -> a"
   echo ""
   echo "Valid values for VARIANT are:"
-  echo "'lean-naive' | naive algorithm"
-  echo "'lean-opt'   | cache for containment check and completion filtering"
+  echo "'lean-naive'          | naive algorithm"
+  echo "'lean-opt'            | cache for containment check and completion filtering"
+  echo "'lean-opt-pointers'   | caches + maintaining pointers"
   exit 1
 }
 

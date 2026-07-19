@@ -31,20 +31,21 @@ class Grammar(Enum):
 def grammar_to_bnf(grammar: Grammar) -> str:
     match grammar:
         case Grammar.ONE:
-            return "S -> SS | a"
+            return "S → SS | a"
         case Grammar.TWO:
-            return "S -> aS | a"
+            return "S → aS | a"
         case Grammar.THREE:
-            return "S -> aSa | a"
+            return "S → aSa | a"
         case Grammar.FOUR:
-            return "S -> Sa | a"
+            return "S → Sa | a"
         case Grammar.FIVE:
-            return "S -> SX | a, X -> Y | Z, Y -> a, Z -> a"
+            return "S → SX | a\n X → Y | Z\n Y → a\n Z → a"
 
 
 class Variant(Enum):
     LEAN_NAIVE = "lean-naive"  # lean with naive algorithm
     LEAN_OPT = "lean-opt"  # lean with caches
+    LEAN_OPT_POINTERS = "lean-opt-pointers"  # lean with caches
     ISABELLE = "isabelle"  # exported isabelle code
     SCALA_NAIVE = "scala-naive"  # isabelle code handwritten in scala
     SCALA_OPT = "scala-opt"  # optimized scala implementation without maintaining pointerinformation
@@ -57,7 +58,11 @@ class Experiment:
 
     def to_filename(self):
         postfix = f"grammar={self.grammar.value}_variant={self.variant.value}.csv"
-        if self.variant in [Variant.LEAN_NAIVE, Variant.LEAN_OPT]:
+        if self.variant in [
+            Variant.LEAN_NAIVE,
+            Variant.LEAN_OPT,
+            Variant.LEAN_OPT_POINTERS,
+        ]:
             return f"lean/lean_{postfix}"
         else:
             return f"scala/scala_{postfix}"
@@ -73,7 +78,7 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             Experiment(variant=variant, grammar=grammar) for variant in Variant
         ]
     else:
-        variant = Variant.LEAN_NAIVE
+        variant = Variant.LEAN_OPT
         experiments = [
             Experiment(variant=variant, grammar=grammar) for grammar in Grammar
         ]
@@ -84,6 +89,7 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         if mode is Mode.SIZES:
             y = df["num_bins"].values
         else:
+            # y = df["num_miliseconds"].map(lambda x: x / 1000).values
             y = df["num_miliseconds"].values
         if mode is Mode.GRAMMAR:
             label = f"{experiment.variant.value}"
@@ -101,31 +107,36 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             marker = "v"
         elif idx == 5:
             marker = "D"
+        elif idx == 6:
+            marker = "<"
         else:
             assert False, "controlflow issue"
 
         ax.plot(n, y, marker=marker, fillstyle="none", label=label)
 
     ax.grid(True, linestyle="--")
+
     ax.set_xlabel("Input length")
     if mode is Mode.SIZES:
         ax.set_ylabel("Total Size of the Bins")
-    else:
-        ax.set_ylabel("Duration [ms]")
-    # ax.set_xlim(xmin=0, xmax=duration)
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    # ax.legend(loc="center right")
-    # ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
-    if mode is Mode.SIZES:
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_ylim(ymin=10, ymax=10**7)
         ax.legend(loc="lower right")
     else:
+        ax.set_xscale("log")
+        # ax.set_xlim(xmin=10, xmax=100_000)
+        ax.set_yscale("log")
+        ax.set_ylim(ymin=1, ymax=100_000)
+        ax.set_ylabel("Duration [ms]")
         ax.legend(loc="upper left")
+
+    # ax.legend(loc="center right")
+    # ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
     # plt.tight_layout()
 
     if mode is Mode.GRAMMAR:
-        ax.set_title(f"Runtime of '{grammar_to_bnf(grammar)}'")
+        ax.set_title(f"Runtime of '{grammar_to_bnf(grammar).replace('\n', ',')}'")
         fig.savefig(f"grammar={grammar.value}.svg", bbox_inches="tight")
     elif mode is Mode.COMP:
         ax.set_title(f"Runtime of '{variant.value}'")

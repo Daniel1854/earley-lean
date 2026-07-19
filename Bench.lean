@@ -1,11 +1,13 @@
 import Earley.Recognizer
 import Earley.CachedRecognizer
+import Earley.CachedRecognizerPointers
 
 open Earley.Recognizer
 
 inductive Variant where
 | default : Variant
 | cached : Variant
+| cachedPointers : Variant
 
 -- Matching is indeed less performant if there are more elements within the inductive type.
 inductive N1 where
@@ -80,6 +82,16 @@ def sizeCachedPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
   --bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
   0
 
+def sizeCachedPointersBins {N : Type} [BEq N] [Hashable N] {n : Nat}
+    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+    (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
+  bins.map (fun bin => bin.raw.size) |>.sum
+
+def sizeCachedPointersPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
+    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+    (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
+  bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
+
 def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.EarleyItem T N)]
     [Hashable (Earley.Model.EarleyItem T N)] (G : ContextFreeGrammarList T N)
     (variant : Variant) (numChars : UInt32) : IO Unit := do
@@ -99,6 +111,13 @@ def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.Ear
     let binSize ← IO.lazyPure (fun () => sizeCachedBins bins)
     let pointerSize ← IO.lazyPure (fun () => sizeCachedPointers bins)
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+  | .cachedPointers =>
+    let t1 ← IO.monoMsNow
+    let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizerPointers.earleyList G w)
+    let t2 ← IO.monoMsNow
+    let binSize ← IO.lazyPure (fun () => sizeCachedPointersBins bins)
+    let pointerSize ← IO.lazyPure (fun () => sizeCachedPointersPointers bins)
+    IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
 
 def main (args : List String) : IO UInt32 := do
   if args.length < 3 then
@@ -112,13 +131,15 @@ def main (args : List String) : IO UInt32 := do
     IO.println "(5) S -> SX  | a, X -> Y | Z, Y -> a, Z -> a"
     IO.println ""
     IO.println "Valid values for VARIANT are:"
-    IO.println "'lean-naive' | naive algorithm"
-    IO.println "'lean-opt'   | cache for containment check and completion filtering"
+    IO.println "'lean-naive'          | naive algorithm"
+    IO.println "'lean-opt'            | cache for containment check and completion filtering"
+    IO.println "'lean-opt-pointers'   | caches + maintaining pointers"
     return 1
   let grammarIdx := String.toNat! args[0]! |>.toUInt32
   let variant ← match args[1]! with
     | "lean-naive" => pure Variant.default
     | "lean-opt" => pure Variant.cached
+    | "lean-opt-pointers" => pure Variant.cachedPointers
     | _ =>
       IO.println s!"No controlflow for variant={args[1]!}"
       return 0
