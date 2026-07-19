@@ -811,9 +811,8 @@ lemma decreasingAux {G : ContextFreeGrammarList T N} {w : List T}
   apply Nat.sub_lt_sub_left
   · specialize hbins k (by lia)
     let wfItemsBin := { x | isWellFormed G.rules (mapT w) x }
-    have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w)
     have : (items bins[k]).length ≤ wfItemsBin.ncard := by
-      have hmem : ∀ x ∈ items bins[k], x ∈ wfItemsBin := by grind
+      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w)
       have ⟨⟨hNoDup, _⟩, _⟩ := hbins
       let P := (fun x => isWellFormed G.rules (mapT w) x)
       apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup
