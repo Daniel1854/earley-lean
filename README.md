@@ -36,36 +36,12 @@ and you can look at the rendered file.
   - [x] Graphviz
   - [x] Termination Proof
   - [x] Correctness Proof
-- [ ] Evaluation/Benchmark
-- [ ] Performance Improvements?
+- [x] Evaluation/Benchmark: mostly done
+- [ ] Performance Improvement to O(n^3)
+  - [x] Implementation: Cached containment and completion version with and without Pointers
+  - [ ] Correctness Proof for the version with the pointers
 
 Possible improvements upon the results of Rau depending on my pace:
-- worst-case O(n^3), caching stuff/improving accesses through some indexed datastructures?
-- handle epsilon derivations: precompute null-able items in a fixpoint iteration?
-- more exciting proofs about the parse tree?
-
-## Benchmark
-Benchmark:
-- main taking a grammar (deserializing some json?) and a textfile?
-- script which takes a grammar and produces some text: random, min, max paths
-  - worst for non-cached and also cached version
-  - there are also very simple grammars
-- which other parser to compare with?
-
-Example Languages:
-- Classic CFG: Dyck Language/the language of all properly matched parentheses
-```
-S → SS | (S) | ε
-```
-- ambiguous `O(n^3)`:
-```
-S -> SS | a
-```
-- unambiguous `O(n^2)` (but also regular):
-```
-S -> aS | a
-```
-- Bounded state, non-right rec `O(n)`:
-```
-S -> Sa | a
-```
+- Improving worst-case to O(n^3)
+- Handle epsilon derivations: precompute null-able items in a fixpoint iteration?
+- More exciting proofs about the parse tree?
