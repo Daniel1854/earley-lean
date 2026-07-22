@@ -136,7 +136,7 @@ public def updateBin (bin : CachedEarleyBin T N) :
       match (bin.raw[idx], y) with
       | (⟨xItem, Recognizer.Pointer.reduction xp xP⟩,
           ⟨yItem, Recognizer.Pointer.reduction yp yP⟩) =>
-        let updItem := ⟨xItem, Recognizer.Pointer.reduction xp (yp::xP.append yP)⟩
+        let updItem := ⟨xItem, Recognizer.Pointer.reduction xp (yp::yP.append xP)⟩
         updateBin { bin with raw := (bin.raw.swapAt idx updItem this).snd } ys
       | _ => updateBin bin ys
     else

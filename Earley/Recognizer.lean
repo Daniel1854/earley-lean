@@ -260,7 +260,7 @@ public def updateBinAux : List (BinItem T N) → BinItem T N → List (BinItem T
     | (⟨xItem, Pointer.reduction xp xP⟩,⟨yItem, Pointer.reduction yp yP⟩) =>
       -- Merge any reduction pointers if the items match
       if xItem == yItem then
-        ⟨xItem, Pointer.reduction xp (yp::xP.append yP)⟩::xs
+        ⟨xItem, Pointer.reduction xp (yp::yP.append xP)⟩::xs
       else
         -- Search further, if no match
         x::(updateBinAux xs y)
@@ -427,7 +427,7 @@ theorem updateBinAux_of_updRed (xs xs' : List (BinItem T N)) (y : BinItem T N) (
     (hi : i < xs.length) (hx : xs[i].pointer = Pointer.reduction xp xP) (heq : y.item = xs[i].item)
     (hy : y.pointer = .reduction yp yP) (hxs' : xs' = updateBinAux xs y) :
     xs'.length = xs.length ∧ ((hlen : xs'.length = xs.length) →
-    xs'[i].pointer = .reduction xp (yp::xP.append yP) ∧
+    xs'[i].pointer = .reduction xp (yp::yP.append xP) ∧
     (∀ j, (hj : j < xs'.length ∧ i ≠ j) → xs'[j] = xs[j]'(by lia))) := by
   induction xs generalizing i y xs' with
   | nil => grind
