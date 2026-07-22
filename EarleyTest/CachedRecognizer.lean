@@ -75,9 +75,9 @@ def G : ContextFreeGrammarList T N := {
   nodup := by simp [exRule1, exRule2]
 }
 
-def exW1 : List T := [T.a]
-def exW2 : List T := [T.a, T.a, T.a]
-def exW3 : List T := [T.a, T.b]
+def exW1 : Array T := #[T.a]
+def exW2 : Array T := #[T.a, T.a, T.a]
+def exW3 : Array T := #[T.a, T.b]
 
 /-- info: #[(N.S → [] @ [T.a], 0, 0), (N.S → [] @ [T.a, N.S], 0, 0)] -/
 #guard_msgs in
@@ -109,13 +109,13 @@ info: #[(N.S → [T.a] @ [], 0, 1), (N.S → [T.a] @ [N.S], 0, 1), (N.S → [] @
 #eval! (earleyList G exW3).bins[2].raw
 /-- info: #[] -/
 #guard_msgs in
-#eval! (earleyList G [T.b, T.b]).bins[1].raw
+#eval! (earleyList G #[T.b, T.b]).bins[1].raw
 
 /--
 info: false
 -/
 #guard_msgs in
-#eval! recognizeList G []
+#eval! recognizeList G #[]
 /--
 info: true
 -/

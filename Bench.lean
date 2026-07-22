@@ -95,9 +95,9 @@ def sizeCachedPointersPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
 def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.EarleyItem T N)]
     [Hashable (Earley.Model.EarleyItem T N)] (G : ContextFreeGrammarList T N)
     (variant : Variant) (numChars : UInt32) : IO Unit := do
-  let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
   match variant with
   | .default =>
+    let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.Recognizer.earleyList G w)
     let t2 ← IO.monoMsNow
@@ -105,6 +105,7 @@ def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.Ear
     let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
   | .cached =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyList G w)
     let t2 ← IO.monoMsNow
@@ -112,6 +113,7 @@ def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.Ear
     let pointerSize ← IO.lazyPure (fun () => sizeCachedPointers bins)
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
   | .cachedPointers =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizerPointers.earleyList G w)
     let t2 ← IO.monoMsNow
