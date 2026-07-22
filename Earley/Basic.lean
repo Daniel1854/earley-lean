@@ -55,3 +55,14 @@ public abbrev mapT {T N : Type} (w : List T) : List (Symbol T N) :=
 public theorem map_of_mapT {T N : Type} (w : List T) :
     (mapT w : List (Symbol T N)) = w.map Symbol.terminal := by
   simp [mapT]
+
+@[inline, grind]
+public def Vector.modify {α : Type} {n : Nat} (xs : Vector α n) (i : Nat) (f : α → α) :
+    Vector α n :=
+  ⟨xs.toArray.modify i f, by simp⟩
+
+@[grind =]
+public theorem Vector.getElem_modify {α : Type} {n : Nat} {xs : Vector α n} {i j : Nat} (f : α → α)
+    (hi : i < n) : (Vector.modify xs j f)[i] = if j = i then f xs[i] else xs[i] := by
+  simp only [modify, getElem_mk]
+  grind

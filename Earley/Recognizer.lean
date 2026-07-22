@@ -285,10 +285,9 @@ public def updateBin (xs : List (BinItem T N)) : List (BinItem T N) → List (Bi
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
-public def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (hk : k < n)
-    (newBin : List (BinItem T N)) : EarleyBins T N n :=
-  let updBin := updateBin bins[k] newBin
-  bins.set k updBin hk
+public def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (newBin : List (BinItem T N)) :
+    EarleyBins T N n :=
+  Vector.modify bins k (fun x => updateBin x newBin)
 
 omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
@@ -385,8 +384,7 @@ lemma length_le_lengthUpdateBin (xs ys : List (BinItem T N)) :
 
 omit [LawfulBEq (EarleyItem T N)] in
 lemma lengthNth_le_lengthUpdateBinNth {n : Nat} (bins : EarleyBins T N n) (ys : List (BinItem T N))
-    (i k : Nat) (hi : i < n) (hk : k < n) :
-    bins[i].length ≤ (updateBins bins k hk ys)[i].length := by
+    (i k : Nat) (hi : i < n) : bins[i].length ≤ (updateBins bins k ys)[i].length := by
   induction ys generalizing bins with
   | nil => grind
   | cons x xs ih => grind [length_le_lengthUpdateBinAux, length_le_lengthUpdateBin]
@@ -581,18 +579,18 @@ lemma wfBins_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat
     (hwfy : ∀ y ∈ ys, isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k)
     (hwfPy : isWellFormedBinPointers w bins ys k)
     (hwfSy : ∀ y ∈ ys, isSoundPointer y.pointer k bins[k].length) :
-    isWellFormedBins G w (updateBins bins k hk ys)  := by
+    isWellFormedBins G w (updateBins bins k ys)  := by
   intro i hi
   if heq : i = k then
     refine ⟨by grind [wfBinItems_of_updateBin], ?_, ?_⟩
     · have ⟨h1,h2,h3⟩ := hwf k (by lia)
       simp only [heq]
-      have hwfb : isWellFormedBinPointers w bins (updateBins bins k hk ys)[k] k := by
+      have hwfb : isWellFormedBinPointers w bins (updateBins bins k ys)[k] k := by
         have := wfBinPointers_of_updateBin w bins bins[k] h2 ys (by grind)
         grind
       have : ∀ (i : ℕ) (hi : i ≤ w.length), bins[i].length
-          ≤ (updateBins bins k hk ys)[i].length := by grind [lengthNth_le_lengthUpdateBinNth]
-      have := wfBinPointers_of_updatedBins w bins (updateBins bins k hk ys) hk this hwfb
+          ≤ (updateBins bins k ys)[i].length := by grind [lengthNth_le_lengthUpdateBinNth]
+      have := wfBinPointers_of_updatedBins w bins (updateBins bins k ys) hk this hwfb
       grind
     · intro j hj
       have := soundPointers_of_updateBin w k bins (by grind) ys
@@ -601,9 +599,9 @@ lemma wfBins_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat
     refine ⟨by grind, ?_⟩
     have ⟨h1,h2⟩ := hwf k (by lia)
     have hi : i < w.length + 1 := by lia
-    have : ∀ (i : ℕ) (hi : i ≤ w.length), bins[i].length ≤ (updateBins bins k hk ys)[i].length := by
+    have : ∀ (i : ℕ) (hi : i ≤ w.length), bins[i].length ≤ (updateBins bins k ys)[i].length := by
       grind [lengthNth_le_lengthUpdateBinNth]
-    have := wfBinPointers_of_updatedBins w bins (updateBins bins k hk ys) hi this
+    have := wfBinPointers_of_updatedBins w bins (updateBins bins k ys) hi this
     grind
 
 omit [BEq T] in
@@ -637,7 +635,7 @@ lemma wfBins_of_scanList {G : ContextFreeGrammarList T N} {w : List T} {j k : Na
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (x : EarleyItem T N) (hk : k < w.length) (hj : ¬ (j ≥ bins[k].length))
     (hx : x = (bins[k][j]).item) (hnext : nextSymbol x = some (Symbol.terminal a)) :
-    isWellFormedBins G w (updateBins bins (k+1) (by lia) (scanList w x a k hk j)) := by
+    isWellFormedBins G w (updateBins bins (k+1) (scanList w x a k hk j)) := by
   apply wfBins_of_updateBin G w bins hbins (scanList w x a k hk j) (by lia)
   · exact wfItems_of_scanList j k hbins x hk (by grind) hnext
   · grind [wfPointers_of_scanList]
@@ -665,7 +663,7 @@ lemma soundPointers_of_predictList (G : ContextFreeGrammarList T N) {w : List T}
 lemma wfBins_of_predictList {G : ContextFreeGrammarList T N} {w : List T} {A : N} {k : Nat}
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (hk : k < w.length + 1) :
-    isWellFormedBins G w (updateBins bins k hk (predictList G A k)) := by
+    isWellFormedBins G w (updateBins bins k (predictList G A k)) := by
   apply wfBins_of_updateBin G w bins hbins (predictList G A k) hk
   · grind [wfItems_of_predictList]
   · grind [wfPointers_of_predictList]
@@ -742,7 +740,7 @@ lemma wfBins_of_completeList {G : ContextFreeGrammarList T N} {w : List T} {j k 
     {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
     (y : EarleyItem T N) (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].length))
     (hy : y = bins[k][j].item) : isWellFormedBins G w
-    (updateBins bins k hk (completeList y bins (by grind) j)) := by
+    (updateBins bins k (completeList y bins (by grind) j)) := by
   apply wfBins_of_updateBin G w bins hbins (completeList y bins (by grind) j) hk
   · grind [wfItems_of_completeList j k hbins y]
   · grind [wfPointers_of_completeList j k hbins y hk (by grind) (by lia)]
@@ -757,16 +755,16 @@ lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : List T} (j k
       | some s => match s with
         | Symbol.nonterminal A =>
           let newItems := predictList G A k
-          updateBins bins k hk newItems
+          updateBins bins k newItems
         | Symbol.terminal a =>
           if hk : k ≥ w.length then
             bins
           else
             let newItem := scanList w x.item a k (by lia) j
-            updateBins bins (k + 1) (by lia) newItem
+            updateBins bins (k + 1) newItem
       | none =>
         let newItems := completeList x.item bins (by grind) j
-        updateBins bins k hk newItems) :
+        updateBins bins k newItems) :
     isWellFormedBins G w bins' := by
   simp only [h, ge_iff_le]
   match hnext : nextSymbol bins[k][j].item with
@@ -835,7 +833,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := predictList G A k
-        updateBins bins k hk newItems
+        updateBins bins k newItems
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hk : k ≥ w.length then
@@ -843,11 +841,11 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : List T}
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanList w x.item a k (by lia) j
-          updateBins bins (k+1) (by lia) newItem
+          updateBins bins (k+1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeList x.item bins (by grind) j
-      updateBins bins k hk newItems
+      updateBins bins k newItems
     have : isWellFormedBins G w bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList bins' k hk (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w) x }.ncard + 1 - j

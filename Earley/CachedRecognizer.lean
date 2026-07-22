@@ -184,19 +184,12 @@ public def updateBin (bin : CachedEarleyBin T N) : List (EarleyItem T N) → Cac
         updateBin ⟨raw', items', bin.completions⟩ ys
 
 /--
-FIXME: this searches for a place. A bit weird that it is not part of core.
--/
-@[inline]
-def modify {α : Type} {n : Nat} (xs : Vector α n) (i : Nat) (f : α → α) : Vector α n :=
-  ⟨xs.toArray.modify i f, by simp⟩
-
-/--
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
 public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
     (newBin : List (EarleyItem T N)) : CachedEarleyBins T N n :=
-  modify bins k (fun x => updateBin x newBin)
+  Vector.modify bins k (fun x => updateBin x newBin)
 
 omit [LawfulBEq (EarleyItem T N)] in
 public theorem startIdx_of_Wf {G : ContextFreeGrammarList T N} {w : Array T} (x : EarleyItem T N)

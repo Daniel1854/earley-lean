@@ -153,19 +153,12 @@ public def updateBin (bin : CachedEarleyBin T N) :
         updateBin ⟨raw', items', bin.completions⟩ ys
 
 /--
-FIXME: this searches for a place. A bit weird that it is not part of core.
--/
-@[inline]
-def modify {α : Type} {n : Nat} (xs : Vector α n) (i : Nat) (f : α → α) : Vector α n :=
-  ⟨xs.toArray.modify i f, by simp⟩
-
-/--
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
 public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
     (newBin : List (Recognizer.BinItem T N)) : CachedEarleyBins T N n :=
-  modify bins k (fun x => updateBin x newBin)
+  Vector.modify bins k (fun x => updateBin x newBin)
 
 end WellFormedBin
 
