@@ -10,6 +10,18 @@ python plotter.py --mode grammar --grammar 3
 python plotter.py --mode grammar --grammar 4
 python plotter.py --mode grammar --grammar 5
 
+python plotter.py --mode grammar_naive --grammar 1
+python plotter.py --mode grammar_naive --grammar 2
+python plotter.py --mode grammar_naive --grammar 3
+python plotter.py --mode grammar_naive --grammar 4
+python plotter.py --mode grammar_naive --grammar 5
+
+python plotter.py --mode grammar_opt --grammar 1
+python plotter.py --mode grammar_opt --grammar 2
+python plotter.py --mode grammar_opt --grammar 3
+python plotter.py --mode grammar_opt --grammar 4
+python plotter.py --mode grammar_opt --grammar 5
+
 # Comparison plot of the grammars for lean
 python plotter.py --mode comp
 

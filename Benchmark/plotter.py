@@ -16,8 +16,13 @@ from typing import Optional
 
 class Mode(Enum):
     GRAMMAR = "grammar"  # plot all variants for a given grammar
+    GRAMMAR_NAIVE = "grammar_naive"  # plot the naive variants for a given grammar
+    GRAMMAR_OPT = "grammar_opt"  # plot the opt variants for a given grammar
     COMP = "comp"  # plot all grammars for lean
     SIZES = "sizes"  # plot binsizes for each grammar
+
+
+GRAMMAR_MODES = [Mode.GRAMMAR, Mode.GRAMMAR_NAIVE, Mode.GRAMMAR_OPT]
 
 
 class Grammar(Enum):
@@ -77,6 +82,26 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         experiments = [
             Experiment(variant=variant, grammar=grammar) for variant in Variant
         ]
+    elif mode is Mode.GRAMMAR_NAIVE:
+        assert (
+            grammar is not None
+        ), "Called plot with grammar mode, but didnt supply a grammar!"
+        experiments = [
+            Experiment(variant=variant, grammar=grammar)
+            for variant in [Variant.ISABELLE, Variant.SCALA_NAIVE, Variant.LEAN_NAIVE]
+        ]
+    elif mode is Mode.GRAMMAR_OPT:
+        assert (
+            grammar is not None
+        ), "Called plot with grammar mode, but didnt supply a grammar!"
+        experiments = [
+            Experiment(variant=variant, grammar=grammar)
+            for variant in [
+                Variant.LEAN_OPT,
+                Variant.LEAN_OPT_POINTERS,
+                Variant.SCALA_OPT,
+            ]
+        ]
     else:
         variant = Variant.LEAN_OPT
         experiments = [
@@ -91,7 +116,7 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         else:
             # y = df["num_miliseconds"].map(lambda x: x / 1000).values
             y = df["num_miliseconds"].values
-        if mode is Mode.GRAMMAR:
+        if mode in GRAMMAR_MODES:
             label = f"{experiment.variant.value}"
         else:
             label = f"{grammar_to_bnf(experiment.grammar)}"
@@ -121,7 +146,9 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         ax.set_ylabel("Total Size of the Bins")
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_ylim(ymin=10, ymax=10**7)
+        ax.legend(loc="lower right")
+    elif mode in [Mode.GRAMMAR_NAIVE, Mode.GRAMMAR_OPT]:
+        ax.set_ylabel("Duration [ms]")
         ax.legend(loc="lower right")
     else:
         ax.set_xscale("log")
@@ -135,9 +162,15 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
     # ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
     # plt.tight_layout()
 
-    if mode is Mode.GRAMMAR:
+    if mode in GRAMMAR_MODES:
+        if mode is Mode.GRAMMAR_NAIVE:
+            prefix = "naive_"
+        elif mode is Mode.GRAMMAR_OPT:
+            prefix = "opt_"
+        else:
+            prefix = ""
         ax.set_title(f"Runtime of '{grammar_to_bnf(grammar).replace('\n', ',')}'")
-        fig.savefig(f"grammar={grammar.value}.svg", bbox_inches="tight")
+        fig.savefig(f"{prefix}grammar={grammar.value}.svg", bbox_inches="tight")
     elif mode is Mode.COMP:
         ax.set_title(f"Runtime of '{variant.value}'")
         fig.savefig(f"comp_{variant.value}.svg", bbox_inches="tight")
@@ -164,7 +197,7 @@ def main():
     )
     args = parser.parse_args()
     mode = Mode(args.mode)
-    grammar = Grammar(args.grammar) if mode is Mode.GRAMMAR else None
+    grammar = Grammar(args.grammar) if mode in GRAMMAR_MODES else None
     plot(mode, grammar)
 
 

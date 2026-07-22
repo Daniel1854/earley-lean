@@ -44,11 +44,10 @@ abbrev ItemCache (T N : Type) [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
 
 /--
 A cache for accessing the possible rules for a completion within a single bin.
-Maps a non-terminal to all the EarleyItems that the bin contains for it and
-their index within the bin.
+Maps a non-terminal to all the EarleyItems that the bin contains for it.
 -/
 abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
-  Std.HashMap N (List (EarleyItem T N × Nat))
+  Std.HashMap N (List (EarleyItem T N))
 
 public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] where
@@ -119,6 +118,7 @@ public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (w : Array 
 List-based implementation of the .init operation.
 Returns a list filled with all possible .init states.
 -/
+@[inline]
 public def initCached (G : ContextFreeGrammarList T N) : List (EarleyItem T N) :=
   let rules := G.rules.filter (fun r => r.input == G.initial)
   rules.map (fun r => ⟨r,0,0,0⟩)
@@ -129,6 +129,7 @@ List-based implementation of the .scan operation.
 Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
 if `a` matches the word for given index `k`.
 -/
+@[inline]
 public def scanCached (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size) :
     List (EarleyItem T N) :=
   if w[k] == a then
@@ -141,6 +142,7 @@ List-based implementation of the .predict operation.
 
 Returns a fresh item for each rule, which got `A` as its lhs.
 -/
+@[inline]
 public def predictCached (G : ContextFreeGrammarList T N) (A : N) (k : Nat) :
     List (EarleyItem T N) :=
   let rules := G.rules.filter (fun r => r.input == A)
@@ -151,48 +153,50 @@ List-based implementation of the .complete operation.
 
 Returns items for each successful completion of item `y` using its startIdx for bins.
 -/
+@[inline]
 public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n)
     (h : y.startIdx < n) : List (EarleyItem T N) :=
   -- The origin bin filtered for matchings with y
-  let xMatches : List (EarleyItem T N × Nat) := bins[y.startIdx].completions.getD y.rule.input []
-  -- Matchings mapped onto a new item with the index recorded within the reduction pointer
-  xMatches.map (fun ⟨x,i⟩ => incItem x y.endIdx)
+  let xMatches : List (EarleyItem T N) := bins[y.startIdx].completions.getD y.rule.input []
+  -- Matchings mapped onto a new item
+  xMatches.map (fun x => incItem x y.endIdx)
 
 /--
-Add given list one by one into `xs`, if they are not already part of `xs`.
+Add given list one by one into `bin`, if they are not already part of `bin`.
 -/
-@[inline, grind]
-public def updateBin (xs : CachedEarleyBin T N) : List (EarleyItem T N) → CachedEarleyBin T N
-  | [] => xs
+@[grind]
+public def updateBin (bin : CachedEarleyBin T N) : List (EarleyItem T N) → CachedEarleyBin T N
+  | [] => bin
   | y::ys =>
-    if xs.items.contains y then
-      updateBin xs ys
+    if bin.items.contains y then
+      updateBin bin ys
     else
-      let raw' := xs.raw ++ [y]
-      let items' :=  xs.items.insert y
+      let raw' := bin.raw.push y
+      let items' :=  bin.items.insert y
       match y.nextSymbol with
       | some (Symbol.nonterminal n) =>
-        match xs.completions[n]? with
-        | some _ =>
-          -- There exists an entry: append the list with the item of y
-          updateBin ⟨raw', items', xs.completions.modify n
-            (fun zs => zs.append [⟨y, xs.raw.size⟩])⟩ ys
-        | none =>
-          -- No entry for `n` yet: create new list for `n` with `y` as first elem.
-          updateBin ⟨raw', items', xs.completions.insert n [⟨y, xs.raw.size⟩]⟩ ys
+        let completions' := bin.completions.alter n (fun zs => match zs with
+          | some zs => zs.append [y]
+          | none => [y])
+        updateBin ⟨raw', items', completions'⟩ ys
       | _ =>
         -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
-        updateBin ⟨raw', items', xs.completions⟩ ys
+        updateBin ⟨raw', items', bin.completions⟩ ys
+
+/--
+FIXME: this searches for a place. A bit weird that it is not part of core.
+-/
+@[inline]
+def modify {α : Type} {n : Nat} (xs : Vector α n) (i : Nat) (f : α → α) : Vector α n :=
+  ⟨xs.toArray.modify i f, by simp⟩
 
 /--
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
-public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat) (hk : k < n)
+public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
     (newBin : List (EarleyItem T N)) : CachedEarleyBins T N n :=
-  let updBin := updateBin bins[k] newBin
-  bins.set k updBin hk
-
+  modify bins k (fun x => updateBin x newBin)
 
 omit [LawfulBEq (EarleyItem T N)] in
 public theorem startIdx_of_Wf {G : ContextFreeGrammarList T N} {w : Array T} (x : EarleyItem T N)
@@ -220,7 +224,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := predictCached G A k
-        updateBinsCached bins k hk newItems
+        updateBinsCached bins k newItems
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hk : k ≥ w.size then
@@ -228,11 +232,11 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanCached w x a k (by omega)
-          updateBinsCached bins (k+1) (by lia) newItem
+          updateBinsCached bins (k+1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeCached x bins (by grind [startIdx_of_Wf x hbins])
-      updateBinsCached bins k hk newItems
+      updateBinsCached bins k newItems
     have : isWellFormedCachedBins G w bins' := by sorry
     earleyBinList bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w.toList) x }.ncard + 1 - j
@@ -255,9 +259,10 @@ TODO: I could use of Std.HashSet.ofList and something more clever for the HashMa
 -/
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
+  -- Starting with some capacity can be lucrative depending on the benchmark.
   let bins : Vector (CachedEarleyBin T N) (w.size + 1) :=
     Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
-  let bins' := updateBinsCached bins 0 (by lia) (initCached G)
+  let bins' := updateBinsCached bins 0 (initCached G)
   ⟨bins', (by sorry)⟩ --grind [initList, wfBinItems_of_initList])⟩
 
 /--

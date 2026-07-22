@@ -123,48 +123,49 @@ public def completeCachedList (y : EarleyItem T N) {n : Nat} (bins : CachedEarle
   xMatches.map (fun ⟨x,i⟩ => ⟨incItem x y.endIdx, Recognizer.Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 /--
-Add given list one by one into `xs`, if they are not already part of `xs`.
+Add given list one by one into `bin`, if they are not already part of `bin`.
 -/
 @[inline, grind]
-public def updateBin (xs : CachedEarleyBin T N) :
+public def updateBin (bin : CachedEarleyBin T N) :
     List (Recognizer.BinItem T N) → CachedEarleyBin T N
-  | [] => xs
+  | [] => bin
   | y::ys =>
-    if h : xs.items.contains y.item then
-      let idx := xs.items[y.item]
-      have : idx < xs.raw.size := by sorry -- some wf cache argument
-      match (xs.raw[idx], y) with
+    if h : bin.items.contains y.item then
+      let idx := bin.items[y.item]
+      have : idx < bin.raw.size := by sorry -- some wf cache argument
+      match (bin.raw[idx], y) with
       | (⟨xItem, Recognizer.Pointer.reduction xp xP⟩,
           ⟨yItem, Recognizer.Pointer.reduction yp yP⟩) =>
         let updItem := ⟨xItem, Recognizer.Pointer.reduction xp (yp::xP.append yP)⟩
-        updateBin { xs with raw := (xs.raw.swapAt idx updItem this).snd } ys
-      | _ => updateBin xs ys
-
+        updateBin { bin with raw := (bin.raw.swapAt idx updItem this).snd } ys
+      | _ => updateBin bin ys
     else
-      let raw' := xs.raw ++ [y]
-      let items' :=  xs.items.insert y.item xs.raw.size
+      let raw' := bin.raw.push y
+      let items' :=  bin.items.insert y.item bin.raw.size
       match y.item.nextSymbol with
       | some (Symbol.nonterminal n) =>
-        match xs.completions[n]? with
-        | some _ =>
-          -- There exists an entry: append the list with the item of y
-          updateBin ⟨raw', items', xs.completions.modify n
-            (fun zs => zs.append [⟨y.item, xs.raw.size⟩])⟩ ys
-        | none =>
-          -- No entry for `n` yet: create new list for `n` with `y` as first elem.
-          updateBin ⟨raw', items', xs.completions.insert n [⟨y.item, xs.raw.size⟩]⟩ ys
+        let completions' := bin.completions.alter n (fun zs => match zs with
+          | some zs => zs.append [⟨y.item, bin.raw.size⟩]
+          | none => ([⟨y.item, bin.raw.size⟩] : List (EarleyItem T N × Nat)))
+        updateBin ⟨raw', items', completions'⟩ ys
       | _ =>
         -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
-        updateBin ⟨raw', items', xs.completions⟩ ys
+        updateBin ⟨raw', items', bin.completions⟩ ys
+
+/--
+FIXME: this searches for a place. A bit weird that it is not part of core.
+-/
+@[inline]
+def modify {α : Type} {n : Nat} (xs : Vector α n) (i : Nat) (f : α → α) : Vector α n :=
+  ⟨xs.toArray.modify i f, by simp⟩
 
 /--
 Replace `bins` at index `k` with `newBin` and return the updated bins.
 -/
 @[grind]
-public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat) (hk : k < n)
+public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
     (newBin : List (Recognizer.BinItem T N)) : CachedEarleyBins T N n :=
-  let updBin := updateBin bins[k] newBin
-  bins.set k updBin hk
+  modify bins k (fun x => updateBin x newBin)
 
 end WellFormedBin
 
@@ -184,7 +185,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       | Symbol.nonterminal A =>
         -- Add all potential .predict operations on the current item to the current bin
         let newItems := Recognizer.predictList G A k
-        updateBinsCached bins k hk newItems
+        updateBinsCached bins k newItems
       | Symbol.terminal a =>
         -- If we are the final bin then don't try to progress via consuming another terminal
         if hk : k ≥ w.size then
@@ -192,11 +193,11 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanList w x.item a k (by omega) j
-          updateBinsCached bins (k+1) (by lia) newItem
+          updateBinsCached bins (k+1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeCachedList x.item bins (by sorry) j
-      updateBinsCached bins k hk newItems
+      updateBinsCached bins k newItems
     have : isWellFormedCachedBins G w bins' := by sorry
     earleyBinList bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w.toList) x }.ncard + 1 - j
@@ -210,10 +211,9 @@ TODO: I could use of Std.HashSet.ofList and something more clever for the HashMa
 -/
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
-  let bins : Vector (CachedEarleyBin T N) (w.size + 1) :=
-    Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
-  let bins' := updateBinsCached bins 0 (by lia) (Recognizer.initList G)
-  ⟨bins', (by sorry)⟩ --grind [initList, wfBinItems_of_initList])⟩
+  let bins := Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
+  let bins' := updateBinsCached bins 0 (Recognizer.initList G)
+  ⟨bins', sorry⟩
 
 /--
 Computes up to the k-th bin.
