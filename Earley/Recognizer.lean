@@ -254,23 +254,23 @@ while also merging any reduction pointers for duplicate items.
 Predecessor pointers are unique, so duplicate items can be safely discarded
 -/
 @[inline, grind]
-public def updateBinAux : List (BinItem T N) → BinItem T N → List (BinItem T N)
-  | [], y => [y]
-  | x::xs, y => match (x,y) with
+public def updateBinAux :  BinItem T N  → List (BinItem T N) → List (BinItem T N)
+  | y, [] => [y]
+  | y, x::xs => match (x,y) with
     | (⟨xItem, Pointer.reduction xp xP⟩,⟨yItem, Pointer.reduction yp yP⟩) =>
       -- Merge any reduction pointers if the items match
       if xItem == yItem then
         ⟨xItem, Pointer.reduction xp (yp::yP.append xP)⟩::xs
       else
         -- Search further, if no match
-        x::(updateBinAux xs y)
+        x::(updateBinAux y xs)
     | _ =>
       -- Abort, if an item with an irrelevant pointer already exists in the List
       if x.item == y.item then
         x::xs
       else
         -- Search further, if no match
-        x::(updateBinAux xs y)
+        x::(updateBinAux y xs)
 
 /--
 Add given list one by one into `xs`, if they are not already part of `xs`,
@@ -279,7 +279,7 @@ while also merging any reduction pointers.
 @[inline, grind]
 public def updateBin (xs : List (BinItem T N)) : List (BinItem T N) → List (BinItem T N)
   | [] => xs
-  | y::ys => updateBin (updateBinAux xs y) ys
+  | y::ys => updateBin (updateBinAux y xs) ys
 
 /--
 Replace `bins` at index `k` with `newBin` and return the updated bins.
@@ -291,7 +291,7 @@ public def updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat) (newBin : Li
 
 omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
-lemma updateBinAux_nil (y : BinItem T N) : updateBinAux [] y = [y] := by simp [updateBinAux]
+lemma updateBinAux_nil (y : BinItem T N) : updateBinAux y [] = [y] := by simp [updateBinAux]
 
 omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
@@ -306,7 +306,7 @@ lemma wfItem_of_wfBins {G : ContextFreeGrammarList T N} {w : List T} {k : Nat}
   grind
 
 theorem memItem_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N) (x : EarleyItem T N)
-    (hmem : x ∈ items (updateBinAux xs y)) : x ∈ items xs ∨ x = y.item := by
+    (hmem : x ∈ items (updateBinAux y xs)) : x ∈ items xs ∨ x = y.item := by
   induction xs with
   | nil => grind
   | cons head tail ih => grind
@@ -331,15 +331,15 @@ Using updateBinAux on a List with no duplicates, results in a list with no dupli
 -/
 lemma noDup_of_updateBinAux (xs : List (BinItem T N)) (y : BinItem T N)
     [LawfulBEq (EarleyItem T N)] (hx : (items xs).Nodup) :
-    items (updateBinAux xs y) |>.Nodup := by
-  fun_induction updateBinAux xs y with
+    items (updateBinAux y xs) |>.Nodup := by
+  fun_induction updateBinAux y xs with
   | case1 => grind
   | case2 => grind
-  | case3 x xs y xItem xP yItem yP hxy h ih =>
+  | case3 y x xs =>
     have := memItem_of_updateBinAux xs y
     grind
   | case4 => grind
-  | case5 x xs y h hxy ih =>
+  | case5 y x xs =>
     have := memItem_of_updateBinAux xs y
     grind
 
@@ -356,21 +356,21 @@ theorem noDup_of_updateBin (xs ys : List (BinItem T N)) (hx : (items xs).Nodup)
 lemma wfBinItems_of_updateBinAux (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
     (bin : List (BinItem T N)) (hwfbin : isWellFormedBinItems G w k bin) (y : BinItem T N)
     (hwfy : isWellFormed G.rules (mapT w) y.item ∧ y.item.endIdx = k) :
-    isWellFormedBinItems G w k (updateBinAux bin y)  := by
+    isWellFormedBinItems G w k (updateBinAux y bin)  := by
   induction bin with
   | nil => grind
   | cons x xs ih => grind [noDup_of_updateBinAux]
 
 @[simp, grind =]
 theorem updateBinAux_cons (xs : List (BinItem T N)) (y : BinItem T N) (hmem : y.item ∉ items xs) :
-    updateBinAux xs y = xs ++ [y] := by
+    updateBinAux y xs = xs ++ [y] := by
   induction xs generalizing y with
   | nil => grind
   | cons head tail ih => grind
 
 omit [LawfulBEq (EarleyItem T N)] in
 lemma length_le_lengthUpdateBinAux (xs : List (BinItem T N)) (y : BinItem T N) :
-    xs.length ≤ (updateBinAux xs y).length := by
+    xs.length ≤ (updateBinAux y xs).length := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
@@ -392,29 +392,29 @@ lemma lengthNth_le_lengthUpdateBinNth {n : Nat} (bins : EarleyBins T N n) (ys : 
 @[grind →]
 lemma updateBinAux_of_nullPre (xs : List (BinItem T N)) (y : BinItem T N) {i : Nat}
     (hmem : y.item ∈ items xs) (hy : y.pointer = .null ∨ y.pointer = .predecessor i) :
-    updateBinAux xs y = xs := by
+    updateBinAux y xs = xs := by
   induction xs generalizing y with
   | nil => grind
   | cons head tail ih => grind
 
 lemma eqLength_of_updateBinAux_of_mem (xs : List (BinItem T N)) (y : BinItem T N)
     (hNoDup : (items xs).Nodup) (hmem : y.item ∈ items xs) :
-    (updateBinAux xs y).length = xs.length := by
+    (updateBinAux y xs).length = xs.length := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
 
 lemma updateBinAux_of_Red_of_neqItemAux (xs : List (BinItem T N)) (y : BinItem T N) (i : Nat)
-    (hi : i < xs.length) (hneq : y.item ≠ xs[i].item) (hlen : i < (updateBinAux xs y).length) :
-    (updateBinAux xs y)[i] = xs[i] := by
+    (hi : i < xs.length) (hneq : y.item ≠ xs[i].item) (hlen : i < (updateBinAux y xs).length) :
+    (updateBinAux y xs)[i] = xs[i] := by
   induction xs generalizing i with
   | nil => grind
   | cons x xs ih => grind
 
 lemma updateBinAux_of_Red_of_neqItem (xs : List (BinItem T N)) (y : BinItem T N) (i j : Nat)
     (hNoDup : (items xs).Nodup) (hi : i < xs.length) (heq : y.item = xs[i].item) (hneq : i ≠ j)
-    (hj : j < xs.length) (hlen : j < (updateBinAux xs y).length) :
-    (updateBinAux xs y)[j] = xs[j] := by
+    (hj : j < xs.length) (hlen : j < (updateBinAux y xs).length) :
+    (updateBinAux y xs)[j] = xs[j] := by
   induction xs generalizing i with
   | nil => grind
   | cons x xs ih =>
@@ -425,7 +425,7 @@ lemma updateBinAux_of_Red_of_neqItem (xs : List (BinItem T N)) (y : BinItem T N)
 theorem updateBinAux_of_updRed (xs xs' : List (BinItem T N)) (y : BinItem T N) (i : Nat)
     (hNoDup : (items xs).Nodup) {xp yp : ReductionPointer} {xP yP : List ReductionPointer}
     (hi : i < xs.length) (hx : xs[i].pointer = Pointer.reduction xp xP) (heq : y.item = xs[i].item)
-    (hy : y.pointer = .reduction yp yP) (hxs' : xs' = updateBinAux xs y) :
+    (hy : y.pointer = .reduction yp yP) (hxs' : xs' = updateBinAux y xs) :
     xs'.length = xs.length ∧ ((hlen : xs'.length = xs.length) →
     xs'[i].pointer = .reduction xp (yp::yP.append xP) ∧
     (∀ j, (hj : j < xs'.length ∧ i ≠ j) → xs'[j] = xs[j]'(by lia))) := by
@@ -445,7 +445,7 @@ theorem updateBinAux_of_updRed (xs xs' : List (BinItem T N)) (y : BinItem T N) (
         grind
       else
         have hi : i - 1 < xs.length := by grind
-        specialize ih (updateBinAux xs y) y (i-1) (by grind [List.Nodup.of_cons]) hi
+        specialize ih (updateBinAux y xs) y (i-1) (by grind [List.Nodup.of_cons]) hi
         have xs1 : xs[i - 1].pointer = Pointer.reduction xp xP := by grind
         have h2 : y.item = xs[i - 1].item := by grind
         specialize ih xs1 h2 hy (by simp)
@@ -459,7 +459,7 @@ lemma updateBinAux_of_Red_of_eqItem (xs : List (BinItem T N)) (y : BinItem T N) 
     (hNoDup : (items xs).Nodup) {yp : ReductionPointer} {yP : List ReductionPointer}
     (hy : y.pointer = .reduction yp yP) (hi : i < xs.length)
     (hx : xs[i].pointer = .null ∨ xs[i].pointer = .predecessor j) (heq : y.item = xs[i].item) :
-    updateBinAux xs y = xs := by
+    updateBinAux y xs = xs := by
   induction xs generalizing i with
   | nil => grind
   | cons x xs ih => grind
@@ -468,7 +468,7 @@ omit [LawfulBEq (EarleyItem T N)] in
 lemma wfBinPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T N (w.length + 1))
     (xs : List (BinItem T N)) (hwfbin : isWellFormedBinPointers w bins xs k)
     (y : BinItem T N) (hwfy : isWellFormedPointer w bins y.pointer k) :
-    isWellFormedBinPointers w bins (updateBinAux xs y) k := by
+    isWellFormedBinPointers w bins (updateBinAux y xs) k := by
   induction xs with
   | nil => grind
   | cons x xs ih =>
@@ -504,8 +504,8 @@ lemma soundPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
     (hbins : ∀ k, (hk : k ≤ w.length) → (items bins[k]).Nodup ∧ ∀ j, (hj : j < bins[k].length)
       → isSoundPointer bins[k][j].pointer k j)
     (y : BinItem T N) (hk : k < w.length + 1) (hwf : isSoundPointer y.pointer k bins[k].length) :
-    ∀ j, (hj : j < (updateBinAux bins[k] y).length) →
-    isSoundPointer (updateBinAux bins[k] y)[j].pointer k j := by
+    ∀ j, (hj : j < (updateBinAux y bins[k]).length) →
+    isSoundPointer (updateBinAux y bins[k])[j].pointer k j := by
   have : y.item ∉ items bins[k] ∨
         (y.item ∈ items bins[k] ∧ ∃ i, y.pointer = .null ∨ y.pointer = .predecessor i) ∨
         (y.item ∈ items bins[k] ∧ ¬ ∃ i, y.pointer = .null ∨ y.pointer = .predecessor i) := by
@@ -540,7 +540,7 @@ lemma soundPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
       | .reduction bp bP =>
         have hnDup := (hbins k (by grind)).left
         have : y.item = bins[k][j'].item := by grind
-        have hupdRed := updateBinAux_of_updRed bins[k] (updateBinAux bins[k] y) y j' hnDup hj'
+        have hupdRed := updateBinAux_of_updRed bins[k] (updateBinAux y bins[k]) y j' hnDup hj'
             hb this hy (by simp)
         grind
 
@@ -557,7 +557,7 @@ lemma soundPointers_of_updateBin (w : List T) (k : Nat) (bins : EarleyBins T N (
   | nil => grind
   | cons y ys ih =>
     intro j hj
-    let bins' := Vector.set bins k (updateBinAux bins[k] y) hk
+    let bins' := Vector.set bins k (updateBinAux y bins[k]) hk
     have hSaux := soundPointers_of_updateBinAux w bins hbins y hk (by grind)
     have : ∀ y ∈ ys, isSoundPointer y.pointer k bins'[k].length := by
       clear ih

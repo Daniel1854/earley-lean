@@ -91,13 +91,13 @@ lemma false_of_impossibleCompletedItem {G : ContextFreeGrammar T} [BEq G.NT] {x 
 section Subsets
 
 theorem updateBinAux_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
-    items xs ⊆ items (updateBinAux xs y) := by
+    items xs ⊆ items (updateBinAux y xs) := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
 
 theorem updateBinAuxY_extensive (xs : List (BinItem T N)) (y : BinItem T N) :
-    y.item ∈ items (updateBinAux xs y) := by
+    y.item ∈ items (updateBinAux y xs) := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
@@ -180,14 +180,14 @@ lemma earleyBinList_idem_of_lower_idx {G : ContextFreeGrammarList T N} {w : List
 -- TODO: very notably, hj' is derivable from hj, but if I supply the proof on the fly via grind,
 --       the fun_induction isn't able to apply the cases correctly.
 lemma updateBinAux_getElem_of_lower_idx (xs : List (BinItem T N)) (y : BinItem T N) (j : Nat)
-    (hj : j < xs.length) (hj' : j < (updateBinAux xs y).length) :
-    (updateBinAux xs y)[j].item = xs[j].item := by
-  fun_induction updateBinAux xs y generalizing j with
+    (hj : j < xs.length) (hj' : j < (updateBinAux y xs).length) :
+    (updateBinAux y xs)[j].item = xs[j].item := by
+  fun_induction updateBinAux y xs generalizing j with
   | case1 => grind
   | case2 => grind
-  | case3 x xs y xItem xP yItem yP hxy hxyP hm hneq ih => grind
+  | case3 => grind
   | case4 => grind
-  | case5 x xs y h hxy ih => grind
+  | case5 => grind
 
 lemma updateBin_getElem_of_lower_idx (xs ys : List (BinItem T N)) (j : Nat) (hj : j < xs.length)
     (hj' : j < (updateBin xs ys).length) :
@@ -196,7 +196,7 @@ lemma updateBin_getElem_of_lower_idx (xs ys : List (BinItem T N)) (j : Nat) (hj 
   | nil => grind
   | cons y ys ih =>
     simp only [updateBin]
-    specialize ih (updateBinAux xs y) (by grind [length_le_lengthUpdateBinAux])
+    specialize ih (updateBinAux y xs) (by grind [length_le_lengthUpdateBinAux])
     grind [updateBinAux_getElem_of_lower_idx]
 
 lemma updateBins_getElem_of_lower_idx {w : List T} {bins : EarleyBins T N (w.length + 1)}
@@ -221,7 +221,7 @@ lemma earleyBinList_getElem_of_lower_idx {G : ContextFreeGrammarList T N} {w : L
     grind [updateBins_getElem_of_lower_idx]
 
 theorem updateBinAux_of_mem (xs : List (BinItem T N)) (y : BinItem T N) (hmem : y.item ∈ items xs) :
-    items (updateBinAux xs y) = items xs := by
+    items (updateBinAux y xs) = items xs := by
   induction xs generalizing y with
   | nil => grind
   | cons head tail ih => grind
@@ -245,13 +245,13 @@ theorem eqItems_of_completeList_of_eqItems {w : List T}
   grind [completeList_eq_completeListI, completeListI]
 
 theorem eqItems_of_updateBinAux_of_eqEntry {xs : List (BinItem T N)} {y1 y2 : BinItem T N}
-    (heqy : y1.item = y2.item) : items (updateBinAux xs y1) = items (updateBinAux xs y2) := by
+    (heqy : y1.item = y2.item) : items (updateBinAux y1 xs) = items (updateBinAux y2 xs) := by
   induction xs generalizing y1 y2 with
   | nil => grind
   | cons x xs ih => grind
 
 theorem eqItems_of_updateBinAux_of_eqBin {xs1 xs2 : List (BinItem T N)} {y : BinItem T N}
-    (heqx : items xs1 = items xs2) : items (updateBinAux xs1 y) = items (updateBinAux xs2 y) := by
+    (heqx : items xs1 = items xs2) : items (updateBinAux y xs1) = items (updateBinAux y xs2) := by
   induction xs1 generalizing y xs2 with
   | nil => grind
   | cons x1 xs1 ih =>
@@ -265,7 +265,7 @@ theorem eqItems_of_updateBin_of_eqBin {xs1 xs2 ys : List (BinItem T N)}
   | nil => grind [List.map_eq_nil_iff]
   | cons y ys ih =>
     simp only [updateBin]
-    have hup : items (updateBinAux xs1 y) = items (updateBinAux xs2 y) := by
+    have hup : items (updateBinAux y xs1) = items (updateBinAux y xs2) := by
       exact eqItems_of_updateBinAux_of_eqBin heqx
     specialize ih hup
     apply ih
@@ -279,9 +279,9 @@ theorem eqItems_of_updateBin_of_eqEntry (xs ys2 : List (BinItem T N)) {ys1 : Lis
     rcases ys2 with _ | ⟨y2,ys2⟩
     · simp [items] at heqy
     · simp only [updateBin]
-      specialize ih (updateBinAux xs y1) ys2 (by grind)
+      specialize ih (updateBinAux y1 xs) ys2 (by grind)
       simp only [items, List.map_cons, List.cons.injEq] at heqy
-      have hup : items (updateBinAux xs y1) = items (updateBinAux xs y2) := by
+      have hup : items (updateBinAux y1 xs) = items (updateBinAux y2 xs) := by
         exact eqItems_of_updateBinAux_of_eqEntry heqy.left
       rw [ih]
       grind [eqItems_of_updateBin_of_eqBin]
@@ -409,7 +409,7 @@ end Unused
 
 lemma updateBinAux_sub {s : Set (EarleyItem T N)} (xs : List (BinItem T N)) (y : BinItem T N)
     (hx : {x | x ∈ items xs} ⊆ s) (hy : y.item ∈ s) :
-    {z | z ∈ items (updateBinAux xs y) } ⊆ s := by
+    {z | z ∈ items (updateBinAux y xs) } ⊆ s := by
   induction xs generalizing y with
   | nil => grind
   | cons x xs ih => grind
