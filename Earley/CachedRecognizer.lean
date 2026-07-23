@@ -67,7 +67,7 @@ The items of an EarleyBin are well-formed, if
 @[grind]
 public def EarleyItems.WF (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
     (bin : Array (EarleyItem T N)) : Prop :=
-  bin.toList.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules (mapT w.toList) x ∧ x.endIdx = k
+  bin.toList.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w.size x ∧ x.endIdx = k
 
 /--
 CachedEarleyBins are well-formed, if all of its bins and its caches are well-formed.
@@ -207,14 +207,14 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       updateBinsCached bins k newItems
     have : CachedEarleyBins.WF G w bins' := by sorry
     earleyBinList bins' k (by omega) (j+1) this
-termination_by { x | isWellFormed G.rules (mapT w.toList) x }.ncard + 1 - j
+termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by
   apply Nat.sub_lt_sub_left
   · specialize hbins k (by lia)
-    let wfItemsBin := { x | isWellFormed G.rules (mapT w.toList) x }
+    let wfItemsBin := { x | isWellFormed G.rules w.size x }
     have : bins[k].raw.size ≤ wfItemsBin.ncard := by
-      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w.toList)
-      let P := (fun x => isWellFormed G.rules (mapT w.toList) x)
+      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G w.size
+      let P := (fun x => isWellFormed G.rules w.size x)
       apply Recognizer.length_lte_ncard_of_superset bins[k].raw.toList wfItemsBin P
         (by grind) (by grind) hbins.left
     grind

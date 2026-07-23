@@ -214,15 +214,15 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       updateBinsCached bins k newItems
     have : CachedEarleyBins.WF G w bins' := by sorry
     earleyBinList bins' k (by omega) (j+1) this
-termination_by { x | isWellFormed G.rules (mapT w.toList) x }.ncard + 1 - j
+termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by
   apply Nat.sub_lt_sub_left
   · specialize hbins k (by lia)
-    let wfItemsBin := { x | isWellFormed G.rules (mapT w.toList) x }
+    let wfItemsBin := { x | isWellFormed G.rules w.size x }
     have : (items bins[k].raw).toList.length ≤ wfItemsBin.ncard := by
-      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w.toList)
+      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G w.size
       have ⟨hNoDup, _, _, _⟩ := hbins
-      let P := (fun x => isWellFormed G.rules (mapT w.toList) x)
+      let P := (fun x => isWellFormed G.rules w.size x)
       apply Recognizer.length_lte_ncard_of_superset (items bins[k].raw).toList wfItemsBin P
         (by grind) (by grind) hNoDup
     grind

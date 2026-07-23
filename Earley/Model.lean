@@ -113,15 +113,16 @@ An item is well-formed, if
 - the rule belongs to given ruleset
 - the position is within the length of the rhs
 - the start is not bigger than the end
-- the end is not bigger than the length of the input w
+- the end is not bigger than some bound. In practice the bound is the length of the input `w`,
+  but since there is `w` as `List T | List (Symbol T N) | Array T` a Nat is easier for now.
 -/
 @[grind]
 public def EarleyItem.isWellFormed {R : Type} (rules : R) [Membership (ContextFreeRule T N) R]
-    (w : List (Symbol T N)) (item : EarleyItem T N) : Prop :=
+    (wlen : Nat) (item : EarleyItem T N) : Prop :=
   item.rule ∈ rules
   ∧ item.position <= item.rule.output.length
   ∧ item.startIdx <= item.endIdx
-  ∧ item.endIdx <= w.length
+  ∧ item.endIdx <= wlen
 
 /--
 Returns a new item with the position incremented by one and a new endIdx.

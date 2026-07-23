@@ -98,7 +98,7 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
 Any EarleyItem within an EarleySet is well-formed.
 -/
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G.rules w x := by
+    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G.rules w.length x := by
   unfold isWellFormed
   induction hmem with
   | init rule hmem hstart => grind
@@ -317,7 +317,7 @@ lemma partiallyCompleteUpTo (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
     (n : Nat) (I : Set (EarleyItem T G.NT))
     {pos i j : Nat} {A : G.NT} {α : List (Symbol T G.NT)} {D : List (ContextFreeRule T G.NT)}
     (hjn : j ≤ n) (hlen : n ≤ w.length) (x : EarleyItem T G.NT) (hx : x = ⟨⟨A, α⟩, pos, i, j⟩)
-    (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G.rules w x)
+    (hmem : x ∈ I) (wfI : ∀ x ∈ I, isWellFormed G.rules w.length x)
     (hD : Derivation G (betaItem x) D (slice w j n))
     (hcomp : isPartiallyComplete G w n I (fun D' => D'.length ≤ D.length)) :
     ⟨⟨A, α⟩, α.length, i, n⟩ ∈ I := by
