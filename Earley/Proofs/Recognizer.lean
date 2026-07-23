@@ -243,7 +243,7 @@ theorem eqItems_of_completeList_of_eqItems {w : List T}
     {y : EarleyItem T N} (hxS : y.startIdx < w.length + 1) (j : Nat)
     (heq : ∀ n, ∀ (hn : n < w.length + 1), items bins1[n] = items bins2[n]) :
     items (completeList y bins1 hxS j) = items (completeList y bins2 hxS j) := by
-  grind [completeList_eq_completeListI, completeListI]
+  grind [completeList]
 
 theorem eqItems_of_updateBinAux_of_eqEntry {xs : BinItems T N} {y1 y2 : BinItem T N}
     (heqy : y1.item = y2.item) : items (updateBinAux y1 xs) = items (updateBinAux y2 xs) := by
@@ -529,18 +529,18 @@ lemma completeSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] 
     clear hF hz hsub
     grind
   have := mem_of_memFilterWithIdx hF
-  have hx : x.item = ⟨x.item.rule, x.item.position, x.item.startIdx, y.item.startIdx⟩ := by
-    have : x.item.endIdx = y.item.startIdx := by grind
+  have hx : x = ⟨x.rule, x.position, x.startIdx, y.item.startIdx⟩ := by
+    have : x.endIdx = y.item.startIdx := by grind
     rw [← this]
-  have hmemx : x.item ∈ EarleySet G (List.map Symbol.terminal w) := by
+  have hmemx : x ∈ EarleySet G (mapT w) := by
     apply Set.mem_of_mem_of_subset (by grind) hsub
   have hE : y.item.endIdx = k := by grind
   have hy : y.item = ⟨y.item.rule, y.item.position, y.item.startIdx, k⟩ := by rw [← hE]
-  have hmemy : y.item ∈ EarleySet G (List.map Symbol.terminal w) := by
+  have hmemy : y.item ∈ EarleySet G (mapT w) := by
     apply Set.mem_of_mem_of_subset (by grind) hsub
-  have hnext : x.item.nextSymbol = some (Symbol.nonterminal y.item.rule.input) := by
-    have := P_of_filterWithIdx (bins[y.item.startIdx]'(by grind)) (fun x : BinItem T G.NT =>
-      x.item.nextSymbol == some (Symbol.nonterminal y.item.rule.input)) hF
+  have hnext : x.nextSymbol = some (Symbol.nonterminal y.item.rule.input) := by
+    have := P_of_filterWithIdx (items (bins[y.item.startIdx]'(by grind)))
+      (fun x : EarleyItem T G.NT => x.nextSymbol == some (Symbol.nonterminal y.item.rule.input)) hF
     simp only [beq_iff_eq] at this
     apply this
   rw [← hz]
@@ -1027,7 +1027,7 @@ lemma completeModel_sub_completeL {G : ContextFreeGrammar T} [LawfulBEq T] [BEq 
     have := List.getElem_of_mem hmemxL
     rcases this with ⟨m, hm, heq'⟩
     have : m < (earleyBinList bins k (by lia) 0 hbins).bins[j].length := by grind
-    use (earleyBinList bins k (by lia) 0 hbins).bins[j][m]
+    use (earleyBinList bins k (by lia) 0 hbins).bins[j][m].item
     refine ⟨?_, by grind⟩
     apply memFilterWithIdxAux_of_mem
     · grind
@@ -1080,7 +1080,7 @@ lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [LawfulBEq T] [BEq
     use 0, by lia
     simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf,
       and_imp] at hsub
-    have : ⟨r,0,0,0⟩ ∈ EarleySet G (List.map Symbol.terminal w) := EarleySet.init r hmem hr
+    have : ⟨r,0,0,0⟩ ∈ EarleySet G (mapT w) := EarleySet.init r hmem hr
     grind [earleyBinList_extensive]
   -- We want to show ⟨r,pos+1,i,j+1⟩ ∈ bins[j+1] from x ∈ bins[j] w/ x=⟨r,pos,i,j⟩
   | scan hx hmem hbounds hw hnext ih =>

@@ -206,11 +206,11 @@ Returns items for each successful completion of item `y` using its startIdx for 
 public def completeList (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
     (h : y.startIdx < n) (j : Nat) : BinItems T N :=
   -- The origin bin filtered for matchings with y
-  let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
-    (fun x => nextSymbol x.item == some (Symbol.nonterminal y.rule.input))
+  let xMatches : List (EarleyItem T N × Nat) := filterWithIdx (items bins[y.startIdx])
+    (fun x => nextSymbol x == some (Symbol.nonterminal y.rule.input))
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
   xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x.item y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
+    ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 /--
 This version of completeList lends itself easier to reason with in a specific situation,
@@ -220,11 +220,11 @@ The difference in performance is most apparent for grammar 2/3.
 public def completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
     (h : y.startIdx < n) (j : Nat) : BinItems T N :=
   -- The origin bin filtered for matchings with y
-  let xMatches : List (EarleyItem T N × Nat) := filterWithIdx (items bins[y.startIdx])
-    (fun x => nextSymbol x == some (Symbol.nonterminal y.rule.input))
+  let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
+    (fun x => nextSymbol x.item == some (Symbol.nonterminal y.rule.input))
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
   xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
+    ⟨incItem x.item y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 omit [LawfulBEq (EarleyItem T N)] in
 theorem completeList_eq_completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
@@ -615,10 +615,10 @@ lemma wfItems_of_completeList {G : ContextFreeGrammarList T N} (wlen j k : Nat)
     isWellFormed G.rules wlen x ∧ x.endIdx = k := by
   simp only [completeList, items, List.map_map, List.mem_map, Function.comp_apply,
     Prod.exists] at hmemx
-  let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
+  let P := fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal y.rule.input)
   let originBin := bins[y.startIdx]'(by grind)
-  let filteredOriginBin := filterWithIdx originBin P
-  have := filterWithIdx_cong_filter originBin P
+  let filteredOriginBin := filterWithIdx (items originBin) P
+  have := filterWithIdx_cong_filter (items originBin) P
   -- z is the original item, which will be completed
   rcases hmemx with ⟨z,_,hInc⟩
   have : z ∈ filteredOriginBin.map Prod.fst := by grind
@@ -632,9 +632,9 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (wlen j k : Na
   simp only [BinPointers.WF]
   intro x hmemx
   simp only [completeList, List.mem_map, Prod.exists] at hmemx
-  let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
+  let P := fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal y.rule.input)
   let originBin := bins[y.startIdx]'(by grind)
-  let filteredOriginBin := filterWithIdx originBin P
+  let filteredOriginBin := filterWithIdx (items originBin) P
   simp only [Pointer.WF, tsub_le_iff_right]
   -- z is the original item, which will be completed
   rcases hmemx with ⟨z,zIdx,⟨hmemz,hx⟩⟩
@@ -642,8 +642,9 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (wlen j k : Na
   simp only [xP]
   refine ⟨by lia, by grind, ?_, by grind⟩
   intro hbounds
-  exact filterWithIdx_le_length bins[y.startIdx]
-    (fun x => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)) zIdx (by grind)
+  have := filterWithIdx_le_length (items bins[y.startIdx])
+    (fun x => x.nextSymbol == some (Symbol.nonterminal y.rule.input)) zIdx (by grind)
+  grind
 
 omit [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (wlen j k : Nat)
@@ -653,9 +654,9 @@ lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (wlen j k :
   simp only [Pointer.isSound]
   intro x hmemx
   simp only [completeList, List.mem_map, Prod.exists] at hmemx
-  let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
+  let P := fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal y.rule.input)
   let originBin := bins[y.startIdx]'(by grind)
-  let filteredOriginBin := filterWithIdx originBin P
+  let filteredOriginBin := filterWithIdx (items originBin) P
   -- z is the original item, which will be completed
   rcases hmemx with ⟨z,zIdx,⟨hmemz,hx⟩⟩
   have xP : x.pointer = Pointer.reduction ⟨y.startIdx, zIdx, j⟩ [] := by grind
@@ -669,7 +670,8 @@ lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (wlen j k :
   rcases this with h | h
   · grind
   · simp only [h, lt_self_iff_false, true_and, false_or, gt_iff_lt]
-    exact filterWithIdx_le_length bins[k] P zIdx (by grind)
+    have := filterWithIdx_le_length (items bins[k]) P zIdx (by grind)
+    grind
 
 -- hj is a negation for direct reasoning with earleyBinList
 lemma wfBins_of_completeList {G : ContextFreeGrammarList T N} {wlen j k : Nat}

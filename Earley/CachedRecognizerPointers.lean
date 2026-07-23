@@ -335,13 +335,12 @@ lemma completeCached_eq_completeList {wlen : Nat}
     (bins : EarleyBins T N (wlen + 1)) (y : EarleyItem T N) (hS : y.startIdx < (wlen + 1))
     (binsCached : CachedEarleyBins T N (wlen + 1)) (heq : bins = rawList binsCached) (j : Nat) :
     completeCached y binsCached hS j = completeList y bins hS j := by
-  rw [completeList_eq_completeListI]
   let P := fun x : EarleyItem T N => nextSymbol x == some (Symbol.nonterminal y.rule.input)
   have : binsCached[y.startIdx].completions.getD y.rule.input []
       = filterWithIdx (items bins[y.startIdx]) P := by
     have := binsCached[y.startIdx].invCompletions
     grind
-  grind [completeListI, completeCached]
+  grind [completeList, completeCached]
 
 /--
 Add given list one by one into `bin`, if they are not already part of `bin`.
