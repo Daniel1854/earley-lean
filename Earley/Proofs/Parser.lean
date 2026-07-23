@@ -51,12 +51,12 @@ variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 
 omit [BEq T] [BEq N] in
 lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {w : List T} {i k j : Nat}
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    {bins : EarleyBins T N (w.length + 1)} (hbins : EarleyBins.WF G w bins)
     (hm : k < w.length + 1) (hn : j < bins[k].length)
     (h : bins[k][j].pointer = Pointer.predecessor i) :
     k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length) := by
   have ⟨_, pInv, _⟩ := hbins k (by simp [hm])
-  simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
+  simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv
   specialize pInv bins[k][j] (by simp)
   grind
 
@@ -93,7 +93,7 @@ A call to buildTree for well-formed bins never returns none or even a Tree.leaf.
 This follows the structure of buildTree quite closely, and the same termination argument holds.
 -/
 lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j k : Nat)
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    {bins : EarleyBins T N (w.length + 1)} (hbins : EarleyBins.WF G w bins)
     (hk : k < w.length + 1) (hj : j < bins[k].length) (hw : w ≠ []) :
     ∃ d ts, buildTree G w hw bins hbins k hk j hj = some (Tree.node d ts) := by
   unfold buildTree
@@ -136,7 +136,7 @@ decreasing_by
 
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma some_of_buildTree (G : ContextFreeGrammarList T N) (w : List T) (j : Nat)
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    {bins : EarleyBins T N (w.length + 1)} (hbins : EarleyBins.WF G w bins)
     (hj : j < bins[w.length].length) (hw : w ≠ []) :
     ∃ t, buildTree G w hw bins hbins w.length (by simp) j hj = some t := by
   have := someNode_of_buildTree G w j w.length hbins (by simp) (by lia) hw

@@ -95,7 +95,6 @@ The EarleySet only has a finite number of elements.
 
 This is a nice theorem to have proven in general, even without any usage,
 but this also showcases some annoyance with CFG vs CFGList that I need to work around.
-TODO: improve lemma situation I suppose
 -/
 public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
     Finite (EarleySet G w) := by

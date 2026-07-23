@@ -12,16 +12,18 @@ public import Earley.Recognizer
 public import Mathlib.Data.Set.Card
 
 /-!
-This module represents a optimized implementation of the Earley algorithm.
+
+This module represents an optimized implementation of the Earley algorithm.
 For more details on the general algorithm, see `Recognizer`.
 
-In comparison to the cached implementation in `CachedRecognizer`, it maintains pointers
-to reconstruct a parse tree afterwards. This is simply a dummy implementation.
+In comparison to the naive implementation in `Recognizer`:
+- it caches if an item already exists in a bin: HashMap (EarleyItem T N) Nat
+- it caches the indices for the items that can be completed: HashMap N (List (EarleyItem T N × Nat))
 
-These optimizations do make it such that maintaining only origin information per binitem would be
-way more convenient, and since the implementation for `build_tree` only uses the first pointer
-of the reduction pointer anyway, this isn't a big deal.
-So maybe that would be a more appropriate next step?
+These optimizations do make it such that maintaining only one origin information per binitem
+would be way more convenient, and since the implementation for `build_tree` only uses
+the first pointer of the reduction pointer anyway, this doesn't affect the algorithms currently.
+This could be a more appropriate next step instead of the current implementation?
 
 TODO: CachedParser would use `Array.findIdx?` instead of filterWithIdx?
 -/
@@ -88,21 +90,30 @@ section WellFormedBin
 CachedEarleyBins are well-formed, if all of its bins and its caches are well-formed.
 -/
 @[grind]
-public def isWellFormedCachedBins (G : ContextFreeGrammarList T N) (w : Array T)
+public def CachedEarleyBins.WF (G : ContextFreeGrammarList T N) (w : Array T)
     (bins : CachedEarleyBins T N (w.size + 1)) : Prop :=
-  ∀ k, (hk : k < bins.size) → Recognizer.isWellFormedBinItems G w.toList k bins[k].raw.toList
+  ∀ k, (hk : k < bins.size) → Recognizer.BinItems.WF G w.toList k bins[k].raw.toList
     --∧ isWellFormedBinPointers w bins bins[k].raw k
     --∧ ∀ j, (hj : j < bins[k].raw.size) → Recognizer.isSoundPointer bins[k].raw[j].pointer k j
-    --∧ sorry
+  -- FIXME: missing invariant about the cache stating that the items correspond
+  --        to the items in each bin ? Or do I want to prove this separately?
+  --∧ something about itemCache corresponding to the items in each bin
+  --∧ something about completionCache corresponding to the filtered items in each bin
 
 /--
 A combination of an EarleyBins with its cache and a well-formedness Invariant about it.
 -/
 public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) where
   bins : CachedEarleyBins T N (w.size + 1)
-  inv : isWellFormedCachedBins G w bins
+  inv : CachedEarleyBins.WF G w bins
 
-public def scanList (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size)
+/--
+List-based implementation of the .scan operation.
+
+Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
+if `a` matches the word for given index `k`.
+-/
+public def scanCached (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size)
     (pre : Nat) : List (Recognizer.BinItem T N) :=
   if w[k] == a then
     [⟨incItem x (x.endIdx+1), Recognizer.Pointer.predecessor pre⟩]
@@ -115,7 +126,7 @@ List-based implementation of the .complete operation.
 Returns items for each successful completion of item `y` using its startIdx for bins.
 `j` is the index of y in its bin.
 -/
-public def completeCachedList (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n)
+public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n)
     (h : y.startIdx < n) (j : Nat) : List (Recognizer.BinItem T N) :=
   -- The origin bin filtered for matchings with y
   let xMatches : List (EarleyItem T N × Nat) := bins[y.startIdx].completions.getD y.rule.input []
@@ -126,7 +137,7 @@ public def completeCachedList (y : EarleyItem T N) {n : Nat} (bins : CachedEarle
 Add given list one by one into `bin`, if they are not already part of `bin`.
 -/
 @[inline, grind]
-public def updateBin (bin : CachedEarleyBin T N) :
+public def updateBinCached (bin : CachedEarleyBin T N) :
     List (Recognizer.BinItem T N) → CachedEarleyBin T N
   | [] => bin
   | y::ys =>
@@ -137,8 +148,8 @@ public def updateBin (bin : CachedEarleyBin T N) :
       | (⟨xItem, Recognizer.Pointer.reduction xp xP⟩,
           ⟨yItem, Recognizer.Pointer.reduction yp yP⟩) =>
         let updItem := ⟨xItem, Recognizer.Pointer.reduction xp (yp::yP.append xP)⟩
-        updateBin { bin with raw := (bin.raw.swapAt idx updItem this).snd } ys
-      | _ => updateBin bin ys
+        updateBinCached { bin with raw := (bin.raw.swapAt idx updItem this).snd } ys
+      | _ => updateBinCached bin ys
     else
       let raw' := bin.raw.push y
       let items' :=  bin.items.insert y.item bin.raw.size
@@ -147,18 +158,18 @@ public def updateBin (bin : CachedEarleyBin T N) :
         let completions' := bin.completions.alter n (fun zs => match zs with
           | some zs => zs.append [⟨y.item, bin.raw.size⟩]
           | none => ([⟨y.item, bin.raw.size⟩] : List (EarleyItem T N × Nat)))
-        updateBin ⟨raw', items', completions'⟩ ys
+        updateBinCached ⟨raw', items', completions'⟩ ys
       | _ =>
         -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
-        updateBin ⟨raw', items', bin.completions⟩ ys
+        updateBinCached ⟨raw', items', bin.completions⟩ ys
 
 /--
-Replace `bins` at index `k` with `newBin` and return the updated bins.
+Append `bins` at index `k` with non-duplicate items from `newBin` and return the updated bins.
 -/
 @[grind]
 public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
     (newBin : List (Recognizer.BinItem T N)) : CachedEarleyBins T N n :=
-  Vector.modify bins k (fun x => updateBin x newBin)
+  Vector.modify bins k (fun x => updateBinCached x newBin)
 
 end WellFormedBin
 
@@ -167,7 +178,7 @@ Computes the k-th bin starting from index j and returns the updated bins.
 -/
 public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
     (bins : CachedEarleyBins T N (w.size + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
-    (hbins : isWellFormedCachedBins G w bins) : WfEarleyBinsCached G w :=
+    (hbins : CachedEarleyBins.WF G w bins) : WfEarleyBinsCached G w :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].raw.size then
     ⟨bins, hbins⟩
@@ -185,28 +196,49 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
           bins
         else
           -- Add a potential .scan operations on the current item to the next bin
-          let newItem := scanList w x.item a k (by omega) j
+          let newItem := scanCached w x.item a k (by omega) j
           updateBinsCached bins (k+1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      let newItems := completeCachedList x.item bins (by sorry) j
+      let newItems := completeCached x.item bins (by grind) j
       updateBinsCached bins k newItems
-    have : isWellFormedCachedBins G w bins' := by sorry
+    have : CachedEarleyBins.WF G w bins' := by sorry
     earleyBinList bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules (mapT w.toList) x }.ncard + 1 - j
-decreasing_by --exact decreasingAux hbins j k (by lia) (by lia)
-  sorry
+decreasing_by
+  apply Nat.sub_lt_sub_left
+  · specialize hbins k (by lia)
+    let wfItemsBin := { x | isWellFormed G.rules (mapT w.toList) x }
+    have : (Recognizer.items bins[k].raw.toList).length ≤ wfItemsBin.ncard := by
+      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w.toList)
+      have ⟨hNoDup, _⟩ := hbins
+      let P := (fun x => isWellFormed G.rules (mapT w.toList) x)
+      apply Recognizer.length_lte_ncard_of_superset (Recognizer.items bins[k].raw.toList)
+        wfItemsBin P (by grind) (by grind) hNoDup
+    grind
+  · simp
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
 TODO: I could use of Std.HashSet.ofList and something more clever for the HashMap cache,
       but utilizing updateBin is easier to reason with. It shouldnt be much worse perf-wise
+      Reasoning becomes more difficult as well though.
 -/
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
+  -- Starting with some capacity can be lucrative depending on the benchmark.
   let bins := Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
   let bins' := updateBinsCached bins 0 (Recognizer.initList G)
-  ⟨bins', sorry⟩
+  have : CachedEarleyBins.WF G w bins' := by
+    have := G.nodup
+    simp only [CachedEarleyBins.WF, Order.lt_add_one_iff]
+    intro k hk
+    if hk : k = 0 then
+      sorry
+    else
+      --grind [Recognizer.initList]
+      sorry
+  ⟨bins', this⟩
 
 /--
 Computes up to the k-th bin.

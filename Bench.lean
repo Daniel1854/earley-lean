@@ -74,14 +74,6 @@ def sizeCachedBins {N : Type} [BEq N] [Hashable N] {n : Nat}
     (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.size) |>.sum
 
-set_option linter.unusedVariables false in
-def sizeCachedPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
-    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
-    (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
-  -- FIXME: currently not supporting pointers for the cached variant
-  --bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
-  0
-
 def sizeCachedPointersBins {N : Type} [BEq N] [Hashable N] {n : Nat}
     [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
     (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
@@ -110,8 +102,7 @@ def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.Ear
     let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyList G w)
     let t2 ← IO.monoMsNow
     let binSize ← IO.lazyPure (fun () => sizeCachedBins bins)
-    let pointerSize ← IO.lazyPure (fun () => sizeCachedPointers bins)
-    IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+    IO.println s!"{numChars},{t2-t1},{binSize},0,{binSize}"
   | .cachedPointers =>
     let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow

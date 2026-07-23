@@ -9,12 +9,6 @@ public import Earley.Basic
 /-!
 This module houses the definition of `filterWithIdx`, which enables you to filter a List,
 while keeping track of the original indices.
-
-TODO: Lean doesnt have lazyness for linked lists, right?
-      But surely there are some optimizations for these kind of chains?
-      So it would be a worst-case perf increase since this is basicly a glorified
-      .zip(l.length).filter(p)?
-      but without lemmas, this is easier to reason with by induction hm
 -/
 
 @[expose] public section

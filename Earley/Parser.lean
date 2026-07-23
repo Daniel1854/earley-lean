@@ -84,17 +84,17 @@ def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
 omit [BEq T] [BEq N] in
 lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
     {endIdxA i j m n : Nat} {ps : List ReductionPointer}
-    {bins : EarleyBins T N (w.length + 1)} (hbins : isWellFormedBins G w bins)
+    {bins : EarleyBins T N (w.length + 1)} (hbins : EarleyBins.WF G w bins)
     (hm : m < w.length + 1) (hn : n < bins[m].length)
     (h : bins[m][n].pointer = Pointer.reduction ⟨endIdxA, i, j⟩ ps) :
     endIdxA ≤ w.length ∧ j < bins[m].length ∧
     ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length ∧
     (endIdxA < m ∨ (endIdxA = m ∧ i < n)) ∧ j < n := by
   have ⟨_, pInv, sInv⟩:= hbins m (by lia)
-  simp only [isWellFormedBinPointers, isWellFormedPointer, tsub_le_iff_right] at pInv
+  simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv
   specialize pInv bins[m][n] (by simp)
   simp only [h] at pInv
-  simp only [isSoundPointer] at sInv
+  simp only [Pointer.isSound] at sInv
   specialize sInv n (by grind)
   simp only [h] at sInv
   lia
@@ -148,7 +148,7 @@ lemma foldl_le_of_le (xs : List Nat) (m k j : Nat) (hk : k < xs.length) (hjk : j
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
 -/
 public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [])
-    (bins : EarleyBins T N (w.length + 1)) (inv : isWellFormedBins G w bins) (k : Nat)
+    (bins : EarleyBins T N (w.length + 1)) (inv : EarleyBins.WF G w bins) (k : Nat)
     (hk : k < w.length + 1) (j : Nat) (hj : j < bins[k].length) : Option (Tree T N) :=
   let binItem := bins[k][j]
   match hp : binItem.pointer with
