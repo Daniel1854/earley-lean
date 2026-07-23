@@ -55,7 +55,7 @@ lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {w : List T} 
     (hm : k < w.length + 1) (hn : j < bins[k].length)
     (h : bins[k][j].pointer = Pointer.predecessor i) :
     k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].length) := by
-  have ⟨_, pInv, _⟩ := hbins k (by simp [hm])
+  have ⟨_, _, pInv, _⟩ := hbins k (by simp [hm])
   simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv
   specialize pInv bins[k][j] (by simp)
   grind

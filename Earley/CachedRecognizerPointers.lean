@@ -52,9 +52,12 @@ their index within the bin.
 abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
   Std.HashMap N (List (EarleyItem T N × Nat))
 
+abbrev BinItems (T N : Type) : Type :=
+  Array (Recognizer.BinItem T N)
+
 public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] where
-  raw : Array (Recognizer.BinItem T N)
+  raw : BinItems T N
   items : ItemCache T N
   completions : CompletionCache T N
 
@@ -66,25 +69,31 @@ variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] [Hashable N]
   [Hashable (EarleyItem T N)]
 
 @[grind]
-def items (bin : Array (Recognizer.BinItem T N)) : Array (EarleyItem T N) :=
+def items (bin : BinItems T N) : Array (EarleyItem T N) :=
   bin.map (fun x => x.item)
 
 section WellFormedBin
 
---@[grind]
---public def isWellFormedPointer (w : List T) (bins : CachedEarleyBins T N (w.length + 1))
---    (pointer : Recognizer.Pointer) (k : Nat) : Prop :=
---  match pointer with
---  | .null => True
---  | .predecessor i => k ≠ 0 ∧ k - 1 ≤ w.length ∧ ((h : k - 1 ≤ w.length) → i < bins[k-1].raw.size)
---  | .reduction p ps => k ≤ w.length ∧ p.endIdxA ≤ w.length ∧
---      ((h : p.endIdxA ≤ w.length) → p.i < bins[p.endIdxA].raw.size) ∧
---      ((h : k ≤ w.length) → p.j < bins[k].raw.size)
---
---@[grind]
---public def isWellFormedBinPointers (w : List T) (bins : CachedEarleyBins T N (w.length + 1))
---    (bin : Array (Recognizer.BinItem T N)) (k : Nat) : Prop :=
---  ∀ x ∈ bin, isWellFormedPointer w bins x.pointer k
+/--
+A pointer is well-formed with respect to a CachedEarleyBin, if TODO
+TODO: Since the pointers require access to previous bins, it's a bit inconvenient to merge.
+      I could make CachedBinPointers.WF reason about the index and simply merge?
+      But the proofs get quite a bit more involved then.
+-/
+@[grind]
+public def Pointer.WF (w : Array T) (bins : CachedEarleyBins T N (w.size + 1))
+    (pointer : Recognizer.Pointer) (k : Nat) : Prop :=
+  match pointer with
+  | .null => True
+  | .predecessor i => k ≠ 0 ∧ k - 1 ≤ w.size ∧ ((h : k - 1 ≤ w.size) → i < bins[k-1].raw.size)
+  | .reduction p ps => k ≤ w.size ∧ p.endIdxA ≤ w.size ∧
+      ((h : p.endIdxA ≤ w.size) → p.i < bins[p.endIdxA].raw.size) ∧
+      ((h : k ≤ w.size) → p.j < bins[k].raw.size)
+
+@[grind]
+public def BinPointers.WF (w : Array T) (bins : CachedEarleyBins T N (w.size + 1))
+    (bin : BinItems T N) (k : Nat) : Prop :=
+  ∀ x ∈ bin, Pointer.WF w bins x.pointer k
 
 /--
 CachedEarleyBins are well-formed, if all of its bins and its caches are well-formed.
@@ -92,9 +101,10 @@ CachedEarleyBins are well-formed, if all of its bins and its caches are well-for
 @[grind]
 public def CachedEarleyBins.WF (G : ContextFreeGrammarList T N) (w : Array T)
     (bins : CachedEarleyBins T N (w.size + 1)) : Prop :=
-  ∀ k, (hk : k < bins.size) → Recognizer.BinItems.WF G w.toList k bins[k].raw.toList
-    --∧ isWellFormedBinPointers w bins bins[k].raw k
-    --∧ ∀ j, (hj : j < bins[k].raw.size) → Recognizer.isSoundPointer bins[k].raw[j].pointer k j
+  ∀ k, (hk : k < bins.size) → (items bins[k].raw).toList.Nodup
+    ∧ Recognizer.BinItems.WF G w.toList k bins[k].raw
+    ∧ BinPointers.WF w bins bins[k].raw k
+    ∧ ∀ j, (hj : j < bins[k].raw.size) → Recognizer.Pointer.isSound bins[k].raw[j].pointer k j
   -- FIXME: missing invariant about the cache stating that the items correspond
   --        to the items in each bin ? Or do I want to prove this separately?
   --∧ something about itemCache corresponding to the items in each bin
@@ -209,12 +219,12 @@ decreasing_by
   apply Nat.sub_lt_sub_left
   · specialize hbins k (by lia)
     let wfItemsBin := { x | isWellFormed G.rules (mapT w.toList) x }
-    have : (Recognizer.items bins[k].raw.toList).length ≤ wfItemsBin.ncard := by
+    have : (items bins[k].raw).toList.length ≤ wfItemsBin.ncard := by
       have hF := Earley.Proofs.Finiteness.finiteEarleyWF G (mapT w.toList)
-      have ⟨hNoDup, _⟩ := hbins
+      have ⟨hNoDup, _, _, _⟩ := hbins
       let P := (fun x => isWellFormed G.rules (mapT w.toList) x)
-      apply Recognizer.length_lte_ncard_of_superset (Recognizer.items bins[k].raw.toList)
-        wfItemsBin P (by grind) (by grind) hNoDup
+      apply Recognizer.length_lte_ncard_of_superset (items bins[k].raw).toList wfItemsBin P
+        (by grind) (by grind) hNoDup
     grind
   · simp
 
@@ -271,7 +281,7 @@ TODO: what code gets compiled from `∃ x ∈ List ?
 @[grind]
 public def recognizeList (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=
   let bins := earleyList G w |>.bins
-  let finalItems := bins[w.size].raw.map (fun x => x.item)
+  let finalItems := items bins[w.size].raw
   ∃ x ∈ finalItems, isFinished G.initial (mapT w.toList) x
 
 end CachedRecognizerPointers

@@ -90,7 +90,7 @@ lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
     endIdxA ≤ w.length ∧ j < bins[m].length ∧
     ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length ∧
     (endIdxA < m ∨ (endIdxA = m ∧ i < n)) ∧ j < n := by
-  have ⟨_, pInv, sInv⟩:= hbins m (by lia)
+  have ⟨_, _, pInv, sInv⟩:= hbins m (by lia)
   simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv
   specialize pInv bins[m][n] (by simp)
   simp only [h] at pInv
