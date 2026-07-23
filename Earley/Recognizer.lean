@@ -301,12 +301,7 @@ lemma wfBinPointers_of_updatedBins (w : List T) {k : Nat}
   simp only [Pointer.WF, tsub_le_iff_right] at h
   split <;> grind
 
-omit [LawfulBEq (EarleyItem T N)] in
-/--
-Using updateBinAux on a List with no duplicates, results in a list with no duplicates as well.
--/
-lemma noDup_of_updateBinAux (xs : BinItems T N) (y : BinItem T N)
-    [LawfulBEq (EarleyItem T N)] (hx : (items xs).Nodup) :
+lemma noDup_of_updateBinAux (xs : BinItems T N) (y : BinItem T N) (hx : (items xs).Nodup) :
     items (updateBinAux y xs) |>.Nodup := by
   fun_induction updateBinAux y xs with
   | case1 => grind
@@ -319,12 +314,8 @@ lemma noDup_of_updateBinAux (xs : BinItems T N) (y : BinItem T N)
     have := memItem_of_updateBinAux xs y
     grind
 
-omit [LawfulBEq (EarleyItem T N)] in
-/--
-Using updateBin on a List with no duplicates, results in a list with no duplicates as well.
--/
-theorem noDup_of_updateBin (xs ys : BinItems T N) (hx : (items xs).Nodup)
-    [LawfulBEq (EarleyItem T N)] : items (updateBin xs ys) |>.Nodup := by
+theorem noDup_of_updateBin (xs ys : BinItems T N) (hx : (items xs).Nodup) :
+    items (updateBin xs ys) |>.Nodup := by
   fun_induction updateBin xs ys with
   | case1 xs => grind
   | case2 xs y ys ih1 => grind [noDup_of_updateBinAux xs y]
