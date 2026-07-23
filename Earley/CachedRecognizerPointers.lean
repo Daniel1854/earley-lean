@@ -81,29 +81,29 @@ TODO: Since the pointers require access to previous bins, it's a bit inconvenien
       But the proofs get quite a bit more involved then.
 -/
 @[grind]
-public def Pointer.WF (w : Array T) (bins : CachedEarleyBins T N (w.size + 1))
+public def Pointer.WF {wlen : Nat} (bins : CachedEarleyBins T N (wlen + 1))
     (pointer : Recognizer.Pointer) (k : Nat) : Prop :=
   match pointer with
   | .null => True
-  | .predecessor i => k ≠ 0 ∧ k - 1 ≤ w.size ∧ ((h : k - 1 ≤ w.size) → i < bins[k-1].raw.size)
-  | .reduction p ps => k ≤ w.size ∧ p.endIdxA ≤ w.size ∧
-      ((h : p.endIdxA ≤ w.size) → p.i < bins[p.endIdxA].raw.size) ∧
-      ((h : k ≤ w.size) → p.j < bins[k].raw.size)
+  | .predecessor i => k ≠ 0 ∧ k - 1 ≤ wlen ∧ ((h : k - 1 ≤ wlen) → i < bins[k-1].raw.size)
+  | .reduction p ps => k ≤ wlen ∧ p.endIdxA ≤ wlen
+    ∧ ((h : p.endIdxA ≤ wlen) → p.i < bins[p.endIdxA].raw.size)
+    ∧ ((h : k ≤ wlen) → p.j < bins[k].raw.size)
 
 @[grind]
-public def BinPointers.WF (w : Array T) (bins : CachedEarleyBins T N (w.size + 1))
+public def BinPointers.WF {wlen : Nat} (bins : CachedEarleyBins T N (wlen + 1))
     (bin : BinItems T N) (k : Nat) : Prop :=
-  ∀ x ∈ bin, Pointer.WF w bins x.pointer k
+  ∀ x ∈ bin, Pointer.WF bins x.pointer k
 
 /--
 CachedEarleyBins are well-formed, if all of its bins and its caches are well-formed.
 -/
 @[grind]
-public def CachedEarleyBins.WF (G : ContextFreeGrammarList T N) (w : Array T)
-    (bins : CachedEarleyBins T N (w.size + 1)) : Prop :=
+public def CachedEarleyBins.WF (G : ContextFreeGrammarList T N) {wlen : Nat}
+    (bins : CachedEarleyBins T N (wlen + 1)) : Prop :=
   ∀ k, (hk : k < bins.size) → (items bins[k].raw).toList.Nodup
-    ∧ Recognizer.BinItems.WF G w.toList k bins[k].raw
-    ∧ BinPointers.WF w bins bins[k].raw k
+    ∧ Recognizer.BinItems.WF G wlen k bins[k].raw
+    ∧ BinPointers.WF bins bins[k].raw k
     ∧ ∀ j, (hj : j < bins[k].raw.size) → Recognizer.Pointer.isSound bins[k].raw[j].pointer k j
   -- FIXME: missing invariant about the cache stating that the items correspond
   --        to the items in each bin ? Or do I want to prove this separately?
@@ -113,9 +113,9 @@ public def CachedEarleyBins.WF (G : ContextFreeGrammarList T N) (w : Array T)
 /--
 A combination of an EarleyBins with its cache and a well-formedness Invariant about it.
 -/
-public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) where
-  bins : CachedEarleyBins T N (w.size + 1)
-  inv : CachedEarleyBins.WF G w bins
+public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (wlen : Nat) where
+  bins : CachedEarleyBins T N (wlen + 1)
+  inv : CachedEarleyBins.WF G bins
 
 /--
 List-based implementation of the .scan operation.
@@ -188,7 +188,7 @@ Computes the k-th bin starting from index j and returns the updated bins.
 -/
 public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
     (bins : CachedEarleyBins T N (w.size + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
-    (hbins : CachedEarleyBins.WF G w bins) : WfEarleyBinsCached G w :=
+    (hbins : CachedEarleyBins.WF G bins) : WfEarleyBinsCached G w.size :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].raw.size then
     ⟨bins, hbins⟩
@@ -212,7 +212,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeCached x.item bins (by grind) j
       updateBinsCached bins k newItems
-    have : CachedEarleyBins.WF G w bins' := by sorry
+    have : CachedEarleyBins.WF G bins' := by sorry
     earleyBinList bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by
@@ -235,11 +235,12 @@ TODO: I could use of Std.HashSet.ofList and something more clever for the HashMa
       Reasoning becomes more difficult as well though.
 -/
 @[grind]
-public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
+public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
+    WfEarleyBinsCached G w.size :=
   -- Starting with some capacity can be lucrative depending on the benchmark.
   let bins := Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
   let bins' := updateBinsCached bins 0 (Recognizer.initList G)
-  have : CachedEarleyBins.WF G w bins' := by
+  have : CachedEarleyBins.WF G bins' := by
     have := G.nodup
     simp only [CachedEarleyBins.WF, Order.lt_add_one_iff]
     intro k hk
@@ -256,7 +257,7 @@ Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 @[grind]
 public def earleyBinsList (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
-    (h : k < w.size + 1) : WfEarleyBinsCached G w :=
+    (h : k < w.size + 1) : WfEarleyBinsCached G w.size :=
   match h : k with
   | 0 =>
     let ⟨bins, inv⟩ := initCachedBins G w
@@ -270,7 +271,8 @@ public def earleyBinsList (G : ContextFreeGrammarList T N) (w : Array T) (k : Na
 Returns the bins after trying to recognize `w` by using `G`.
 -/
 @[grind]
-public def earleyList (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
+public def earleyList (G : ContextFreeGrammarList T N) (w : Array T) :
+    WfEarleyBinsCached G w.size :=
   earleyBinsList G w w.size (by simp)
 
 /--
