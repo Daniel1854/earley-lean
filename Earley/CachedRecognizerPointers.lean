@@ -76,16 +76,36 @@ def rawList {wlen : Nat} (bins : CachedEarleyBins T N (wlen + 1)) : EarleyBins T
 
 section WellFormedBin
 
+
 /--
-The caches are well-formed, if
-TODO: Extend when I got the rest at control
+An ItemCache is well-formed, if it contains all elements of the raw array and the saved index
+corresponds to the index within the raw array.
 -/
 @[grind]
-public def Cache.WF (G : ContextFreeGrammarList T N) {wlen : Nat}
-    (bins : CachedEarleyBins T N (wlen + 1)) : Prop :=
-  sorry
-  --∧ something about itemCache corresponding to the items in each bin
-  --∧ something about completionCache corresponding to the filtered items in each bin
+public def ItemCache.WF (raw : Array (BinItem T N)) (items : ItemCache T N) : Prop :=
+  ∀ i, (hi : i < raw.size) → items.contains raw[i].item
+    ∧ ∃ (h : items.contains raw[i].item), items[raw[i].item] = i
+
+/--
+A CompletionCache is well-formed, if all elements of the raw array with their index are
+members of the stored completionList for their input symbol of their rule.
+
+With the way insertion goes, an inductive definition of WF would also have its merits, hm.
+-/
+@[grind]
+public def CompletionCache.WF (raw : Array (BinItem T N)) (completions : CompletionCache T N) :
+    Prop :=
+  ∀ i, (hi : i < raw.size) → completions.contains raw[i].item.rule.input
+    ∧ ∃ (h : completions.contains raw[i].item.rule.input),
+      (raw[i].item, i) ∈ completions[raw[i].item.rule.input]
+
+/--
+The caches are well-formed, if both of them are well-formed.
+-/
+@[grind]
+public def Cache.WF {wlen : Nat} (bins : CachedEarleyBins T N (wlen + 1)) : Prop :=
+  ∀ k, (hk : k < bins.size) → ItemCache.WF bins[k].raw bins[k].items
+    ∧ CompletionCache.WF bins[k].raw bins[k].completions
 
 /--
 A combination of an EarleyBins with its cache and a well-formedness Invariant about it.
@@ -93,6 +113,8 @@ A combination of an EarleyBins with its cache and a well-formedness Invariant ab
 public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (wlen : Nat) where
   bins : CachedEarleyBins T N (wlen + 1)
   inv : EarleyBins.WF G (rawList bins)
+  -- TODO: Extend when I got the rest under control?
+  --invCache : Cache.WF bins
 
 /--
 List-based implementation of the .scan operation.
