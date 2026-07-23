@@ -254,7 +254,7 @@ Given a finished item for a word within the set, the grammar has to be able to g
 -/
 public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : x ∈ EarleySet G w)
-    (hfin : isFinished G.initial w x) : G.Generates w := by
+    (hfin : isFinished G.initial w.length x) : G.Generates w := by
   have := soundItemEarley G w x hmem
   unfold Generates
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq] at hfin
@@ -440,7 +440,7 @@ there has to be a finished item within the corresponding EarleySet.
 -/
 public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} (hw : isWord G w) (hgen : G.Generates w) :
-    ∃ x ∈ EarleySet G w, isFinished G.initial w x := by
+    ∃ x ∈ EarleySet G w, isFinished G.initial w.length x := by
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq]
   -- Fetch the first rule that has to have been applied
   have := derives_implies_Derivation hgen
@@ -475,7 +475,7 @@ iff there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarleyModel {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} (hw : isWord G w) :
-    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G.initial w x := by
+    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G.initial w.length x := by
   constructor
   · apply completenessEarley hw
   · intro hex

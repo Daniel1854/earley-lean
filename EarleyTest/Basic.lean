@@ -120,11 +120,11 @@ instance : BEq G.NT where
 def exW1 : List (Symbol T N) := [Symbol.terminal T.a]
 def exW2 : List (Symbol T N) := [Symbol.terminal T.a, Symbol.terminal T.a, Symbol.terminal T.a]
 def exW3 : List (Symbol T N) := [Symbol.nonterminal N.S, Symbol.terminal T.a, Symbol.terminal T.a]
-theorem finished1 : isFinished G.initial exW1 exItem1 = false := rfl
-theorem finished2 : isFinished G.initial exW1 exItem2 = false := rfl
-theorem finished3 : isFinished G.initial exW1 exItem3 = false := rfl
-theorem finished4 : isFinished G.initial exW1 exItem4 = false := rfl
-theorem finished5 : isFinished G.initial exW1 exItem5 = true := rfl
+theorem finished1 : isFinished G.initial exW1.length exItem1 = false := rfl
+theorem finished2 : isFinished G.initial exW1.length exItem2 = false := rfl
+theorem finished3 : isFinished G.initial exW1.length exItem3 = false := rfl
+theorem finished4 : isFinished G.initial exW1.length exItem4 = false := rfl
+theorem finished5 : isFinished G.initial exW1.length exItem5 = true := rfl
 
 theorem wf1 : isWellFormed G.rules exW1.length exItem1 := by
   rw [isWellFormed, exItem1]

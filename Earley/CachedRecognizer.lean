@@ -265,7 +265,7 @@ TODO: what code gets compiled from `∃ x ∈ List ?
 public def recognizeList (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=
   let bins := earleyList G w |>.bins
   let finalItems := bins[w.size].raw
-  ∃ x ∈ finalItems, isFinished G.initial (mapT w.toList) x
+  ∃ x ∈ finalItems, isFinished G.initial w.size x
 
 end CachedRecognizer
 end Earley

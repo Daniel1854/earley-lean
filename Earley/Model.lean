@@ -99,22 +99,24 @@ An item is finished w.r.t. a certain initial symbol and the input word w, if
 - the lhs of the rule is that initial symbol
 - the item is complete
 - the entire word has been recognized
+
+Note: we use an arbitrary bound instead of attaching the word here since there is `w` as
+      `List T | List (Symbol T N) | Array T` and a Nat is easier for now.
 -/
 @[inline, grind]
-public def EarleyItem.isFinished (initial : N) (w : List (Symbol T N)) (item : EarleyItem T N) :
-    Bool :=
+public def EarleyItem.isFinished (initial : N) (wlen : Nat) (item : EarleyItem T N) : Bool :=
   item.rule.input == initial
   && isComplete item
   && item.startIdx == 0
-  && item.endIdx == w.length
+  && item.endIdx == wlen
 
 /--
 An item is well-formed, if
 - the rule belongs to given ruleset
 - the position is within the length of the rhs
 - the start is not bigger than the end
-- the end is not bigger than some bound. In practice the bound is the length of the input `w`,
-  but since there is `w` as `List T | List (Symbol T N) | Array T` a Nat is easier for now.
+- the end is not bigger than a bound. In practice the bound is the length of the input `w`,
+  but since there is `w` as `List T | List (Symbol T N) | Array T` and a Nat is easier for now.
 -/
 @[grind]
 public def EarleyItem.isWellFormed {R : Type} (rules : R) [Membership (ContextFreeRule T N) R]
