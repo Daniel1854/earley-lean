@@ -53,12 +53,9 @@ their index within the bin.
 abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
   Std.HashMap N (List (EarleyItem T N × Nat))
 
-abbrev BinItems (T N : Type) : Type :=
-  Array (BinItem T N)
-
 public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] where
-  raw : BinItems T N
+  raw : Array (BinItem T N)
   items : ItemCache T N
   completions : CompletionCache T N
 
@@ -70,7 +67,7 @@ variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] [Hashable N]
   [Hashable (EarleyItem T N)]
 
 @[grind]
-def itemsA (bin : BinItems T N) : Array (EarleyItem T N) :=
+def itemsA (bin : Array (BinItem T N)) : Array (EarleyItem T N) :=
   bin.map (fun x => x.item)
 
 @[grind]
@@ -164,7 +161,7 @@ end WellFormedBin
 /--
 Computes the k-th bin starting from index j and returns the updated bins.
 -/
-public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
+public def earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T}
     (bins : CachedEarleyBins T N (w.size + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
     (hbins : EarleyBins.WF G (rawList bins)) : WfEarleyBinsCached G w.size :=
   -- Return the bins if we are the end of the list of the current bin
@@ -191,7 +188,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       let newItems := completeCached x.item bins (by grind) j
       updateBinsCached bins k newItems
     have : EarleyBins.WF G (rawList bins') := by sorry
-    earleyBinList bins' k (by omega) (j+1) this
+    earleyBinCached bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by
   apply Nat.sub_lt_sub_left
@@ -234,24 +231,24 @@ Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 @[grind]
-public def earleyBinsList (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
+public def earleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
     (h : k < w.size + 1) : WfEarleyBinsCached G w.size :=
   match h : k with
   | 0 =>
     let ⟨bins, inv⟩ := initCachedBins G w
-    earleyBinList bins 0 (by simp) 0 inv
+    earleyBinCached bins 0 (by simp) 0 inv
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
-    let ⟨bins, inv⟩ := earleyBinsList G w i (by lia)
-    earleyBinList bins k (by lia) 0 inv
+    let ⟨bins, inv⟩ := earleyBinsCached G w i (by lia)
+    earleyBinCached bins k (by lia) 0 inv
 
 /--
 Returns the bins after trying to recognize `w` by using `G`.
 -/
 @[grind]
-public def earleyList (G : ContextFreeGrammarList T N) (w : Array T) :
+public def earleyCached (G : ContextFreeGrammarList T N) (w : Array T) :
     WfEarleyBinsCached G w.size :=
-  earleyBinsList G w w.size (by simp)
+  earleyBinsCached G w w.size (by simp)
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
@@ -259,8 +256,8 @@ Returns if a given word gets recognized by the Grammar by using a variant of the
 TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 @[grind]
-public def recognizeList (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=
-  let bins := earleyList G w |>.bins
+public def recognizeCached (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=
+  let bins := earleyCached G w |>.bins
   let finalItems := itemsA bins[w.size].raw
   ∃ x ∈ finalItems, isFinished G.initial w.size x
 

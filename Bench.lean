@@ -106,7 +106,7 @@ def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.Ear
   | .cachedPointers =>
     let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
-    let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizerPointers.earleyList G w)
+    let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizerPointers.earleyCached G w)
     let t2 ← IO.monoMsNow
     let binSize ← IO.lazyPure (fun () => sizeCachedPointersBins bins)
     let pointerSize ← IO.lazyPure (fun () => sizeCachedPointersPointers bins)
