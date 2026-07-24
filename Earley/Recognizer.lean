@@ -241,21 +241,17 @@ Predecessor pointers are unique, so duplicate items can be safely discarded
 @[inline, grind]
 public def updateBinAux :  BinItem T N  → BinItems T N → BinItems T N
   | y, [] => [y]
-  | y, x::xs => match (x,y) with
-    | (⟨xItem, Pointer.reduction xp xP⟩,⟨yItem, Pointer.reduction yp yP⟩) =>
-      -- Merge any reduction pointers if the items match
-      if xItem == yItem then
-        ⟨xItem, Pointer.reduction xp (yp::yP.append xP)⟩::xs
-      else
-        -- Search further, if no match
-        x::(updateBinAux y xs)
-    | _ =>
+  | y, x::xs =>
+    if x.item == y.item then
+      match (x.pointer, y.pointer) with
+      -- Merge any reduction pointers for matching items
+      | (Pointer.reduction xp xP, Pointer.reduction yp yP) =>
+        ⟨x.item, Pointer.reduction xp (yp::yP.append xP)⟩::xs
       -- Abort, if an item with an irrelevant pointer already exists in the List
-      if x.item == y.item then
-        x::xs
-      else
-        -- Search further, if no match
-        x::(updateBinAux y xs)
+      | _ => x::xs
+    else
+      -- Search further, if no match
+      x::(updateBinAux y xs)
 
 /--
 Add given list one by one into `xs`, if they are not already part of `xs`,
@@ -306,11 +302,8 @@ lemma noDup_of_updateBinAux (xs : BinItems T N) (y : BinItem T N) (hx : (items x
   fun_induction updateBinAux y xs with
   | case1 => grind
   | case2 => grind
-  | case3 y x xs =>
-    have := memItem_of_updateBinAux xs y
-    grind
-  | case4 => grind
-  | case5 y x xs =>
+  | case3 => grind
+  | case4 y x xs =>
     have := memItem_of_updateBinAux xs y
     grind
 
@@ -403,28 +396,13 @@ theorem updateBinAux_of_updRed (xs xs' : BinItems T N) (y : BinItem T N) (i : Na
     intro hlen
     simp only [hxs', ne_eq, forall_and_index]
     constructor
-    · if h : x.item = y.item then
-        clear ih
-        simp only [updateBinAux, beq_iff_eq, List.append_eq]
-        have hxP : x.pointer = Pointer.reduction xp xP := by grind
-        have hx2 : x = ⟨x.item, Pointer.reduction xp xP⟩ := by rw [← hxP]
-        have hy2 : y = ⟨x.item, Pointer.reduction yp yP⟩ := by rw [← hy]; rw [h]
-        grind
-      else
-        have hi : i - 1 < xs.length := by grind
-        specialize ih (updateBinAux y xs) y (i-1) (by grind [List.Nodup.of_cons]) hi
-        have xs1 : xs[i - 1].pointer = Pointer.reduction xp xP := by grind
-        have h2 : y.item = xs[i - 1].item := by grind
-        specialize ih xs1 h2 hy (by simp)
-        have ⟨h3, _⟩ := ih.right ih.left
-        grind
+    · grind
     · intro j hk hneq
       have := updateBinAux_of_Red_of_neqItem (x::xs) y i j
       grind
 
 lemma updateBinAux_of_Red_of_eqItem (xs : BinItems T N) (y : BinItem T N) (i j : Nat)
-    (hNoDup : (items xs).Nodup) {yp : ReductionPointer} {yP : List ReductionPointer}
-    (hy : y.pointer = .reduction yp yP) (hi : i < xs.length)
+    (hNoDup : (items xs).Nodup) (hi : i < xs.length)
     (hx : xs[i].pointer = .null ∨ xs[i].pointer = .predecessor j) (heq : y.item = xs[i].item) :
     updateBinAux y xs = xs := by
   induction xs generalizing i with
@@ -438,15 +416,7 @@ lemma wfBinPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
     BinPointers.WF bins (updateBinAux y xs) k := by
   induction xs with
   | nil => grind
-  | cons x xs ih =>
-    simp only [updateBinAux, List.append_eq]
-    split
-    · split
-      · rename_i xp xP _ _ _ _ _
-        have hxP : x.pointer = Pointer.reduction xp xP := by grind
-        grind
-      · grind
-    · split <;> grind
+  | cons x xs ih => grind
 
 lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (w : List T) {k : Nat}
     (xs ys : BinItems T N) (hwfx : BinItems.WF G w.length k xs)
@@ -495,14 +465,14 @@ lemma soundPointers_of_updateBinAux (w : List T) {k : Nat} (bins : EarleyBins T 
         have heq' : y.item = bins[k][j'].item := by
           simp only [items, List.getElem_map] at heq
           simp [heq]
-        have := updateBinAux_of_Red_of_eqItem bins[k] y j' 0 this hy (by grind) (by simp [hb]) heq'
+        have := updateBinAux_of_Red_of_eqItem bins[k] y j' 0 this (by grind) (by simp [hb]) heq'
         grind
       | .predecessor i =>
         have := (hbins k (by grind)).left
         have heq' : y.item = bins[k][j'].item := by
           simp only [items, List.getElem_map] at heq
           simp [heq]
-        have := updateBinAux_of_Red_of_eqItem bins[k] y j' i this hy (by grind) (by simp [hb]) heq'
+        have := updateBinAux_of_Red_of_eqItem bins[k] y j' i this (by grind) (by simp [hb]) heq'
         grind
       | .reduction bp bP =>
         have hnDup := (hbins k (by grind)).left

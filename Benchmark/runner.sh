@@ -35,7 +35,7 @@ fi
 
 if [ "${GRAMMAR_INDEX}" == 1 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
-    INPUT_SIZES=(10 20 50 100 150 200 225 250 275 300)
+    INPUT_SIZES=(10 20 50 100 150 200 225 250 275 300 350 400)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 20 50 100 200 300 500 700 1000 1500)
   elif [ "${VARIANT}" == "lean-opt-pointers" ]; then

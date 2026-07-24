@@ -187,7 +187,6 @@ lemma updateBinAux_getElem_of_lower_idx (xs : BinItems T N) (y : BinItem T N) (j
   | case2 => grind
   | case3 => grind
   | case4 => grind
-  | case5 => grind
 
 lemma updateBin_getElem_of_lower_idx (xs ys : BinItems T N) (j : Nat) (hj : j < xs.length)
     (hj' : j < (updateBin xs ys).length) :
