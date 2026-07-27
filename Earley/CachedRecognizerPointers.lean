@@ -384,25 +384,10 @@ decreasing_by
     grind
   · simp
 
-public lemma updateBinCached_of_unclear (bin : CachedEarleyBin T N) (newBin : List (BinItem T N))
-    (h : ∀ x ∈ items newBin, x ∉ items bin.raw.toList) (hN : (items newBin).Nodup) :
+public lemma updateBinCached_new (bin : CachedEarleyBin T N) (newBin : List (BinItem T N))
+    (h : ∀ x ∈ items newBin, bin.items.contains x = false) (hN : (items newBin).Nodup) :
     (updateBinCached bin newBin).raw.toList = bin.raw.toList ++ newBin := by
-  fun_induction updateBinCached bin newBin with
-  | case1 bin => grind
-  | case2 bin y ys hcont =>
-    have := bin.invItems
-    have : Std.HashMap.contains bin.items y.item = false := by sorry
-    grind
-  | case3 bin y ys hcont idx hidx x ih=>
-    have := bin.invItems
-    have : Std.HashMap.contains bin.items y.item = false := by sorry
-    grind
-  | case4 bin y ys hncont raw' items' inv A hnexty completions' ih =>
-    have := bin.invItems
-    sorry
-  | case5 bin y ys hncont raw' items' inv hnexty ih =>
-    have := bin.invItems
-    sorry
+  fun_induction updateBinCached bin newBin <;> grind
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
@@ -423,8 +408,12 @@ public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
     if hk : k = 0 then
       simp only [hk]
       have hsub : (rawList bins')[0] = initList G := by
-        have := G.nodup
-        have := updateBinCached_of_unclear bins[0] (initList G) (by grind) (by grind [initList])
+        -- TODO: this performs horrendous.
+        have : (items (initList G)).Nodup := by
+          have := G.nodup
+          have : (initList G).Nodup := by grind [initList]
+          grind [initList]
+        have := updateBinCached_new bins[0] (initList G) (by grind) this
         grind
       have ⟨hN, _⟩ := wfBinItems_of_initList G w.size
       grind [initList]
