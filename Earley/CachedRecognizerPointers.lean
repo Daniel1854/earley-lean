@@ -9,6 +9,7 @@ public import Earley.Proofs.Model
 public import Earley.Filter
 public import Earley.Proofs.Finiteness
 public import Earley.Recognizer
+public import Earley.Proofs.Recognizer
 public import Std.Data.HashMap.Lemmas
 public import Mathlib.Data.Set.Card
 
@@ -27,6 +28,7 @@ the first pointer of the reduction pointer anyway, this doesn't affect the algor
 This could be a more appropriate next step instead of the current implementation?
 
 TODO: CachedParser would use `Array.findIdx?` instead of filterWithIdx?
+TODO: clean some proofs up after completionCache.WF has been introduced as part of CachedEarleyBin
 -/
 
 @[expose] public section
@@ -54,16 +56,19 @@ abbrev ItemCache (T N : Type) [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
 An ItemCache is well-formed, if it contains exclusively all elements of the raw array and
 the saved index corresponds to the index within the raw array.
 
-TODO: I need to state this differently.
+TODO: Unclear if this can be stated in a way that I dont require it both ways
       items.size = raw.size
       this would be easier to prove and entails the same thing in combination with Nodup?
+      (∀ x, (hx : x ∈ raw) → items.contains x.item) hm
+TODO: lemma x ∈ itemsA raw or can grind do this efficiently??
 -/
 @[grind]
 public def ItemCache.WF {T N : Type} [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
     (raw : Array (BinItem T N)) (items : ItemCache T N) : Prop :=
-  (∀ x, (hx : x ∈ items) →  x ∈ itemsA raw ∧ items[x] < raw.size) --∧ raw[items[x]] = x)
-  ∧ ∀ i, (hi : i < raw.size) → items.contains raw[i].item
-    ∧ ∃ (h : items.contains raw[i].item), items[raw[i].item] = i
+  (∀ x, (hx : x ∈ items) →  items[x] < raw.size
+    ∧ ∃ (h : items[x] < raw.size), raw[items[x]].item = x)
+  ∧ (∀ i, (hi : i < raw.size) → items.contains raw[i].item
+    ∧ ∃ (h : items.contains raw[i].item), items[raw[i].item] = i)
 
 /--
 A cache for accessing the possible rules for a completion within a single bin.
@@ -77,7 +82,7 @@ abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
 A CompletionCache is well-formed, if all elements of the raw array with their index are
 members of the stored completionList for their input symbol of their rule.
 
-With the way insertion goes, an inductive definition of WF would also have its merits, hm.
+TODO: there should be a more functional way to state this.
 -/
 @[grind]
 public def CompletionCache.WF {T N : Type} [BEq N] [Hashable N]
@@ -156,6 +161,21 @@ public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBin
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
   xMatches.map (fun ⟨x,i⟩ => ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
+lemma completeCached_eq_completeList {n : Nat} (bins : EarleyBins T N n)
+    (binsCached : CachedEarleyBins T N n) (y : EarleyItem T N) (hS : y.startIdx < n)
+    (heq : bins = rawList binsCached) (j : Nat) :
+    completeCached y binsCached hS j = completeList y bins hS j := by
+  rw [completeList_eq_completeListI]
+  let P := fun x : EarleyItem T N => nextSymbol x == some (Symbol.nonterminal y.rule.input)
+  have : binsCached[y.startIdx].completions.getD y.rule.input []
+      = filterWithIdx (items bins[y.startIdx]) P := by
+    have : CompletionCache.WF binsCached[y.startIdx].raw binsCached[y.startIdx].completions := by
+      sorry -- this will be injected through CachedEarleyBin most likely
+    -- TODO: this seems to be one of the main usages of the inv of CompletionCache
+    simp only [CompletionCache.WF, Std.HashMap.contains_iff_mem, and_exists_self] at this
+    sorry
+  grind [completeListI, completeCached]
+
 /--
 Add given list one by one into `bin`, if they are not already part of `bin`.
 -/
@@ -173,7 +193,7 @@ public def updateBinCached (bin : CachedEarleyBin T N) : List (BinItem T N) → 
         let updItem := ⟨y.item, Pointer.reduction xp (yp::yP.append xP)⟩
         have inv : ItemCache.WF (bin.raw.swapAt idx updItem hidx).2 bin.items := by
           have := bin.invItems
-          sorry
+          grind
         let newBin := ⟨(bin.raw.swapAt idx updItem hidx).snd, bin.items, inv, bin.completions⟩
         updateBinCached newBin ys
       | _ => updateBinCached bin ys
@@ -181,7 +201,8 @@ public def updateBinCached (bin : CachedEarleyBin T N) : List (BinItem T N) → 
       let raw' := bin.raw.push y
       let items' :=  bin.items.insert y.item bin.raw.size
       have inv : ItemCache.WF raw' items' := by
-        sorry
+        have := bin.invItems
+        grind
       match y.item.nextSymbol with
       | some (Symbol.nonterminal n) =>
         let completions' := bin.completions.alter n (fun zs => match zs with
@@ -204,23 +225,13 @@ public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
 lemma updateBin_nil (bin : CachedEarleyBin T N) : updateBinCached bin [] = bin := by
   simp [updateBinCached]
 
--- TODO: requires inv about the cache
--- lets see if we will actually need this one first.
-lemma updateBinCached_new (bin : CachedEarleyBin T N) (y : BinItem T N) (hmem : y ∉ bin.raw) :
-    (updateBinCached bin [y]).raw = bin.raw.push y := by
-  have := bin.invItems
-  have : bin.items.contains y.item = false := by
-    -- not elem of raw, so it cant be part of items
-    sorry
-  grind
-
-lemma updateBinAux_eq_updateBinCached (bin : BinItems T N) (y : BinItem T N)
-    {binCached : CachedEarleyBin T N} (heq : bin = binCached.raw.toList) :
-    updateBinAux y bin = (updateBinCached binCached [y]).raw.toList := by
+lemma updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem T N)
+    (binCached : CachedEarleyBin T N) (heq : binCached.raw.toList = bin) :
+    (updateBinCached binCached [y]).raw.toList = updateBinAux y bin := by
   fun_induction updateBinAux y bin generalizing binCached with
   | case1 y =>
     have := binCached.invItems
-    simp only [List.nil_eq, Array.toList_eq_nil_iff] at heq
+    simp only [Array.toList_eq_nil_iff] at heq
     grind
   -- Matching raw items: merge pointer
   | case2 y x xs heqI xp xP yp yP heqP =>
@@ -238,33 +249,93 @@ lemma updateBinAux_eq_updateBinCached (bin : BinItems T N) (y : BinItem T N)
       have : binCached.raw.toList[0] = x := by grind
       grind
     grind
-  -- Non-matching items: simply append
+  -- Non-matching item: check the next item
   | case4 y x xs hneqI ih =>
-    -- FIXME: this is the wrong approach, I need to use the IH
+    have := binCached.invItems
+    have : 0 < binCached.raw.size := by grind
+    have hx : binCached.raw[0] = x := by
+      have : binCached.raw.toList[0] = x := by grind
+      grind
+    -- FIXME: this is wrong, I need to remove x from binCached.items for the inv to be provable
+    -- oh. and all the entries need to be decremented by one. thats rather bad.
+    -- but these seems provable at least.
+    let binCached' : CachedEarleyBin T N :=
+      ⟨binCached.raw[1:], binCached.items, sorry, binCached.completions⟩
+    specialize ih binCached' (by sorry)
+    rw [← ih]
     sorry
 
 theorem updateBinCached_cons (bin : CachedEarleyBin T N) (y : BinItem T N) (ys : BinItems T N) :
     updateBinCached bin (y :: ys) = updateBinCached (updateBinCached bin [y]) ys := by
-  induction ys generalizing y with
-  | nil => grind
-  | cons y' ys' ih =>
-    sorry
+  rw [updateBinCached]
+  rw (occs := .pos [1]) [updateBinCached]
+  if h : bin.items.contains y.item then
+    simp only [h, ↓reduceDIte, List.append_eq, Array.swapAt_def, updateBin_nil]
+    split <;> simp
+  else
+    simp only [h, Bool.false_eq_true, ↓reduceDIte, List.append_eq, updateBin_nil]
+    split <;> simp
 
-lemma updateBin_eq_updateBinCached (bin : BinItems T N) (newBin : BinItems T N)
-    (binCached : CachedEarleyBin T N) (heq : bin = binCached.raw.toList) :
-    updateBin bin newBin = (updateBinCached binCached newBin).raw.toList := by
+lemma updateBinCached_eq_updateBin (bin : BinItems T N) (newBin : BinItems T N)
+    (binCached : CachedEarleyBin T N) (heq : binCached.raw.toList = bin) :
+    (updateBinCached binCached newBin).raw.toList = updateBin bin newBin := by
   fun_induction updateBin bin newBin generalizing binCached with
   | case1 bin => grind
   | case2 bin y ys ih =>
-    have := updateBinAux_eq_updateBinCached bin y heq
+    have := updateBinCached_eq_updateBinAux bin y binCached heq
     specialize ih (updateBinCached binCached [y]) this
     grind [updateBinCached_cons]
 
-lemma updateBins_eq_updateBinsCached {n : Nat} (bins : EarleyBins T N n) (k : Nat)
+lemma updateBinsCached_eq_updateBins {n : Nat} (bins : EarleyBins T N n) (k : Nat)
     (newBin : BinItems T N) (binsCached : CachedEarleyBins T N n)
-    (heq : bins = rawList binsCached) :
-    updateBins bins k newBin = rawList (updateBinsCached binsCached k newBin) := by
-  grind [updateBin_eq_updateBinCached]
+    (heq : rawList binsCached = bins) :
+    rawList (updateBinsCached binsCached k newBin) = updateBins bins k newBin := by
+  grind [updateBinCached_eq_updateBin]
+
+lemma wfBins_of_earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
+    (bins bins' : CachedEarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G (rawList bins))
+    (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].raw.size))
+    (h : bins' =
+      match nextSymbol bins[k].raw[j].item with
+      | some s => match s with
+        | Symbol.nonterminal A =>
+          -- Add all potential .predict operations on the current item to the current bin
+          let newItems := predictList G A k
+          updateBinsCached bins k newItems
+        | Symbol.terminal a =>
+          -- If we are the final bin then don't try to progress via consuming another terminal
+          if hk : k ≥ w.size then
+            bins
+          else
+            -- Add a potential .scan operations on the current item to the next bin
+            let newItem := scanCached w bins[k].raw[j].item a k (by omega) j
+            updateBinsCached bins (k + 1) newItem
+      | none =>
+        -- Add all potential .complete operations on the current item to the current bin
+        let newItems := completeCached bins[k].raw[j].item bins (by grind) j
+        updateBinsCached bins k newItems) : EarleyBins.WF G (rawList bins') := by
+  simp only [ge_iff_le, h]
+  match hnext : nextSymbol bins[k].raw[j].item with
+  | some s => match s with
+    | Symbol.nonterminal A =>
+      simp only [updateBinsCached_eq_updateBins]
+      apply wfBins_of_predictList hbins hk
+    | Symbol.terminal a =>
+      if hk : k ≥ w.size then
+        simp [hk, hbins]
+      else
+        simp only [hk, ↓reduceDIte, scanCached_eq_scanList, updateBinsCached_eq_updateBins]
+        apply wfBins_of_scanList hbins
+        · simp [rawList]
+        · grind
+        · grind
+  | none =>
+      simp only [completeCached_eq_completeList, updateBinsCached_eq_updateBins]
+      apply wfBins_of_completeList hbins
+      · simp [rawList]
+      · grind
+      · grind
+
 
 end WellFormedBin
 
@@ -292,12 +363,12 @@ public def earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T}
         else
           -- Add a potential .scan operations on the current item to the next bin
           let newItem := scanCached w x.item a k (by omega) j
-          updateBinsCached bins (k+1) newItem
+          updateBinsCached bins (k + 1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeCached x.item bins (by grind) j
       updateBinsCached bins k newItems
-    have : EarleyBins.WF G (rawList bins') := by sorry
+    have : EarleyBins.WF G (rawList bins') := by grind [wfBins_of_earleyBinCached]
     earleyBinCached bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by
@@ -313,27 +384,52 @@ decreasing_by
     grind
   · simp
 
+public lemma updateBinCached_of_unclear (bin : CachedEarleyBin T N) (newBin : List (BinItem T N))
+    (h : ∀ x ∈ items newBin, x ∉ items bin.raw.toList) (hN : (items newBin).Nodup) :
+    (updateBinCached bin newBin).raw.toList = bin.raw.toList ++ newBin := by
+  fun_induction updateBinCached bin newBin with
+  | case1 bin => grind
+  | case2 bin y ys hcont =>
+    have := bin.invItems
+    have : Std.HashMap.contains bin.items y.item = false := by sorry
+    grind
+  | case3 bin y ys hcont idx hidx x ih=>
+    have := bin.invItems
+    have : Std.HashMap.contains bin.items y.item = false := by sorry
+    grind
+  | case4 bin y ys hncont raw' items' inv A hnexty completions' ih =>
+    have := bin.invItems
+    sorry
+  | case5 bin y ys hncont raw' items' inv hnexty ih =>
+    have := bin.invItems
+    sorry
+
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
-TODO: I could use of Std.HashSet.ofList and something more clever for the HashMap cache,
-      but utilizing updateBin is easier to reason with. It shouldnt be much worse perf-wise
-      Reasoning becomes more difficult as well though.
 -/
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
     WfEarleyBinsCached G w.size :=
   -- Starting with some capacity can be lucrative depending on the benchmark.
-  let bins := Vector.replicate (w.size + 1) ⟨Array.empty,  {},  by sorry, {}⟩
+  have : ItemCache.WF #[] ∅ := by grind
+  let bins := Vector.replicate (w.size + 1) ⟨.empty,  {},  this, {}⟩
   let bins' := updateBinsCached bins 0 (initList G)
   have : EarleyBins.WF G (rawList bins') := by
-    have := G.nodup
     simp only [EarleyBins.WF, Order.lt_add_one_iff]
     intro k hk
+    have : bins[k].raw = #[] := by
+      simp only [Vector.getElem_replicate, bins]
+      rfl
     if hk : k = 0 then
-      sorry
+      simp only [hk]
+      have hsub : (rawList bins')[0] = initList G := by
+        have := G.nodup
+        have := updateBinCached_of_unclear bins[0] (initList G) (by grind) (by grind [initList])
+        grind
+      have ⟨hN, _⟩ := wfBinItems_of_initList G w.size
+      grind [initList]
     else
-      --grind [initList]
-      sorry
+      grind
   ⟨bins', this⟩
 
 /--
