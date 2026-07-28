@@ -12,3 +12,4 @@ import Earley.Proofs.Recognizer
 import Earley.Proofs.Parser
 import Earley.CachedRecognizer
 import Earley.CachedRecognizerPointers
+import Earley.Proofs.CachedRecognizerPointers
