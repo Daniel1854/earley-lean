@@ -407,15 +407,10 @@ public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
       rfl
     if hk : k = 0 then
       simp only [hk]
-      have hsub : (rawList bins')[0] = initList G := by
-        -- TODO: this performs horrendous.
-        have : (items (initList G)).Nodup := by
-          have := G.nodup
-          have : (initList G).Nodup := by grind [initList]
-          grind [initList]
-        have := updateBinCached_new bins[0] (initList G) (by grind) this
-        grind
       have ⟨hN, _⟩ := wfBinItems_of_initList G w.size
+      have hsub : (rawList bins')[0] = initList G := by
+        have := updateBinCached_new bins[0] (initList G) (by grind) hN
+        grind
       grind [initList]
     else
       grind

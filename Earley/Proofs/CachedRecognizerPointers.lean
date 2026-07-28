@@ -21,9 +21,6 @@ This module houses the correctness proofs for the
                                                               | |
                                                               |_|
 
-The proofs follow the work from Rau et Nipkow:
-https://doi.org/10.4230/LIPIcs.ITP.2024.31
-
 To verify the correctness of the implementation,
 we first prove correctness of the model - an inductive definition / judgements.
 Then we can refine the proofs to the naive list-based implementation by proving
@@ -38,69 +35,101 @@ namespace Earley
 namespace Proofs
 namespace CachedRecognizerPointers
 
--- TODO: I most likely dont need most of these for this one.
 open Earley.Model
-open Earley.Model.EarleyItem
+open Model.EarleyItem
 open Earley.Proofs.Model
 open Earley.Recognizer
 open Earley.CachedRecognizerPointers
 open Earley.Proofs.Recognizer
-open Earley.Proofs.Finiteness
 open Utils
-open ContextFreeRule
-open ContextFreeGrammar
 
 variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
   [Hashable N] [Hashable (EarleyItem T N)]
 
--- unclear if I actually need this set indirection
-@[grind]
-def earleyCachedSet (G : ContextFreeGrammarList T N) (w : Array T) : Set (EarleyItem T N) :=
-  rawList (earleyCached G w).bins |> setOfBins
+omit [LawfulBEq T] [LawfulBEq N] in
+lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Array T) (j k : Nat)
+    (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
+    (binsCached : CachedEarleyBins T N (w.size + 1))
+    (hbinsCached : EarleyBins.WF G (rawList binsCached)) (hk : k < bins.size)
+    (heq : rawList binsCached = bins) :
+    rawList (earleyBinCached binsCached k hk j hbinsCached).bins =
+    (earleyBinList bins k hk j hbins).bins := by
+  rw [earleyBinCached, earleyBinList]
+  simp only [ge_iff_le, scanCached_eq_scanList, completeCached_eq_completeList, Array.length_toList]
+  split
+  · rename_i h
+    have : List.length bins[k] ≤ j := by grind
+    simp [this, heq]
+  · rename_i h
+    have : ¬ List.length bins[k] ≤ j := by grind
+    simp only [this, ↓reduceDIte]
+    apply earleyBinCached_eq_earleyBinList
+    have hkj : binsCached[k].raw[j].item = bins[k][j].item := by grind
+    match hnext : bins[k][j].item.nextSymbol with
+    | some s => match s with
+      | Symbol.nonterminal A =>
+        have : binsCached[k].raw[j].item.nextSymbol = some (Symbol.nonterminal A) := by grind
+        simp [this, updateBinsCached_eq_updateBins, heq]
+      | Symbol.terminal a =>
+        have : binsCached[k].raw[j].item.nextSymbol = some (Symbol.terminal a) := by grind
+        simp only [this]
+        if hk : k ≥ w.size then
+          simp only [hk, ↓reduceDIte, heq]
+        else
+          simp only [hk, ↓reduceDIte, heq, updateBinsCached_eq_updateBins, hkj]
+    | none =>
+      have : binsCached[k].raw[j].item.nextSymbol = none := by grind
+      simp only [this, updateBinsCached_eq_updateBins, heq]
+      simp only [hkj]
+termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
+decreasing_by exact decreasingAux hbins j k (by grind) (by simp only [not_le] at this; exact this)
 
-lemma earleyCachedSet_eq_earleyListSet (G : ContextFreeGrammarList T N) (w : Array T) :
-    earleyCachedSet G w = earleyListSet G w.toList := by
-  simp only [earleyListSet, earleyCachedSet]
-  --have := earleyBinsListSet_sub_model w h w.length (by lia)
-  --grind
-  sorry
+omit [LawfulBEq T] [LawfulBEq N] in
+lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : Array T)
+    (k : Nat) (hk : k < w.size + 1) :
+    rawList (earleyBinsCached G w k hk).bins = (earleyBinsList G w.toList k hk).bins := by
+  induction k with
+  | zero =>
+    simp only [earleyBinsCached, Array.length_toList, earleyBinsList]
+    apply earleyBinCached_eq_earleyBinList
+    simp only [initCachedBins, initBins, Array.length_toList]
+    have : ItemCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
+    let bins := Vector.replicate (w.size + 1) ([] : List (BinItem T N))
+    let binsCached := Vector.replicate (w.size + 1)
+      (⟨.empty,  {},  this, {}⟩ : CachedEarleyBin T N)
+    let binsCached' := updateBinsCached binsCached 0 (initList G)
+    have : ∀ k, (hk : k < w.size + 1) → binsCached'[k].raw.toList =
+        (bins.set 0 (initList G) (by simp))[k] := by
+      intro k hk
+      have : binsCached[k].raw = #[] := by
+        simp only [Vector.getElem_replicate, binsCached]
+        rfl
+      if hk : k = 0 then
+        have hsub : (rawList binsCached')[0] = initList G := by
+          have := (wfBinItems_of_initList G w.size).left
+          have := updateBinCached_new binsCached[0] (initList G) (by grind) this
+          grind
+        grind
+      else
+        grind
+    grind
+  | succ n ih =>
+    apply earleyBinCached_eq_earleyBinList
+    apply ih
 
-section Soundness
-/--
-The soundness criteria for the list implementation:
-Given a finished item for a word within the set, the grammar has to be able to generate that word.
--/
 public theorem soundnessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
     (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
     (hex : recognizeCached Gₗ w) : G.Generates (mapT w.toList) := by
   apply soundnessEarleyList w.toList h
-  simp only [recognizeCached, decide_eq_true_eq] at hex
-  rcases hex with ⟨x, ⟨hmem, hfin⟩⟩
-  simp only [recognizeList, Array.length_toList, decide_eq_true_eq]
-  use x
-  refine ⟨?_, by grind⟩
-  have := earleyCachedSet_eq_earleyListSet Gₗ w
-  sorry
-
-end Soundness
-
-section Completeness
+  grind [earleyCachedBins_eq_earleyListBins]
 
 public theorem completenessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
     (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G)
     (hgen : G.Generates (mapT w.toList)) : recognizeCached Gₗ w := by
   have hex := completenessEarleyList w.toList h heps hgen
-  simp only [recognizeCached, decide_eq_true_eq]
-  simp only [recognizeList, Array.length_toList, decide_eq_true_eq] at hex
-  rcases hex with ⟨x, ⟨hmem, hfin⟩⟩
-  use x
-  refine ⟨?_, by grind⟩
-  have := earleyCachedSet_eq_earleyListSet Gₗ w
-  sorry
-
-end Completeness
+  grind [earleyCachedBins_eq_earleyListBins]
 
 /--
 The correctness criteria for the recognizer.
