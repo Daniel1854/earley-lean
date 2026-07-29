@@ -69,17 +69,18 @@ lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Arr
     | some s => match s with
       | Symbol.nonterminal A =>
         have : binsCached[k].raw[j].item.nextSymbol = some (Symbol.nonterminal A) := by grind
-        simp [this, updateBinsCached_eq_updateBins, heq]
+        simp [this, updateBinsCached_eq_updateBins (hbins := hbinsCached), heq]
       | Symbol.terminal a =>
         have : binsCached[k].raw[j].item.nextSymbol = some (Symbol.terminal a) := by grind
         simp only [this]
         if hk : k ≥ w.size then
           simp only [hk, ↓reduceDIte, heq]
         else
-          simp only [hk, ↓reduceDIte, heq, updateBinsCached_eq_updateBins, hkj]
+          simp only [hk, ↓reduceDIte, heq, hkj,
+            updateBinsCached_eq_updateBins (hbins := hbinsCached)]
     | none =>
       have : binsCached[k].raw[j].item.nextSymbol = none := by grind
-      simp only [this, updateBinsCached_eq_updateBins, heq]
+      simp only [this, updateBinsCached_eq_updateBins (hbins := hbinsCached), heq]
       simp only [hkj]
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by exact decreasingAux hbins j k (by grind) (by simp only [not_le] at this; exact this)
