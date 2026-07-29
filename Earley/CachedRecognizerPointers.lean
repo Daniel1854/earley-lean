@@ -221,6 +221,81 @@ public lemma updateBinCached_new (bin : CachedEarleyBin T N) (newBin : List (Bin
     (updateBinCached bin newBin).raw.toList = bin.raw.toList ++ newBin := by
   fun_induction updateBinCached bin newBin <;> grind
 
+public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
+    (xs : List (BinItem T N)) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
+    (items' : ItemCache T N) (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1)) :
+    ItemCache.WF xs.toArray items' := by
+  simp only [ItemCache.WF, hitems, Std.HashMap.mem_map, Std.HashMap.mem_erase, beq_eq_false_iff_ne,
+    ne_eq, Std.HashMap.getElem_map, Std.HashMap.getElem_erase, List.size_toArray,
+    List.getElem_toArray, and_exists_self, forall_and_index, Std.HashMap.contains_map,
+    Std.HashMap.contains_erase, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
+    Std.HashMap.contains_iff_mem]
+  have : bin.raw.toList.length = bin.raw.size := by grind
+  have : 0 < bin.raw.size := by grind
+  have hzs : xs.length = bin.raw.size - 1 := by grind
+  have ⟨hlInv, hrInv⟩ := bin.invItems
+  refine ⟨?_, ?_⟩
+  · intro x' hx' hmemx
+    simp only [and_exists_self] at hlInv
+    have := hlInv x' (by grind)
+    rcases this with ⟨w, hw⟩
+    clear hlInv hrInv
+    use (by grind)
+    let idx := bin.items[x']
+    have : idx < (x :: xs).length := by lia
+    have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
+    grind
+  · intro i hi
+    simp only [and_exists_self] at hrInv
+    have := hrInv (i+1) (by lia)
+    rcases this with ⟨w, hw⟩
+    clear hlInv hrInv
+    have h1 : ¬x.item = xs[i].item := by
+      simp only [items, List.map_cons, List.nodup_cons, List.mem_map, not_exists, not_and] at hN
+      grind
+    have h2 : xs[i].item = bin.raw[i+1].item := by
+      have : i + 1 < (x :: xs).length := by lia
+      have : (x ::xs)[i+1].item = bin.raw[i+1].item := by grind
+      grind
+    have h3 : xs[i].item ∈ bin.items := by grind
+    use ⟨h1, h3⟩
+    grind
+
+-- A very mechanical proof, but thats to be expected since it is such an unnatural thing.
+public lemma updateBinCached_eq_updateBinCached_of_erase (bin bin' : CachedEarleyBin T N)
+    (x y : BinItem T N) (xs : List (BinItem T N)) (heq : bin.raw.toList = x :: xs)
+    (hneq : x.item ≠ y.item) (items' : ItemCache T N)
+    (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1))
+    (inv : ItemCache.WF xs.toArray items') (heq : bin' = ⟨xs.toArray, items', inv, ∅⟩) :
+    (updateBinCached bin [y]).raw.toList = x :: (updateBinCached bin' [y]).raw.toList := by
+  if hcont : bin.items.contains y.item = true then
+    have : bin.raw.toList.length = bin.raw.size := by grind
+    have : 0 < bin.raw.size := by grind
+    have : bin'.items.contains y.item = true := by grind
+    simp only [updateBinCached, hcont, this, ↓reduceDIte, List.append_eq, Array.swapAt_def]
+    have := bin.invItems
+    have : bin.raw[0] = x := by
+      have : bin.raw.toList[0] = x := by grind
+      grind
+    have : bin.items[y.item] ≠ 0 := by grind
+    have : bin.items[y.item] = bin'.items[y.item] + 1 := by grind
+    have : bin.items[y.item] < bin.raw.size := by grind
+    have : bin'.items[y.item] < bin'.raw.size := by grind
+    have hp : bin.raw[bin.items[y.item]].pointer = bin'.raw[bin'.items[y.item]].pointer := by
+      have : bin.raw[bin.items[y.item]].pointer = bin.raw.toList[bin.items[y.item]].pointer := by
+        grind
+      simp only [this, Array.getElem_toList]
+      grind
+    split
+    · rename_i heq
+      simp only [hp, Prod.mk.injEq] at heq
+      grind [Array.toList_set]
+    · rename_i heq
+      simp only [hp, Prod.mk.injEq, imp_false, not_and] at heq
+      grind
+  else
+    grind [updateBinCached_new]
+
 public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem T N)
     (binCached : CachedEarleyBin T N) (heq : binCached.raw.toList = bin) (hN : (items bin).Nodup) :
     (updateBinCached binCached [y]).raw.toList = updateBinAux y bin := by
@@ -250,85 +325,14 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
    -- - cut the first element off (x)
    -- - remove x from the items cache, while also decrementing all indices in the items cache
   | case4 y x xs hneqI ih =>
-    have := binCached.invItems
-    have : 0 < binCached.raw.size := by grind
-    have hx : binCached.raw[0] = x := by
-      have : binCached.raw.toList[0] = x := by grind
-      grind
-    -- Probably easier to make direct use of the toList API than struggle with Arrays at each step.
-    match h : binCached.raw.toList with
-    | [] => grind
-    | z :: zs =>
-      have : x.item = z.item := by grind
-      let raw' := zs.toArray
-      let items' := binCached.items.erase z.item
-      let items'' := items'.map (fun x y => y - 1)
-      -- TODO: think about if I should extract this.
-      have hInv' : ItemCache.WF raw' items'' := by
-        simp only [ItemCache.WF, Std.HashMap.mem_map, Std.HashMap.mem_erase, beq_eq_false_iff_ne,
-          ne_eq, Std.HashMap.getElem_map, Std.HashMap.getElem_erase, List.size_toArray,
-          List.getElem_toArray, and_exists_self, forall_and_index, Std.HashMap.contains_map,
-          Std.HashMap.contains_erase, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
-          Std.HashMap.contains_iff_mem, items'', items', raw']
-        have ⟨hlInv, hrInv⟩ := binCached.invItems
-        have : binCached.raw.toList.length = binCached.raw.size := by grind
-        have : 0 < binCached.raw.size := by grind
-        have hzs : zs.length = binCached.raw.size - 1 := by grind
-        refine ⟨?_, ?_⟩
-        · intro x' hx' hmemx
-          simp only [and_exists_self] at hlInv
-          have := hlInv x' (by grind)
-          rcases this with ⟨w, hw⟩
-          clear hlInv hrInv
-          use (by grind)
-          let idx := binCached.items[x']
-          have : idx < (z :: zs).length := by lia
-          have : (z ::zs)[idx].item = binCached.raw[idx].item := by grind
-          grind
-        · intro i hi
-          simp only [and_exists_self] at hrInv
-          have := hrInv (i+1) (by lia)
-          rcases this with ⟨w, hw⟩
-          clear hlInv hrInv
-          have h1 : ¬z.item = zs[i].item := by grind
-          have h2 : zs[i].item = binCached.raw[i+1].item := by
-            have : i + 1 < (z :: zs).length := by lia
-            have : (z ::zs)[i+1].item = binCached.raw[i+1].item := by grind
-            grind
-          have h3 : zs[i].item ∈ binCached.items := by grind
-          use ⟨h1, h3⟩
-          grind
-      let binCached' : CachedEarleyBin T N := ⟨raw', items'', hInv', {}⟩
-      specialize ih binCached' (by grind) (by grind)
-      rw [← ih]
-      -- this is important: hneqI : ¬(x.item == y.item) = true
-      -- TODO: think about if I should extract this.
-      if hcont : binCached.items.contains y.item = true then
-        have : binCached'.items.contains y.item = true := by grind
-        simp only [updateBinCached, hcont, ↓reduceDIte, List.append_eq, Array.swapAt_def, this]
-        have := binCached.invItems
-        have : binCached.items[y.item] < binCached.raw.size := by grind
-        have : binCached'.items[y.item] < binCached'.raw.size := by grind
-        have : binCached.items[y.item] ≠ 0 := by grind
-        have : binCached.items[y.item] = binCached'.items[y.item] + 1 := by grind
-        have : binCached.raw[binCached.items[y.item]].pointer =
-          binCached'.raw[binCached'.items[y.item]].pointer := by
-          have : binCached.raw[binCached.items[y.item]].pointer =
-              binCached.raw.toList[binCached.items[y.item]].pointer := by grind
-          simp [this]
-          grind
-        split
-        · rename_i heq
-          simp [this] at heq
-          simp [heq]
-          grind
-        · rename_i heq
-          simp only [this, Prod.mk.injEq, imp_false, not_and] at heq
-          grind
-      else
-        have := updateBinCached_new binCached [y] (by grind) (by grind)
-        have := updateBinCached_new binCached' [y] (by grind) (by grind)
-        grind
+    let raw' := xs.toArray
+    let items' := binCached.items.erase x.item
+    let items'' := items'.map (fun x y => y - 1)
+    have hInv' : ItemCache.WF raw' items'' := by grind [itemCacheWF_of_erase]
+    let binCached' : CachedEarleyBin T N := ⟨raw', items'', hInv', {}⟩
+    specialize ih binCached' (by grind) (by grind)
+    rw [← ih]
+    grind [updateBinCached_eq_updateBinCached_of_erase]
 
 theorem updateBinCached_cons (bin : CachedEarleyBin T N) (y : BinItem T N) (ys : BinItems T N) :
     updateBinCached bin (y :: ys) = updateBinCached (updateBinCached bin [y]) ys := by
