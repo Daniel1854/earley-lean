@@ -65,7 +65,7 @@ TODO: lemma x ∈ itemsA raw or can grind do this efficiently??
 @[grind]
 public def ItemCache.WF {T N : Type} [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
     (raw : Array (BinItem T N)) (items : ItemCache T N) : Prop :=
-  (∀ x, (hx : x ∈ items) →  items[x] < raw.size
+  (∀ x, (hx : x ∈ items) → items[x] < raw.size
     ∧ ∃ (h : items[x] < raw.size), raw[items[x]].item = x)
   ∧ (∀ i, (hi : i < raw.size) → items.contains raw[i].item
     ∧ ∃ (h : items.contains raw[i].item), items[raw[i].item] = i)
@@ -79,17 +79,21 @@ abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
   Std.HashMap N (List (EarleyItem T N × Nat))
 
 /--
-A CompletionCache is well-formed, if all elements of the raw array with their index are
-members of the stored completionList for their input symbol of their rule.
+A CompletionCache is well-formed, if the elements of the raw array with their index are
+exactly the members of the stored completionList for their input symbol of their rule.
 
-TODO: there should be a more functional way to state this.
+TODO: look deeply if this is what I want. This is pretty convoluted
+Maybe I need a relation on the Nat within the possible completions for one NT as well
+since it is strictly increasing.
 -/
 @[grind]
-public def CompletionCache.WF {T N : Type} [BEq N] [Hashable N]
+public def CompletionCache.WF {T N : Type} [BEq T] [BEq N] [Hashable N]
     (raw : Array (BinItem T N)) (completions : CompletionCache T N) : Prop :=
-  ∀ i, (hi : i < raw.size) → completions.contains raw[i].item.rule.input
-    ∧ ∃ (h : completions.contains raw[i].item.rule.input),
-      (raw[i].item, i) ∈ completions[raw[i].item.rule.input]
+  (∀ A, (hx : A ∈ completions) →
+    ∀ x ∈ completions[A], (hx : x.2 < raw.size) → raw[x.2].item = x.1)
+  ∧ (∀ i, (hi : i < raw.size) → (A : N) →
+    (hnext : nextSymbol raw[i].item == some (Symbol.nonterminal A)) →
+    ∃ (h : A ∈ completions), (raw[i].item, i) ∈ completions[A])
 
 public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] where
@@ -163,7 +167,10 @@ lemma completeCached_eq_completeList {n : Nat} (bins : EarleyBins T N n)
     have : CompletionCache.WF binsCached[y.startIdx].raw binsCached[y.startIdx].completions := by
       sorry -- this will be injected through CachedEarleyBin most likely
     -- TODO: this seems to be one of the main usages of the inv of CompletionCache
-    simp only [CompletionCache.WF, Std.HashMap.contains_iff_mem, and_exists_self] at this
+    simp only [CompletionCache.WF, Prod.forall] at this
+    simp [filterWithIdx]
+    -- do I want to to induct on i? then I have to map the completions list to an increment /o\
+    --have := memFilterWithIdx_of_mem  P
     sorry
   grind [completeListI, completeCached]
 
