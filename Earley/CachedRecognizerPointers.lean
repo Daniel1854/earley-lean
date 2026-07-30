@@ -442,18 +442,7 @@ public def earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T}
     have : EarleyBins.WF G (rawList bins') := by grind [wfBins_of_earleyBinCached]
     earleyBinCached bins' k (by omega) (j+1) this
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
-decreasing_by
-  apply Nat.sub_lt_sub_left
-  · specialize hbins k (by lia)
-    let wfItemsBin := { x | isWellFormed G.rules w.size x }
-    have : (items (rawList bins)[k]).length ≤ wfItemsBin.ncard := by
-      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G w.size
-      have ⟨hNoDup, _, _, _⟩ := hbins
-      let P := (fun x => isWellFormed G.rules w.size x)
-      apply length_lte_ncard_of_superset (items (rawList bins)[k]) wfItemsBin P
-        (by grind) (by grind) hNoDup
-    grind
-  · simp
+decreasing_by exact decreasingAux hbins j k (by lia) (by grind)
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
