@@ -69,23 +69,24 @@ def sizePointer (p : Pointer) : Nat :=
 def sizePointers {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
-def sizeCachedBins {N : Type} [BEq N] [Hashable N] {n : Nat}
-    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+def sizeCachedBins {N : Type} {n : Nat}
+    [BEq T] [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
     (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.size) |>.sum
 
-def sizeCachedPointersBins {N : Type} [BEq N] [Hashable N] {n : Nat}
-    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+def sizeCachedPointersBins {N : Type} {n : Nat}
+    [BEq T] [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
     (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.size) |>.sum
 
-def sizeCachedPointersPointers {N : Type} [BEq N] [Hashable N] {n : Nat}
-    [BEq (Earley.Model.EarleyItem T N)] [Hashable (Earley.Model.EarleyItem T N)]
+def sizeCachedPointersPointers {N : Type} {n : Nat}
+    [BEq T] [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
     (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
-def benchRecognizer {N : Type} [BEq N] [Hashable N] [LawfulBEq (Earley.Model.EarleyItem T N)]
-    [Hashable (Earley.Model.EarleyItem T N)] (G : ContextFreeGrammarList T N)
+def benchRecognizer {N : Type}
+    [BEq T] [BEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
+    (G : ContextFreeGrammarList T N)
     (variant : Variant) (numChars : UInt32) : IO Unit := do
   match variant with
   | .default =>
