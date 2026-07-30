@@ -95,7 +95,7 @@ lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : A
     apply earleyBinCached_eq_earleyBinList
     simp only [initCachedBins, initBins, Array.length_toList]
     have : ItemCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
-    let bins := Vector.replicate (w.size + 1) ([] : List (BinItem T N))
+    let bins := Vector.replicate (w.size + 1) ([] : BinItems T N)
     let binsCached := Vector.replicate (w.size + 1)
       (⟨.empty,  {},  this, {}⟩ : CachedEarleyBin T N)
     let binsCached' := updateBinsCached binsCached 0 (initList G)

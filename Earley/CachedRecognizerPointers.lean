@@ -127,7 +127,7 @@ Gets called with the next symbol being the terminal `a` of the item `x` and retu
 if `a` matches the word for given index `k`.
 -/
 public def scanCached (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size)
-    (pre : Nat) : List (BinItem T N) :=
+    (pre : Nat) : BinItems T N :=
   if w[k] == a then
     [⟨incItem x (x.endIdx+1), Pointer.predecessor pre⟩]
   else
@@ -146,7 +146,7 @@ Returns items for each successful completion of item `y` using its startIdx for 
 `j` is the index of y in its bin.
 -/
 public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n)
-    (h : y.startIdx < n) (j : Nat) : List (BinItem T N) :=
+    (h : y.startIdx < n) (j : Nat) : BinItems T N :=
   -- The origin bin filtered for matchings with y
   let xMatches : List (EarleyItem T N × Nat) := bins[y.startIdx].completions.getD y.rule.input []
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
@@ -171,7 +171,7 @@ lemma completeCached_eq_completeList {n : Nat} (bins : EarleyBins T N n)
 Add given list one by one into `bin`, if they are not already part of `bin`.
 -/
 @[inline, grind]
-public def updateBinCached (bin : CachedEarleyBin T N) : List (BinItem T N) → CachedEarleyBin T N
+public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → CachedEarleyBin T N
   | [] => bin
   | y::ys =>
     if h : bin.items.contains y.item then
@@ -216,13 +216,13 @@ public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
 public lemma updateBin_nil (bin : CachedEarleyBin T N) : updateBinCached bin [] = bin := by
   simp [updateBinCached]
 
-public lemma updateBinCached_new (bin : CachedEarleyBin T N) (newBin : List (BinItem T N))
+public lemma updateBinCached_new (bin : CachedEarleyBin T N) (newBin : BinItems T N)
     (h : ∀ x ∈ items newBin, bin.items.contains x = false) (hN : (items newBin).Nodup) :
     (updateBinCached bin newBin).raw.toList = bin.raw.toList ++ newBin := by
   fun_induction updateBinCached bin newBin <;> grind
 
 public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
-    (xs : List (BinItem T N)) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
+    (xs : BinItems T N) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
     (items' : ItemCache T N) (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1)) :
     ItemCache.WF xs.toArray items' := by
   simp only [ItemCache.WF, hitems, Std.HashMap.mem_map, Std.HashMap.mem_erase, beq_eq_false_iff_ne,
@@ -263,7 +263,7 @@ public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
 
 -- A very mechanical proof, but thats to be expected since it is such an unnatural thing.
 public lemma updateBinCached_eq_updateBinCached_of_erase (bin bin' : CachedEarleyBin T N)
-    (x y : BinItem T N) (xs : List (BinItem T N)) (heq : bin.raw.toList = x :: xs)
+    (x y : BinItem T N) (xs : BinItems T N) (heq : bin.raw.toList = x :: xs)
     (hneq : x.item ≠ y.item) (items' : ItemCache T N)
     (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1))
     (inv : ItemCache.WF xs.toArray items') (heq : bin' = ⟨xs.toArray, items', inv, ∅⟩) :
