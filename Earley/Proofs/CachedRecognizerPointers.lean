@@ -46,7 +46,6 @@ open Utils
 variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
   [Hashable N] [Hashable (EarleyItem T N)]
 
-omit [LawfulBEq T] [LawfulBEq N] in
 lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Array T) (j k : Nat)
     (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
     (binsCached : CachedEarleyBins T N (w.size + 1))
@@ -85,7 +84,6 @@ lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Arr
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by exact decreasingAux hbins j k (by grind) (by simp only [not_le] at this; exact this)
 
-omit [LawfulBEq T] [LawfulBEq N] in
 lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : Array T)
     (k : Nat) (hk : k < w.size + 1) :
     rawList (earleyBinsCached G w k hk).bins = (earleyBinsList G w.toList k hk).bins := by
@@ -94,10 +92,11 @@ lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : A
     simp only [earleyBinsCached, Array.length_toList, earleyBinsList]
     apply earleyBinCached_eq_earleyBinList
     simp only [initCachedBins, initBins, Array.length_toList]
-    have : ItemCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
+    have invItems : ItemCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
+    have invCompletions : CompletionCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
     let bins := Vector.replicate (w.size + 1) ([] : BinItems T N)
     let binsCached := Vector.replicate (w.size + 1)
-      (⟨.empty,  {},  this, {}⟩ : CachedEarleyBin T N)
+      (⟨.empty,  {},  invItems, {}, invCompletions⟩ : CachedEarleyBin T N)
     let binsCached' := updateBinsCached binsCached 0 (initList G)
     have : ∀ k, (hk : k < w.size + 1) → binsCached'[k].raw.toList =
         (bins.set 0 (initList G) (by simp))[k] := by
