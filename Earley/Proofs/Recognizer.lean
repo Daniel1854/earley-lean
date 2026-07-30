@@ -665,8 +665,7 @@ lemma completeList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
       have : items (completeList x.item (earleyBinList bins' k hk (j + 1) hbins').bins
           (by grind) j) ⊆ items bins'[k] := by
         grind [updateBinsNewBin_extensive]
-      apply subset_trans this
-      apply earleyBinList_extensive
+      grind [earleyBinList_extensive]
     simp only [hnk]
     apply updateBins_of_sub hsub
   else
@@ -779,8 +778,7 @@ lemma earleyBinList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
                 items (earleyBinList bins' k hk (i + 1) hbins').bins[k+1] := by
               have : items (scanList w x.item t k (by lia) j) ⊆ items bins'[k+1] := by
                 grind [updateBinsNewBin_extensive]
-              apply subset_trans this
-              apply earleyBinList_extensive
+              grind [earleyBinList_extensive]
             simp only [hnk]
             apply updateBins_of_sub hsub
           else
@@ -800,8 +798,7 @@ lemma earleyBinList_idem {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
               items (earleyBinList bins' k hk (i + 1) hbins').bins[k] := by
             have : items (predictList Gₗ nt k) ⊆ items bins'[k] := by
               grind [updateBinsNewBin_extensive]
-            apply subset_trans this
-            apply earleyBinList_extensive
+            grind [earleyBinList_extensive]
           simp only [hnk]
           apply updateBins_of_sub hsub
         else
