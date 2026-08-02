@@ -327,26 +327,20 @@ lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N)
     (binCached : CachedEarleyBin T N) (i : Nat) (A : N)
     (heq : slice bin i bin.length = binCached.raw.toList) :
     Std.HashMap.getD binCached.completions A [] =
-    filterWithIdxAux (fun x => nextSymbol x == some (Symbol.nonterminal A)) 0 (items bin) := by
-  let P := fun x : EarleyItem T N => nextSymbol x == some (Symbol.nonterminal A)
-  -- I would enjoy doing fun_induction but some hypothesis go missing so I cant.
-  -- Need to recurse manually I guess? unless I do do a proof over i
-  match h : bin with
-  | [] =>
-    simp [items, filterWithIdxAux]
+    filterWithIdxAux (fun x => nextSymbol x == some (Symbol.nonterminal A)) i (items bin) := by
+  induction bin generalizing i binCached with
+  | nil =>
+    simp at heq
+    have := binCached.invCompletions.right
+    simp only [CompletionCache.EntriesWF, and_exists_self] at this
+    have : ∀ (A : N) (hx : A ∈ binCached.completions),
+        ∀ x ∈ binCached.completions[A], False  := by grind
+    have : binCached.completions = ∅ := by
+      simp at this
+      sorry
     sorry
-  | x :: xs =>
-    have := binCached.invCompletions
-    if hP : P x.item then
-      simp only [items, List.map_cons, filterWithIdxAux, hP, ↓reduceIte, zero_add, P]
-      sorry
-    else
-      simp only [items, List.map_cons, filterWithIdxAux, hP, Bool.false_eq_true, ↓reduceIte,
-        zero_add, P]
-      sorry
-  --simp only [CompletionCache.WF, Prod.forall] at this
-  -- do I want to to induct on i? then I have to map the completions list to an increment /o\
-  --have := memFilterWithIdx_of_mem  P
+  | cons x xs ih =>
+    sorry
 
 lemma completeCached_eq_completeList {n : Nat} (bins : EarleyBins T N n)
     (binsCached : CachedEarleyBins T N n) (y : EarleyItem T N) (hS : y.startIdx < n)
