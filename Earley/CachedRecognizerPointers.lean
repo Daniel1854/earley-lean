@@ -6,6 +6,7 @@ Authors: Daniel Soukup
 module
 public import Earley.Model
 public import Earley.Proofs.Model
+public import Earley.Slice
 public import Earley.Filter
 public import Earley.Proofs.Finiteness
 public import Earley.Recognizer
@@ -323,7 +324,8 @@ lemma memCache_of_getElem {x : EarleyItem T N} {bin : CachedEarleyBin T N} {A : 
 -- Maybe I dont need the full invariant?
 -- TODO: Requires some inv about bin? nodup on bin seems very likely
 lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N)
-    (binCached : CachedEarleyBin T N) (A : N) (heq : bin = binCached.raw.toList) :
+    (binCached : CachedEarleyBin T N) (i : Nat) (A : N)
+    (heq : slice bin i bin.length = binCached.raw.toList) :
     Std.HashMap.getD binCached.completions A [] =
     filterWithIdxAux (fun x => nextSymbol x == some (Symbol.nonterminal A)) 0 (items bin) := by
   let P := fun x : EarleyItem T N => nextSymbol x == some (Symbol.nonterminal A)
@@ -354,7 +356,8 @@ lemma completeCached_eq_completeList {n : Nat} (bins : EarleyBins T N n)
   let P := fun x : EarleyItem T N => nextSymbol x == some (Symbol.nonterminal y.rule.input)
   have : binsCached[y.startIdx].completions.getD y.rule.input []
       = filterWithIdx (items bins[y.startIdx]) P := by
-    grind [getCompletionCache_eq_filterWithIdxAux]
+    apply getCompletionCache_eq_filterWithIdxAux (i := 0)
+    grind
   grind [completeListI, completeCached]
 
 /--
@@ -485,50 +488,39 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
    -- Adjusting CachedEarleyBin for the induction step is rather cumbersome since we need to
    -- - cut the first element off (x)
    -- - remove x from the items cache, while also decrementing all indices in the items cache
-   -- - remove x from the completions cache
+   -- - remove x from the completions cache, while also decrementing
+   --   all indices in all lists of the completion cache
+   -- TODO: this is the same that is required for reasoning with filterWithIdxAux right?
   | case4 y x xs hneqI ih =>
     let raw' := xs.toArray
     let items' := binCached.items.erase x.item
-    let items'' := items'.map (fun x y => y - 1)
-    have hInv' : ItemCache.WF raw' items'' := by grind [itemCacheWF_of_erase]
+    let items'' := items'.map (fun item idx => idx - 1)
+    have invItems'' : ItemCache.WF raw' items'' := by grind [itemCacheWF_of_erase]
+    let completions' := binCached.completions.map (fun A xs => xs.map (fun x idx => (x, idx-1)))
     match hnext : x.item.nextSymbol with
     | some (Symbol.nonterminal A) =>
-      -- TODO: suddenly, grind became useless here huh
-      -- It does make somewhat sense to lemma this anyway.
-      have : A ∈ binCached.completions := by
-        clear hInv' items'' items' raw' ih hneqI hN
-        have := binCached.invCompletions
-        have : x ∈ binCached.raw.toList := by grind
-        have : x ∈ binCached.raw := by grind
-        sorry
       -- I can simply pop the first element since I know the list to be sorted.
       -- But this doesnt make the proof easier.
-      let completions' := binCached.completions.alter A
+      let completions'' := binCached.completions.alter A
         (fun zs => match zs with
         | some zs => match zs with
           | [] => ([] : List (EarleyItem T N × Nat))
           | z :: zs => zs
         | none => ([] : List (EarleyItem T N × Nat)))
-      have invComp' : CompletionCache.WF raw' completions' := by
-        clear hInv' items'' items' ih hneqI hN
+      have invCompletions'' : CompletionCache.WF raw' completions'' := by
+        -- TODO: stub this
         sorry
       let binCached' : CachedEarleyBin T N :=
-        ⟨raw', items'', hInv', completions', invComp'⟩
+        ⟨raw', items'', invItems'', completions'', invCompletions''⟩
       specialize ih binCached' (by grind) (by grind)
       rw [← ih]
       grind [updateBinCached_eq_updateBinCached_of_erase]
     | none | some (Symbol.terminal t) =>
-      have invComp' : CompletionCache.WF raw' binCached.completions := by
-        have := binCached.invCompletions
-        simp only [raw']
-        clear hInv' items'' items' raw' ih hneqI hN
-        -- hm. not even this is useful.
-        have : ∀ A, (h : A ∈ binCached.completions) →
-            x.item ∉ binCached.completions[A].map Prod.fst := by
-          sorry
+      have invCompletions' : CompletionCache.WF raw' binCached.completions := by
+        -- TODO: stub this
         sorry
       let binCached' : CachedEarleyBin T N :=
-        ⟨raw', items'', hInv', binCached.completions, invComp'⟩
+        ⟨raw', items'', invItems'', binCached.completions, invCompletions'⟩
       specialize ih binCached' (by grind) (by grind)
       rw [← ih]
       grind [updateBinCached_eq_updateBinCached_of_erase]
