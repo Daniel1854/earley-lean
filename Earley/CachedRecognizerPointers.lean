@@ -206,28 +206,27 @@ public lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A :
       | some zs => zs.append [⟨y.item, bin.raw.size⟩]
       | none => ([⟨y.item, bin.raw.size⟩] : List (EarleyItem T N × Nat)))) :
     CompletionCache.WF raw' completions' := by
-  have ⟨hl, hr⟩ := bin.invCompletions
   if h : A ∈ bin.completions then
-    have : A ∈ completions' := by grind
-    have : ⟨y.item, bin.raw.size⟩ ∈ completions'[A] := by
-      simp only [hC, List.append_eq, Std.HashMap.getElem_alter_self]
-      grind
-    have : bin.completions[A] ⊆ completions'[A] := by
-      simp only [hC, List.append_eq, Std.HashMap.getElem_alter_self]
-      grind
-    simp only [hC, List.append_eq]
-    refine ⟨by grind, ?_⟩
-    clear hl
-    intro B hmem x hmemx
-    if hAB : A = B then
-      if hxy : x = (y.item, bin.raw.size) then
+    refine ⟨?_, ?_⟩
+    · have : A ∈ completions' := by grind
+      have : bin.completions[A] ⊆ completions'[A] := by
+        simp only [hC, List.append_eq, Std.HashMap.getElem_alter_self]
         grind
-      else
+      have : ⟨y.item, bin.raw.size⟩ ∈ completions'[A] := by
+        simp only [hC, List.append_eq, Std.HashMap.getElem_alter_self]
         grind
-    else
+      have := bin.invCompletions.left
+      grind
+    · have := bin.invCompletions.right
+      simp only [hC, List.append_eq]
+      intro B hmem x hmemx
       grind
   else
-    grind
+    refine ⟨?_, ?_⟩
+    · have := bin.invCompletions.left
+      grind
+    · have := bin.invCompletions.right
+      grind
 
 public lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
     {y : BinItem T N} (hnext : ∀ A, y.item.nextSymbol ≠ some (Symbol.nonterminal A)) :
