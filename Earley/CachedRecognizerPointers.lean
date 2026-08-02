@@ -161,6 +161,13 @@ public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (wlen : Nat
 
 section WellFormedBin
 
+@[grind →]
+public lemma memNT_of_completionCacheWF {bin : CachedEarleyBin T N} {A : N}
+    {x : BinItem T N} (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
+    (hmemx : x ∈ bin.raw) : A ∈ bin.completions := by
+  have := bin.invCompletions.left
+  grind [Array.getElem_of_mem]
+
 omit [LawfulBEq T] [LawfulBEq N] in
 public lemma itemCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
     (heq : ∀ i, (hi : i < bin.raw.size ∧ i < raw'.size) → bin.raw[i].item = raw'[i].item)
@@ -191,34 +198,31 @@ public lemma itemCacheWF_of_push {bin : CachedEarleyBin T N} {y : BinItem T N}
   · have := bin.invItems.right
     grind
 
--- unclear if the itemcache could become relevant
---  {items' : ItemCache T N} (hI : items' = bin.items.insert y.item bin.raw.size)
-public lemma completionCacheWF_of_push_of_nextA {bin : CachedEarleyBin T N} {A : N}
-    {y : BinItem T N} (h : ¬ bin.items.contains y.item = true)
-    (hnext : y.item.nextSymbol = some (Symbol.nonterminal A))
+public lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A : N}
+    {y : BinItem T N} (hnext : y.item.nextSymbol = some (Symbol.nonterminal A))
     {raw' : Array (BinItem T N)} (hR : raw' = bin.raw.push y)
     {completions' : CompletionCache T N} (hC : completions' = bin.completions.alter A
       (fun zs => match zs with
       | some zs => zs.append [⟨y.item, bin.raw.size⟩]
       | none => ([⟨y.item, bin.raw.size⟩] : List (EarleyItem T N × Nat)))) :
     CompletionCache.WF raw' completions' := by
-  have inv := bin.invCompletions
-  have : A ∈ completions' := by grind
-  have : ⟨y.item, bin.raw.size⟩ ∈ completions'[A] := by sorry
+  have ⟨hl, hr⟩ := bin.invCompletions
   if h : A ∈ bin.completions then
-    -- this seems to be an issue, but I know diff between completions[A] and completions'[A]
-    -- is exactly (y.item, bin.raw.size), so it would be possible to prove
-    have : bin.completions[A] ⊆ completions'[A] := by sorry
+    have : A ∈ completions' := by grind
+    have : ⟨y.item, bin.raw.size⟩ ∈ completions'[A] := by
+      simp only [hC, List.append_eq, Std.HashMap.getElem_alter_self]
+      grind
+    have : bin.completions[A] ⊆ completions'[A] := by
+      simp only [hC, List.append_eq, Std.HashMap.getElem_alter_self]
+      grind
+    simp only [hC, List.append_eq]
     refine ⟨by grind, ?_⟩
+    clear hl
     intro B hmem x hmemx
     if hAB : A = B then
       if hxy : x = (y.item, bin.raw.size) then
         grind
       else
-        have : x ∈ completions'[A] := by grind
-        -- this seems to be an issue, but I know diff between completions[A] and completions'[A]
-        -- is exactly (y.item, bin.raw.size), so it would be possible to prove
-        have : x ∈ bin.completions[A] := by sorry
         grind
     else
       grind
@@ -233,14 +237,6 @@ public lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
     grind
   · have := bin.invCompletions.right
     grind
-
--- this should really be trivial to deduce from the WF_inv?
-public lemma memNT_of_completionCacheWF {bin : CachedEarleyBin T N} {A : N}
-    {x : BinItem T N} (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
-    (hmemx : x ∈ bin.raw) : A ∈ bin.completions := by
-  have ⟨hl, hr⟩ := bin.invCompletions
-  --grind
-  sorry
 
 /--
 List-based implementation of the .scan operation.
@@ -355,7 +351,7 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
           | some zs => zs.append [⟨y.item, bin.raw.size⟩]
           | none => ([⟨y.item, bin.raw.size⟩] : List (EarleyItem T N × Nat)))
         have invCompletions' : CompletionCache.WF raw' completions' :=
-          completionCacheWF_of_push_of_nextA h hnext (by simp [raw']) (by simp [completions'])
+          completionCacheWF_of_push_of_nextA bin hnext (by simp [raw']) (by simp [completions'])
         updateBinCached ⟨raw', items', invItems', completions', invCompletions'⟩ ys
       | some (Symbol.terminal t) | none =>
         -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
