@@ -53,16 +53,35 @@ abbrev ItemCache (T N : Type) [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
   Std.HashMap (EarleyItem T N) Nat
 
 /--
-An ItemCache is well-formed, if it contains exclusively all elements of the raw array and
-the saved index corresponds to the index within the raw array.
+A raw array is well-formed in relation to an ItemCache,
+if each entry of the array got an entry in the item cache with the corresponding index stored.
+-/
+@[grind]
+public def ItemCache.RawWF {T N : Type} [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
+    (raw : Array (BinItem T N)) (items : ItemCache T N) : Prop :=
+  ∀ i, (hi : i < raw.size) → items.contains raw[i].item
+    ∧ ∃ (h : items.contains raw[i].item), items[raw[i].item] = i
+
+/--
+An ItemCache is well-formed in relation to a raw array,
+if all entries `{item: i}` of the cache correspond in a way,
+that the item at index `i` of the raw array is actually the item `item`.
+-/
+@[grind]
+public def ItemCache.EntriesWF {T N : Type} [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
+    (raw : Array (BinItem T N)) (items : ItemCache T N) : Prop :=
+  ∀ x, (hx : x ∈ items) → items[x] < raw.size
+    ∧ ∃ (h : items[x] < raw.size), raw[items[x]].item = x
+
+/--
+An ItemCache is well-formed, if both
+- the raw array is well-formed in relation to the item cache
+- the item cache is well-formed in relation to raw array
 -/
 @[grind]
 public def ItemCache.WF {T N : Type} [BEq (EarleyItem T N)] [Hashable (EarleyItem T N)]
     (raw : Array (BinItem T N)) (items : ItemCache T N) : Prop :=
-  (∀ x, (hx : x ∈ items) → items[x] < raw.size
-    ∧ ∃ (h : items[x] < raw.size), raw[items[x]].item = x)
-  ∧ (∀ i, (hi : i < raw.size) → items.contains raw[i].item
-    ∧ ∃ (h : items.contains raw[i].item), items[raw[i].item] = i)
+  ItemCache.RawWF raw items ∧ ItemCache.EntriesWF raw items
 
 /--
 A cache for accessing the possible rules for a completion within a single bin.
@@ -73,35 +92,46 @@ abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
   Std.HashMap N (List (EarleyItem T N × Nat))
 
 /--
-A CompletionCache is well-formed, if the elements of the raw array with their index are
-exactly the members of the stored completionList for their input symbol of their rule.
+A raw array is well-formed in relation to a CompletionCache,
+if each entry of the array that has a non-terminal as the next symbol got an entry
+in the completion cache for that non-terminal with the corresponding item and index stored.
+-/
+@[grind]
+public def CompletionCache.RawWF {T N : Type} [BEq T] [BEq N] [Hashable N]
+    (raw : Array (BinItem T N)) (completions : CompletionCache T N) : Prop :=
+  ∀ i, (hi : i < raw.size) → (A : N) →
+    (hnext : nextSymbol raw[i].item == some (Symbol.nonterminal A)) →
+    ∃ (h : A ∈ completions), (raw[i].item, i) ∈ completions[A]
 
-First part:
-For all NTs part of the cache:
-Each element (x,i) in that NTs list proves that raw[i].item = x
+/--
+A CompletionCache is well-formed in relation to a raw array,
+if the list stored for each non-terminal `List (item, i)` corresponds to the raw array in a way,
+such that all items that got that non-terminal as their next symbol are recorded
+together with their index in the raw array.
 
-Second part:
-For all elements in raw:
-If the next symbol of that element is a certain NT, then that NT has to be part of the cache
-and the entry (raw[i].item, i) has to be part of the list for that NT.
+TODO: this last half-sentence is too wiggly and wont suffice for proofs I think.
+      Maybe I need a relation on the Nat within the possible completions for one NT as well
+      since it is strictly increasing?
+-/
+@[grind]
+public def CompletionCache.EntriesWF {T N : Type} [BEq T] [BEq N] [Hashable N]
+    (raw : Array (BinItem T N)) (completions : CompletionCache T N) : Prop :=
+  ∀ A, (hx : A ∈ completions) → ∀ x ∈ completions[A],
+    x.2 < raw.size ∧ ∃ (hx : x.2 < raw.size), raw[x.2].item = x.1
 
-This last half-sentence is a bit wiggly.
-Maybe I need a relation on the Nat within the possible completions for one NT as well
-since it is strictly increasing?
+/--
+A CompletionCache is well-formed, if both
+- the raw array is well-formed in relation to the completion cache
+- the completion cache is well-formed in relation to raw array
 
-An inductive predicate definition would be really nice, but then the structure of my proofs
+TODO: An inductive predicate definition would be really nice, but then the structure of my proofs
 doesnt work at all since I am unable to remove elements from my linked list entries?
 A bit unclear how that would interact.
 -/
 @[grind]
 public def CompletionCache.WF {T N : Type} [BEq T] [BEq N] [Hashable N]
     (raw : Array (BinItem T N)) (completions : CompletionCache T N) : Prop :=
-  (∀ A, (hx : A ∈ completions) →
-    ∀ x ∈ completions[A], x.2 < raw.size ∧
-    ∃ (hx : x.2 < raw.size), raw[x.2].item = x.1)
-  ∧ (∀ i, (hi : i < raw.size) → (A : N) →
-    (hnext : nextSymbol raw[i].item == some (Symbol.nonterminal A)) →
-    ∃ (h : A ∈ completions), (raw[i].item, i) ∈ completions[A])
+  CompletionCache.RawWF raw completions ∧ CompletionCache.EntriesWF raw completions
 
 public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] where
@@ -131,27 +161,35 @@ public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (wlen : Nat
 
 section WellFormedBin
 
--- TODO: a bit unclear why I cant state the same thing with itemsA
 omit [LawfulBEq T] [LawfulBEq N] in
 public lemma itemCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
     (heq : ∀ i, (hi : i < bin.raw.size ∧ i < raw'.size) → bin.raw[i].item = raw'[i].item)
     (h : bin.raw.size = raw'.size) : ItemCache.WF raw' bin.items := by
-  have := bin.invItems
-  grind
+  constructor
+  · have := bin.invItems.left
+    grind
+  · have := bin.invItems.right
+    grind
 
 public lemma completionCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
     (heq : ∀ i, (hi : i < bin.raw.size ∧ i < raw'.size) → bin.raw[i].item = raw'[i].item)
     (h : bin.raw.size = raw'.size) : CompletionCache.WF raw' bin.completions := by
-  have := bin.invCompletions
-  grind
+  constructor
+  · have := bin.invCompletions.left
+    grind
+  · have := bin.invCompletions.right
+    grind
 
 omit [LawfulBEq T] [LawfulBEq N] in
 public lemma itemCacheWF_of_push {bin : CachedEarleyBin T N} {y : BinItem T N}
     (h : ¬ bin.items.contains y.item = true) {raw' : Array (BinItem T N)}
     (hR : raw' = bin.raw.push y) {items' : ItemCache T N}
     (hI : items' = bin.items.insert y.item bin.raw.size) : ItemCache.WF raw' items' := by
-  have := bin.invItems
-  grind
+  constructor
+  · have := bin.invItems.left
+    grind
+  · have := bin.invItems.right
+    grind
 
 -- unclear if the itemcache could become relevant
 --  {items' : ItemCache T N} (hI : items' = bin.items.insert y.item bin.raw.size)
@@ -171,7 +209,7 @@ public lemma completionCacheWF_of_push_of_nextA {bin : CachedEarleyBin T N} {A :
     -- this seems to be an issue, but I know diff between completions[A] and completions'[A]
     -- is exactly (y.item, bin.raw.size), so it would be possible to prove
     have : bin.completions[A] ⊆ completions'[A] := by sorry
-    refine ⟨?_, by grind⟩
+    refine ⟨by grind, ?_⟩
     intro B hmem x hmemx
     if hAB : A = B then
       if hxy : x = (y.item, bin.raw.size) then
@@ -190,14 +228,17 @@ public lemma completionCacheWF_of_push_of_nextA {bin : CachedEarleyBin T N} {A :
 public lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
     {y : BinItem T N} (hnext : ∀ A, y.item.nextSymbol ≠ some (Symbol.nonterminal A)) :
     CompletionCache.WF (bin.raw.push y) bin.completions := by
-  have := bin.invCompletions
-  grind
+  constructor
+  · have := bin.invCompletions.left
+    grind
+  · have := bin.invCompletions.right
+    grind
 
 -- this should really be trivial to deduce from the WF_inv?
 public lemma memNT_of_completionCacheWF {bin : CachedEarleyBin T N} {A : N}
     {x : BinItem T N} (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
     (hmemx : x ∈ bin.raw) : A ∈ bin.completions := by
-  have := bin.invCompletions
+  have ⟨hl, hr⟩ := bin.invCompletions
   --grind
   sorry
 
@@ -344,31 +385,18 @@ public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
     (xs : BinItems T N) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
     (items' : ItemCache T N) (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1)) :
     ItemCache.WF xs.toArray items' := by
-  simp only [ItemCache.WF, hitems, Std.HashMap.mem_map, Std.HashMap.mem_erase, beq_eq_false_iff_ne,
-    ne_eq, Std.HashMap.getElem_map, Std.HashMap.getElem_erase, List.size_toArray,
-    List.getElem_toArray, and_exists_self, forall_and_index, Std.HashMap.contains_map,
-    Std.HashMap.contains_erase, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
-    Std.HashMap.contains_iff_mem]
+  simp only [ItemCache.WF, ItemCache.RawWF, List.size_toArray, hitems, List.getElem_toArray,
+    Std.HashMap.contains_map, Std.HashMap.contains_erase, Bool.and_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true, beq_eq_false_iff_ne, ne_eq, Std.HashMap.contains_iff_mem,
+    Std.HashMap.getElem_map, Std.HashMap.getElem_erase, and_exists_self, ItemCache.EntriesWF,
+    Std.HashMap.mem_map, Std.HashMap.mem_erase, forall_and_index]
   have : bin.raw.toList.length = bin.raw.size := by grind
   have : 0 < bin.raw.size := by grind
   have hzs : xs.length = bin.raw.size - 1 := by grind
-  have ⟨hlInv, hrInv⟩ := bin.invItems
   refine ⟨?_, ?_⟩
-  · intro x' hx' hmemx
-    simp only [and_exists_self] at hlInv
-    have := hlInv x' (by grind)
-    rcases this with ⟨w, hw⟩
-    clear hlInv hrInv
-    use (by grind)
-    let idx := bin.items[x']
-    have : idx < (x :: xs).length := by lia
-    have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
-    grind
   · intro i hi
-    simp only [and_exists_self] at hrInv
-    have := hrInv (i+1) (by lia)
+    have := bin.invItems.left (i+1) (by lia)
     rcases this with ⟨w, hw⟩
-    clear hlInv hrInv
     have h1 : ¬x.item = xs[i].item := by
       simp only [items, List.map_cons, List.nodup_cons, List.mem_map, not_exists, not_and] at hN
       grind
@@ -378,6 +406,14 @@ public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
       grind
     have h3 : xs[i].item ∈ bin.items := by grind
     use ⟨h1, h3⟩
+    grind
+  · intro x' hx' hmemx
+    have := bin.invItems.right x' hmemx
+    rcases this with ⟨w, hw⟩
+    use (by grind)
+    let idx := bin.items[x']
+    have : idx < (x :: xs).length := by lia
+    have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
     grind
 
 -- A very mechanical proof, but thats to be expected since it is such an unnatural thing.
@@ -394,11 +430,12 @@ public lemma updateBinCached_eq_updateBinCached_of_erase {bin bin' : CachedEarle
     have : 0 < bin.raw.size := by grind
     have : bin'.items.contains y.item = true := by grind
     simp only [updateBinCached, hcont, this, ↓reduceDIte, List.append_eq, Array.swapAt_def]
-    have := bin.invItems
     have : bin.raw[0] = x := by
       have : bin.raw.toList[0] = x := by grind
       grind
-    have : bin.items[y.item] ≠ 0 := by grind
+    have : bin.items[y.item] ≠ 0 := by
+      have := bin.invItems.right
+      grind
     have : bin.items[y.item] = bin'.items[y.item] + 1 := by grind
     have : bin.items[y.item] < bin.raw.size := by grind
     have : bin'.items[y.item] < bin'.raw.size := by grind
@@ -422,12 +459,12 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
     (updateBinCached binCached [y]).raw.toList = updateBinAux y bin := by
   fun_induction updateBinAux y bin generalizing binCached with
   | case1 y =>
-    have := binCached.invItems
+    have := binCached.invItems.right
     simp only [Array.toList_eq_nil_iff] at heq
     grind
   -- Matching raw items: merge pointer
   | case2 y x xs heqI xp xP yp yP heqP =>
-    have := binCached.invItems
+    have := binCached.invItems.left
     have : 0 < binCached.raw.size := by grind
     have hx : binCached.raw[0] = x := by
       have : binCached.raw.toList[0] = x := by grind
@@ -435,7 +472,7 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
     grind [Array.toList_set]
   -- Matching no-raw items: no-op
   | case3 y x xs heqI hneqP =>
-    have := binCached.invItems
+    have := binCached.invItems.left
     have : 0 < binCached.raw.size := by grind
     have hx : binCached.raw[0] = x := by
       have : binCached.raw.toList[0] = x := by grind
@@ -458,7 +495,8 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
       have : A ∈ binCached.completions := by
         clear hInv' items'' items' raw' ih hneqI hN
         have := binCached.invCompletions
-        have : x ∈ binCached.raw := by sorry
+        have : x ∈ binCached.raw.toList := by grind
+        have : x ∈ binCached.raw := by grind
         sorry
       -- I can simply pop the first element since I know the list to be sorted.
       -- But this doesnt make the proof easier.
