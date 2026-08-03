@@ -307,14 +307,36 @@ public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x 
   · have := bin.invCompletions.right
     sorry
 
+public lemma mem_of_mem_of_getD {α β : Type} [BEq α] [Hashable α] (S : Std.HashMap α (List β))
+    (key : α) (x : β) (h : x ∈ S.getD key []) (hex : key ∈ S) : x ∈ S[key] := by
+  simp [Std.HashMap.getD] at h
+  sorry
+--  x ∈ Std.HashMap.getD bin.completions A []
+--but is expected to have type
+--  x ∈ bin.completions[A]
+
+#check List.not_mem_nil
+
 -- this is true since the one with the index 0 is x and
 -- x does not have A as the nextSymbol
 public lemma noZero_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {A : N} {x : BinItem T N}
     {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
-    (hnext : ∀ A, x.item.nextSymbol ≠ some (Symbol.nonterminal A)) :
+    (hnext : ∀ A, ¬ x.item.nextSymbol = some (Symbol.nonterminal A)) :
     ∀ x ∈ (bin.completions.getD A []), 0 < x.2 := by
   have := bin.invCompletions.right.right A
-  sorry
+  if h : bin.completions.getD A [] = [] then
+    grind
+  else
+    intro y hmem
+    if hy : x.item = y.1 then
+      if h : A ∈ bin.completions then
+        specialize this h y
+        have : y ∈ bin.completions[A] := by grind [mem_of_mem_of_getD]
+        grind
+      else
+        grind [Std.HashMap.getD_eq_fallback]
+    else
+      sorry
 
 public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {x : BinItem T N}
     {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
