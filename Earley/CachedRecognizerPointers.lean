@@ -308,6 +308,14 @@ public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBin
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
   xMatches.map (fun ⟨x,i⟩ => ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
+-- TODO: this one is unused
+lemma memCache_of_getElem {x : EarleyItem T N} {bin : CachedEarleyBin T N} {A : N}
+    (hnext : nextSymbol x == some (Symbol.nonterminal A)) (hA : A ∈ bin.completions)
+    (k : Nat) (hk : k < bin.raw.size)
+    (hmem : x = bin.raw[k].item) : (x, k) ∈ bin.completions[A] := by
+  have := bin.invCompletions
+  grind
+
 -- Very likely requires induction on i.
 -- TODO: this is a pain since I need to restrict the completion Cache then,
 -- BUT to maintain the symmetric part of the completion invariant,
