@@ -237,6 +237,42 @@ public lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
   · have := bin.invCompletions.right
     grind
 
+omit [LawfulBEq T] [LawfulBEq N] in
+public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
+    (xs : BinItems T N) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
+    (items' : ItemCache T N) (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1)) :
+    ItemCache.WF xs.toArray items' := by
+  simp only [ItemCache.WF, ItemCache.RawWF, List.size_toArray, hitems, List.getElem_toArray,
+    Std.HashMap.contains_map, Std.HashMap.contains_erase, Bool.and_eq_true, Bool.not_eq_eq_eq_not,
+    Bool.not_true, beq_eq_false_iff_ne, ne_eq, Std.HashMap.contains_iff_mem,
+    Std.HashMap.getElem_map, Std.HashMap.getElem_erase, and_exists_self, ItemCache.EntriesWF,
+    Std.HashMap.mem_map, Std.HashMap.mem_erase, forall_and_index]
+  have : bin.raw.toList.length = bin.raw.size := by grind
+  have : 0 < bin.raw.size := by grind
+  have hzs : xs.length = bin.raw.size - 1 := by grind
+  refine ⟨?_, ?_⟩
+  · intro i hi
+    have := bin.invItems.left (i+1) (by lia)
+    rcases this with ⟨w, hw⟩
+    have h1 : ¬x.item = xs[i].item := by
+      simp only [items, List.map_cons, List.nodup_cons, List.mem_map, not_exists, not_and] at hN
+      grind
+    have h2 : xs[i].item = bin.raw[i+1].item := by
+      have : i + 1 < (x :: xs).length := by lia
+      have : (x ::xs)[i+1].item = bin.raw[i+1].item := by grind
+      grind
+    have h3 : xs[i].item ∈ bin.items := by grind
+    use ⟨h1, h3⟩
+    grind
+  · intro x' hx' hmemx
+    have := bin.invItems.right x' hmemx
+    rcases this with ⟨w, hw⟩
+    use (by grind)
+    let idx := bin.items[x']
+    have : idx < (x :: xs).length := by lia
+    have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
+    grind
+
 /--
 List-based implementation of the .scan operation.
 
@@ -374,42 +410,6 @@ public lemma updateBinCached_new (bin : CachedEarleyBin T N) (newBin : BinItems 
     (h : ∀ x ∈ items newBin, bin.items.contains x = false) (hN : (items newBin).Nodup) :
     (updateBinCached bin newBin).raw.toList = bin.raw.toList ++ newBin := by
   fun_induction updateBinCached bin newBin <;> grind
-
-omit [LawfulBEq T] [LawfulBEq N] in
-public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
-    (xs : BinItems T N) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
-    (items' : ItemCache T N) (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1)) :
-    ItemCache.WF xs.toArray items' := by
-  simp only [ItemCache.WF, ItemCache.RawWF, List.size_toArray, hitems, List.getElem_toArray,
-    Std.HashMap.contains_map, Std.HashMap.contains_erase, Bool.and_eq_true, Bool.not_eq_eq_eq_not,
-    Bool.not_true, beq_eq_false_iff_ne, ne_eq, Std.HashMap.contains_iff_mem,
-    Std.HashMap.getElem_map, Std.HashMap.getElem_erase, and_exists_self, ItemCache.EntriesWF,
-    Std.HashMap.mem_map, Std.HashMap.mem_erase, forall_and_index]
-  have : bin.raw.toList.length = bin.raw.size := by grind
-  have : 0 < bin.raw.size := by grind
-  have hzs : xs.length = bin.raw.size - 1 := by grind
-  refine ⟨?_, ?_⟩
-  · intro i hi
-    have := bin.invItems.left (i+1) (by lia)
-    rcases this with ⟨w, hw⟩
-    have h1 : ¬x.item = xs[i].item := by
-      simp only [items, List.map_cons, List.nodup_cons, List.mem_map, not_exists, not_and] at hN
-      grind
-    have h2 : xs[i].item = bin.raw[i+1].item := by
-      have : i + 1 < (x :: xs).length := by lia
-      have : (x ::xs)[i+1].item = bin.raw[i+1].item := by grind
-      grind
-    have h3 : xs[i].item ∈ bin.items := by grind
-    use ⟨h1, h3⟩
-    grind
-  · intro x' hx' hmemx
-    have := bin.invItems.right x' hmemx
-    rcases this with ⟨w, hw⟩
-    use (by grind)
-    let idx := bin.items[x']
-    have : idx < (x :: xs).length := by lia
-    have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
-    grind
 
 -- A very mechanical proof, but thats to be expected since it is such an unnatural thing.
 public lemma updateBinCached_eq_updateBinCached_of_erase {bin bin' : CachedEarleyBin T N}
