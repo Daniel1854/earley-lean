@@ -279,6 +279,68 @@ public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
     have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
     grind
 
+-- TODO: The list is sorted, and I can simply pop the first element,
+--      but this will be quite a bit of proof effort?
+--      Maybe use something simpler like List.erase?
+--      A bit worried about leaving behind `[]`.
+--      Maybe splitting to return none at all times is warranted
+public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x : BinItem T N}
+    {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
+    (A : N) (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
+    {completions' completions'' : CompletionCache T N}
+    (hC' : completions' = bin.completions.map (fun A xs => xs.map (fun (x, idx) => (x, idx - 1))))
+    (hC'' : completions'' = completions'.alter A (fun zs => match zs with
+      | some zs => match zs with
+        | [] => none
+        | z :: zs => zs
+      | none => none)) :
+    CompletionCache.WF xs.toArray completions'' := by
+  have : x ∈ bin.raw.toList := by grind
+  have : x ∈ bin.raw := by grind
+  --have hzs : xs.length = bin.raw.size - 1 := by grind
+  have : A ∈ bin.completions := by
+    have := bin.invCompletions
+    grind
+  refine ⟨?_, ?_⟩
+  · have := bin.invCompletions.left
+    sorry
+  · have := bin.invCompletions.right
+    sorry
+
+-- this is true since the one with the index 0 is x and
+-- x does not have A as the nextSymbol
+public lemma noZero_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {A : N} {x : BinItem T N}
+    {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
+    (hnext : ∀ A, x.item.nextSymbol ≠ some (Symbol.nonterminal A)) :
+    ∀ x ∈ (bin.completions.getD A []), 0 < x.2 := by
+  have := bin.invCompletions.right.right A
+  sorry
+
+public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {x : BinItem T N}
+    {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
+    (hnext : ∀ A, x.item.nextSymbol ≠ some (Symbol.nonterminal A))
+    {completions' : CompletionCache T N}
+    (hC' : completions' = bin.completions.map (fun A xs => xs.map (fun (x, idx) => (x, idx - 1)))) :
+    CompletionCache.WF xs.toArray completions' := by
+  -- hm. somehow these two are not even useful
+  have : ∀ A, (h : A ∈ bin.completions) →
+      x.item ∉ bin.completions[A].map Prod.fst := by
+    sorry
+  have : ∀ A, (h : A ∈ bin.completions) →
+        0 ∉ bin.completions[A].map Prod.snd := by
+    sorry
+  have : 0 < bin.raw.size := by grind
+  have : bin.raw.toList[0] = x := by grind
+  have hx : bin.raw[0] = x := by
+    grind
+  have : x ∈ bin.raw.toList := by grind
+  have : x ∈ bin.raw := by grind
+  refine ⟨?_, ?_⟩
+  · have := bin.invCompletions.left
+    sorry
+  · have := bin.invCompletions.right
+    sorry
+
 /--
 List-based implementation of the .scan operation.
 
@@ -322,33 +384,83 @@ lemma memCache_of_getElem {x : EarleyItem T N} {bin : CachedEarleyBin T N} {A : 
   have := bin.invCompletions
   grind
 
--- Very likely requires induction on i.
--- TODO: this is a pain since I need to restrict the completion Cache then,
--- BUT to maintain the symmetric part of the completion invariant,
--- this would mean that I also have to erase the first item from bin.
--- Maybe I dont need the full invariant?
--- TODO: Requires some inv about bin? nodup on bin seems very likely
-lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N)
-    (binCached : CachedEarleyBin T N) (i : Nat) (A : N)
-    (heq : slice bin i bin.length = binCached.raw.toList) :
-    Std.HashMap.getD binCached.completions A [] =
+lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N) (i : Nat)
+    (binCached : CachedEarleyBin T N) (A : N) (heq : binCached.raw.toList = bin)
+    (hN : (items bin).Nodup) :
+    (binCached.completions.getD A []).map (fun (x, idx) => (x, idx+i)) =
     filterWithIdxAux (fun x => nextSymbol x == some (Symbol.nonterminal A)) i (items bin) := by
   induction bin generalizing i binCached with
   | nil =>
     have := binCached.invCompletions.right.left
+    simp only [Array.toList_eq_nil_iff] at heq
     grind
   | cons x xs ih =>
-    sorry
+    let raw' := xs.toArray
+    let items' := binCached.items.erase x.item
+    let items'' := items'.map (fun item idx => idx - 1)
+    have invItems'' : ItemCache.WF raw' items'' := by grind [itemCacheWF_of_erase]
+    let completions' : CompletionCache T N :=
+      binCached.completions.map (fun A xs => xs.map (fun (x, idx) => (x, idx - 1)))
+    match hnext : x.item.nextSymbol with
+    | some (Symbol.nonterminal A) =>
+      let completions'' := completions'.alter A
+        (fun zs => match zs with
+        | some zs => match zs with
+          | [] => none
+          | z :: zs => zs
+        | none => none)
+      have invCompletions'' : CompletionCache.WF raw' completions'' :=
+        completionCacheWF_of_erase_of_nextA heq hN A hnext (completions' := completions')
+          (by simp [completions']) (by simp [completions''])
+      let binCached' : CachedEarleyBin T N :=
+        ⟨raw', items'', invItems'', completions'', invCompletions''⟩
+      --have : filterWithIdxAux P i (items (x :: xs)) =
+      --  (x.item, i) :: filterWithIdxAux P (i+1) (items xs) := by grind
+      specialize ih (i+1) binCached' (by grind) (by grind)
+      sorry
+      --rw [← ih]
+      --grind [updateBinCached_eq_updateBinCached_of_erase]
 
-lemma completeCached_eq_completeList {n : Nat} (bins : EarleyBins T N n)
-    (binsCached : CachedEarleyBins T N n) (y : EarleyItem T N) (hS : y.startIdx < n)
+    | none | some (Symbol.terminal t) =>
+      have invCompletions' : CompletionCache.WF raw' completions' := by
+        apply completionCacheWF_of_erase_of_nextNotA heq hN (completions' := completions')
+        · grind
+        · simp [completions']
+      let binCached' : CachedEarleyBin T N :=
+        ⟨raw', items'', invItems'', completions', invCompletions'⟩
+      have hxs : binCached'.raw.toList = xs := by grind
+      specialize ih (i+1) binCached' hxs (by grind)
+      have : filterWithIdxAux
+          (fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal A))
+          i (items (x :: xs)) = filterWithIdxAux
+          (fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal A))
+          (i+1) (items xs) := by
+        grind
+      simp only [this, ← ih]
+      clear ih
+      have : (binCached.completions.getD A []).map (fun (x,i) => (x,i-1)) =
+          (binCached'.completions.getD A []) := by
+        simp [binCached', completions']
+        sorry
+      simp only [← this, List.map_map, List.map_inj_left, Function.comp_apply, Prod.mk.injEq,
+        true_and, Prod.forall]
+      have : ∀ x ∈ (binCached.completions.getD A []), 0 < x.2 := by
+        apply noZero_of_erase_of_nextNotA heq hN
+        grind
+      grind
+
+lemma completeCached_eq_completeList {G : ContextFreeGrammarList T N} {wlen : Nat}
+    (bins : EarleyBins T N (wlen + 1)) (y : EarleyItem T N) (hS : y.startIdx < (wlen + 1))
+    (binsCached : CachedEarleyBins T N (wlen + 1)) (hbins : EarleyBins.WF G (rawList binsCached))
     (heq : bins = rawList binsCached) (j : Nat) :
     completeCached y binsCached hS j = completeList y bins hS j := by
   rw [completeList_eq_completeListI]
   let P := fun x : EarleyItem T N => nextSymbol x == some (Symbol.nonterminal y.rule.input)
   have : binsCached[y.startIdx].completions.getD y.rule.input []
       = filterWithIdx (items bins[y.startIdx]) P := by
-    apply getCompletionCache_eq_filterWithIdxAux (i := 0)
+    have := getCompletionCache_eq_filterWithIdxAux bins[y.startIdx] 0 binsCached[y.startIdx]
+        y.rule.input (by grind) (by grind)
+    simp only [add_zero, Prod.mk.eta, List.map_id_fun', id_eq] at this
     grind
   grind [completeListI, completeCached]
 
@@ -488,31 +600,31 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
     let items' := binCached.items.erase x.item
     let items'' := items'.map (fun item idx => idx - 1)
     have invItems'' : ItemCache.WF raw' items'' := by grind [itemCacheWF_of_erase]
-    let completions' := binCached.completions.map (fun A xs => xs.map (fun x idx => (x, idx-1)))
+    let completions' : CompletionCache T N :=
+      binCached.completions.map (fun A xs => xs.map (fun (x, idx) => (x, idx - 1)))
     match hnext : x.item.nextSymbol with
     | some (Symbol.nonterminal A) =>
-      -- I can simply pop the first element since I know the list to be sorted.
-      -- But this doesnt make the proof easier.
-      let completions'' := binCached.completions.alter A
+      let completions'' := completions'.alter A
         (fun zs => match zs with
         | some zs => match zs with
-          | [] => ([] : List (EarleyItem T N × Nat))
+          | [] => none
           | z :: zs => zs
-        | none => ([] : List (EarleyItem T N × Nat)))
-      have invCompletions'' : CompletionCache.WF raw' completions'' := by
-        -- TODO: stub this
-        sorry
+        | none => none)
+      have invCompletions'' : CompletionCache.WF raw' completions'' :=
+        completionCacheWF_of_erase_of_nextA heq hN A hnext (completions' := completions')
+          (by simp [completions']) (by simp [completions''])
       let binCached' : CachedEarleyBin T N :=
         ⟨raw', items'', invItems'', completions'', invCompletions''⟩
       specialize ih binCached' (by grind) (by grind)
       rw [← ih]
       grind [updateBinCached_eq_updateBinCached_of_erase]
     | none | some (Symbol.terminal t) =>
-      have invCompletions' : CompletionCache.WF raw' binCached.completions := by
-        -- TODO: stub this
-        sorry
+      have invCompletions' : CompletionCache.WF raw' completions' := by
+        apply completionCacheWF_of_erase_of_nextNotA heq hN (completions' := completions')
+        · grind
+        · simp [completions']
       let binCached' : CachedEarleyBin T N :=
-        ⟨raw', items'', invItems'', binCached.completions, invCompletions'⟩
+        ⟨raw', items'', invItems'', completions', invCompletions'⟩
       specialize ih binCached' (by grind) (by grind)
       rw [← ih]
       grind [updateBinCached_eq_updateBinCached_of_erase]
@@ -585,7 +697,8 @@ lemma wfBins_of_earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T} (
         · grind
         · grind
   | none =>
-      simp only [completeCached_eq_completeList, updateBinsCached_eq_updateBins (hbins := hbins)]
+      simp only [completeCached_eq_completeList (hbins := hbins),
+          updateBinsCached_eq_updateBins (hbins := hbins)]
       apply wfBins_of_completeList hbins
       · simp [rawList]
       · grind

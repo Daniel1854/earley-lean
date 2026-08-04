@@ -54,7 +54,8 @@ lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Arr
     rawList (earleyBinCached binsCached k hk j hbinsCached).bins =
     (earleyBinList bins k hk j hbins).bins := by
   rw [earleyBinCached, earleyBinList]
-  simp only [ge_iff_le, scanCached_eq_scanList, completeCached_eq_completeList, Array.length_toList]
+  simp only [ge_iff_le, scanCached_eq_scanList,
+    completeCached_eq_completeList (hbins := hbinsCached), Array.length_toList]
   split
   · rename_i h
     have : List.length bins[k] ≤ j := by grind
