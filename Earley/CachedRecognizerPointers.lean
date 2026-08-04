@@ -115,14 +115,14 @@ TODO: this last half-sentence is too wiggly and wont suffice for proofs I think.
       since it is strictly increasing?
 
 TODO: Do I need `x.nextSymbol == A` somewhere?
+FIXME: (raw.isEmpty → completions = ∅) should be derivable in some way.
+       its not good that i need to prove this at points
 -/
 @[grind]
 public def CompletionCache.EntriesWF {T N : Type} [BEq T] [BEq N] [Hashable N]
     (raw : Array (BinItem T N)) (completions : CompletionCache T N) : Prop :=
-  (raw.isEmpty → completions = ∅)
-  ∧ (∀ A, (hx : A ∈ completions) → ∀ x ∈ completions[A],
-    nextSymbol x.1 == some (Symbol.nonterminal A)
-      ∧ x.2 < raw.size ∧  ∃ (hx : x.2 < raw.size), raw[x.2].item = x.1)
+  ∀ A, (hx : A ∈ completions) → ∀ x ∈ completions[A], nextSymbol x.1 == some (Symbol.nonterminal A)
+    ∧ x.2 < raw.size ∧  ∃ (hx : x.2 < raw.size), raw[x.2].item = x.1
 
 /--
 A CompletionCache is well-formed, if both
@@ -170,6 +170,29 @@ section WellFormedBin
 public lemma memNT_of_completionCacheWF {bin : CachedEarleyBin T N} {A : N}
     {x : BinItem T N} (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
     (hmemx : x ∈ bin.raw) : A ∈ bin.completions := by
+  have := bin.invCompletions.left
+  grind [Array.getElem_of_mem]
+
+-- TODO: there is a lot of tension between ∅ and isEmpty
+--       apparently extHashMap is required to reason between the two.
+--       That would disallow choosing an arbitrary element from knowing ¬ isEmpty.
+--       This makes this rather problematic huh.
+public lemma emptyCompletions_of_emptyRaw {bin : CachedEarleyBin T N} (h : bin.raw.isEmpty) :
+    bin.completions = ∅ := by
+  have inv := bin.invCompletions.right
+  if h : bin.completions.isEmpty then
+    sorry
+  else
+    simp only [Bool.not_eq_true] at h
+    have := Std.HashMap.isEmpty_eq_false_iff_exists_mem.mp h
+    rcases this with ⟨A,hw⟩
+    specialize inv A hw
+    --have : w ≠ [] := by sorry
+    sorry
+
+public lemma nonEmptyCache_of_completionCacheWF {bin : CachedEarleyBin T N} {A : N}
+    {x : BinItem T N} (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
+    (hmemx : x ∈ bin.raw) (h : A ∈ bin.completions) : ¬ bin.completions[A] = [] := by
   have := bin.invCompletions.left
   grind [Array.getElem_of_mem]
 
@@ -224,8 +247,7 @@ public lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A :
       grind
     · have := bin.invCompletions.right
       simp only [hC, List.append_eq]
-      refine ⟨by grind, ?_⟩
-      intro B hmem x hmemx
+      intro B hmem
       grind
   else
     refine ⟨?_, ?_⟩
@@ -291,7 +313,7 @@ public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x 
     (hC' : completions' = bin.completions.map (fun A xs => xs.map (fun (x, idx) => (x, idx - 1))))
     (hC'' : completions'' = completions'.alter A (fun zs => match zs with
       | some zs => match zs with
-        | [] => none
+        | [] => some []
         | z :: zs => zs
       | none => none)) :
     CompletionCache.WF xs.toArray completions'' := by
@@ -303,23 +325,26 @@ public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x 
     grind
   refine ⟨?_, ?_⟩
   · have := bin.invCompletions.left
+    simp [CompletionCache.RawWF]
     sorry
   · have := bin.invCompletions.right
+    simp only [CompletionCache.EntriesWF, beq_iff_eq, List.size_toArray, List.getElem_toArray,
+      and_exists_self, Prod.forall]
     sorry
 
--- this is true since the one with the index 0 is x and
--- x does not have A as the nextSymbol
 public lemma noZero_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {A : N} {x : BinItem T N}
-    {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
-    (hA : A ∈ bin.completions) (hnext : ¬ x.item.nextSymbol = some (Symbol.nonterminal A)) :
+    {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hA : A ∈ bin.completions)
+    (hnext : ¬ x.item.nextSymbol = some (Symbol.nonterminal A)) :
     ∀ y ∈ (bin.completions[A]), 0 < y.2 := by
-  have := bin.invCompletions.right.right A
+  have := bin.invCompletions.right A
   intro y hmem
   if hy : x.item = y.1 then
     grind
   else
-    --have := bin.invCompletions
-    sorry
+    have : 0 < bin.raw.size := by grind
+    have : bin.raw.toList[0] = x := by grind
+    have : bin.raw[0] = x := by grind
+    grind
 
 public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {x : BinItem T N}
     {xs : BinItems T N} (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
@@ -399,9 +424,8 @@ lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N) (i : Nat)
     filterWithIdxAux (fun x => nextSymbol x == some (Symbol.nonterminal A)) i (items bin) := by
   induction bin generalizing i binCached with
   | nil =>
-    have := binCached.invCompletions.right.left
     simp only [Array.toList_eq_nil_iff] at heq
-    grind
+    grind [emptyCompletions_of_emptyRaw]
   | cons x xs ih =>
     let raw' := xs.toArray
     let items' := binCached.items.erase x.item
@@ -414,7 +438,7 @@ lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N) (i : Nat)
       let completions'' := completions'.alter B
         (fun zs => match zs with
         | some zs => match zs with
-          | [] => none
+          | [] => some []
           | z :: zs => zs
         | none => none)
       have invCompletions'' : CompletionCache.WF raw' completions'' :=
@@ -422,19 +446,54 @@ lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N) (i : Nat)
           (by simp [completions']) (by simp [completions''])
       let binCached' : CachedEarleyBin T N :=
         ⟨raw', items'', invItems'', completions'', invCompletions''⟩
-      have hA' : B ∈ binCached'.completions := by sorry
-      specialize ih (i+1) binCached' (by grind) (by grind) (by grind)
-      --have : filterWithIdxAux P i (items (x :: xs)) =
-      --  (x.item, i) :: filterWithIdxAux P (i+1) (items xs) := by grind
-      -- something like this has to happen right, but I need to use the ih either way
-      -- FIXME: aha. so the ih doesnt work due to hA. need to case split within this proof I see.
-      --if A ≠ B then
-      --  grind
-      --else
-      --  grind
-      --rw [← ih]
-      --grind [updateBinCached_eq_updateBinCached_of_erase]
-      sorry
+      have hA' : A ∈ binCached'.completions := by grind
+      specialize ih (i+1) binCached' hA' (by grind) (by grind)
+      match h : binCached.completions[A] with
+      | [] =>
+        simp
+        -- this can be lemma'd. If completion for symbol is [],
+        -- then every item of raw doesnt suffice P
+        --grind [emptyFilterWithIdxAux_of_notP, nonEmptyCache_of_completionCacheWF]
+        sorry
+      | x' :: xs' =>
+        if hab : B = A then
+          have : filterWithIdxAux
+              (fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal A))
+              i (items (x :: xs)) = (x.item, i) :: filterWithIdxAux
+              (fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal A))
+              (i+1) (items xs) := by
+            grind
+          simp only [this, ← ih]
+          clear ih
+          simp only [List.map_cons, hab, Std.HashMap.getElem_alter_self, Std.HashMap.mem_map, hA,
+            getElem?_pos, Std.HashMap.getElem_map, List.cons.injEq, Prod.mk.injEq, Nat.add_eq_right,
+            completions'', completions', binCached']
+          -- I miss some property of the completion list being sorted hm
+          have : x' = (x.item, 0) := by
+            have := binCached.invCompletions.left
+            have : 0 < binCached.raw.size := by sorry
+            have : binCached.raw[0] = x := by sorry
+            sorry
+          refine ⟨by grind, ?_⟩
+          sorry
+        else
+          simp only [← h]
+          have : filterWithIdxAux
+              (fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal A))
+              i (items (x :: xs)) = filterWithIdxAux
+              (fun x : EarleyItem T N => x.nextSymbol == some (Symbol.nonterminal A))
+              (i+1) (items xs) := by
+            grind
+          simp only [this, ← ih]
+          clear ih
+          have : A ∈ completions' := by grind
+          have : completions''[A] = completions'[A] := by grind
+          simp only [this, Std.HashMap.getElem_map, List.map_map, List.map_inj_left,
+            Function.comp_apply, Prod.mk.injEq, true_and, Prod.forall, completions', binCached']
+          have : ∀ x ∈ (binCached.completions[A]), 0 < x.2 := by
+            apply noZero_of_erase_of_nextNotA heq
+            grind
+          grind
     | none | some (Symbol.terminal t) =>
       have invCompletions' : CompletionCache.WF raw' completions' := by
         apply completionCacheWF_of_erase_of_nextNotA heq hN (completions' := completions')
@@ -453,13 +512,10 @@ lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N) (i : Nat)
         grind
       simp only [this, ← ih]
       clear ih
-      have : (binCached.completions[A]).map (fun (x,i) => (x,i-1)) =
-          (binCached'.completions[A]) := by
-        simp [binCached', completions']
-      simp only [← this, List.map_map, List.map_inj_left, Function.comp_apply, Prod.mk.injEq,
-        true_and, Prod.forall]
+      simp only [Std.HashMap.getElem_map, List.map_map, List.map_inj_left, Function.comp_apply,
+        Prod.mk.injEq, true_and, Prod.forall, completions', binCached']
       have : ∀ x ∈ (binCached.completions[A]), 0 < x.2 := by
-        apply noZero_of_erase_of_nextNotA heq hN
+        apply noZero_of_erase_of_nextNotA heq
         simp [hnext]
       grind
 
@@ -627,7 +683,7 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
       let completions'' := completions'.alter A
         (fun zs => match zs with
         | some zs => match zs with
-          | [] => none
+          | [] => some []
           | z :: zs => zs
         | none => none)
       have invCompletions'' : CompletionCache.WF raw' completions'' :=
