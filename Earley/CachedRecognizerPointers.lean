@@ -113,12 +113,16 @@ together with their index in the raw array.
 TODO: this last half-sentence is too wiggly and wont suffice for proofs I think.
       Maybe I need a relation on the Nat within the possible completions for one NT as well
       since it is strictly increasing?
+
+TODO: Do I need `x.nextSymbol == A` somewhere?
 -/
 @[grind]
 public def CompletionCache.EntriesWF {T N : Type} [BEq T] [BEq N] [Hashable N]
     (raw : Array (BinItem T N)) (completions : CompletionCache T N) : Prop :=
-  ∀ A, (hx : A ∈ completions) → ∀ x ∈ completions[A],
-    x.2 < raw.size ∧ ∃ (hx : x.2 < raw.size), raw[x.2].item = x.1
+  (raw.isEmpty → completions = ∅)
+  ∧ (∀ A, (hx : A ∈ completions) → ∀ x ∈ completions[A],
+    nextSymbol x.1 == some (Symbol.nonterminal A)
+      ∧ x.2 < raw.size ∧  ∃ (hx : x.2 < raw.size), raw[x.2].item = x.1)
 
 /--
 A CompletionCache is well-formed, if both
@@ -220,6 +224,7 @@ public lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A :
       grind
     · have := bin.invCompletions.right
       simp only [hC, List.append_eq]
+      refine ⟨by grind, ?_⟩
       intro B hmem x hmemx
       grind
   else
@@ -330,15 +335,8 @@ lemma getCompletionCache_eq_filterWithIdxAux (bin : BinItems T N)
     filterWithIdxAux (fun x => nextSymbol x == some (Symbol.nonterminal A)) i (items bin) := by
   induction bin generalizing i binCached with
   | nil =>
-    simp at heq
-    have := binCached.invCompletions.right
-    simp only [CompletionCache.EntriesWF, and_exists_self] at this
-    have : ∀ (A : N) (hx : A ∈ binCached.completions),
-        ∀ x ∈ binCached.completions[A], False  := by grind
-    have : binCached.completions = ∅ := by
-      simp at this
-      sorry
-    sorry
+    have := binCached.invCompletions.right.left
+    grind
   | cons x xs ih =>
     sorry
 
