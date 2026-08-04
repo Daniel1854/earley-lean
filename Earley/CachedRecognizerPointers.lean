@@ -307,16 +307,6 @@ public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x 
   · have := bin.invCompletions.right
     sorry
 
-public lemma mem_of_mem_of_getD {α β : Type} [BEq α] [Hashable α] (S : Std.HashMap α (List β))
-    (key : α) (x : β) (h : x ∈ S.getD key []) (hex : key ∈ S) : x ∈ S[key] := by
-  simp [Std.HashMap.getD] at h
-  sorry
---  x ∈ Std.HashMap.getD bin.completions A []
---but is expected to have type
---  x ∈ bin.completions[A]
-
-#check List.not_mem_nil
-
 -- this is true since the one with the index 0 is x and
 -- x does not have A as the nextSymbol
 public lemma noZero_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {A : N} {x : BinItem T N}

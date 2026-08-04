@@ -135,5 +135,16 @@ theorem notP_of_emptyFilterWithIdx {x : α} {l : List α} {P : α → Bool}
   rw [filterWithIdx] at hempty
   apply notP_of_emptyFilterWithIdxAux hempty hP
 
+theorem emptyFilterWithIdxAux_of_notP {i : Nat} {l : List α} {P : α → Bool}
+    (h : ∀ x ∈ l, ¬ P x) : filterWithIdxAux P i l = [] := by
+  induction l generalizing i with
+  | nil => grind
+  | cons y ys ih => grind
+
+theorem emptyFilterWithIdx_of_notP {l : List α} {P : α → Bool}
+    (h : ∀ x ∈ l, ¬ P x) : filterWithIdx l P = [] := by
+  rw [filterWithIdx]
+  apply emptyFilterWithIdxAux_of_notP h
+
 end Utils
 end Earley
