@@ -66,3 +66,10 @@ public theorem Vector.getElem_modify {α : Type} {n : Nat} {xs : Vector α n} {i
     (hi : i < n) : (Vector.modify xs j f)[i] = if j = i then f xs[i] else xs[i] := by
   simp only [modify, getElem_mk]
   grind
+
+public theorem Std.HashMap.getD_of_map {α β : Type} [BEq α] [LawfulBEq α] [Hashable α] {f : β → β}
+    {k : α} (m : Std.HashMap α (List β)) :
+    (m.map (fun _ xs => xs.map f)).getD k [] = (m.getD k []).map f := by
+  match h : m[k]? with
+  | none => grind [Std.HashMap.getD_eq_fallback_of_contains_eq_false]
+  | some val => grind [Std.HashMap.getElem?_eq_some_getD]

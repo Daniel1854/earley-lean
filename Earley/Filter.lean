@@ -135,16 +135,62 @@ theorem notP_of_emptyFilterWithIdx {x : α} {l : List α} {P : α → Bool}
   rw [filterWithIdx] at hempty
   apply notP_of_emptyFilterWithIdxAux hempty hP
 
+-- unused
 theorem emptyFilterWithIdxAux_of_notP {i : Nat} {l : List α} {P : α → Bool}
     (h : ∀ x ∈ l, ¬ P x) : filterWithIdxAux P i l = [] := by
   induction l generalizing i with
   | nil => grind
   | cons y ys ih => grind
 
-theorem emptyFilterWithIdx_of_notP {l : List α} {P : α → Bool}
-    (h : ∀ x ∈ l, ¬ P x) : filterWithIdx l P = [] := by
+-- unused
+theorem emptyFilterWithIdx_of_notP {l : List α} {P : α → Bool} (h : ∀ x ∈ l, ¬ P x) :
+    filterWithIdx l P = [] := by
   rw [filterWithIdx]
   apply emptyFilterWithIdxAux_of_notP h
+
+theorem filterWithIdxAux_cons_of_notP {i : Nat} {l : List α} {P : α → Bool} {x : α} (hnP : ¬ P x) :
+    filterWithIdxAux P i (l ++ [x]) = filterWithIdxAux P i l := by
+  induction l generalizing i with
+  | nil => grind
+  | cons head tail ih => grind
+
+theorem filterWithIdx_cons_of_notP {l : List α} {P : α → Bool} {x : α} (hnP : ¬ P x) :
+    filterWithIdx (l ++ [x]) P = filterWithIdx l P := by
+  rw [filterWithIdx]
+  grind [filterWithIdxAux_cons_of_notP]
+
+theorem filterWithIdxAux_cons_of_P {i : Nat} {l : List α} {P : α → Bool} {x : α} (hP : P x) :
+    filterWithIdxAux P i (l ++ [x]) = filterWithIdxAux P i l ++ [(x, l.length + i)] := by
+  induction l generalizing i with
+  | nil => grind
+  | cons head tail ih => grind
+
+theorem filterWithIdx_cons_of_P {l : List α} {P : α → Bool} {x : α} (hP : P x) :
+    filterWithIdx (l ++ [x]) P = filterWithIdx l P ++ [(x, l.length)] := by
+  grind [filterWithIdxAux_cons_of_P]
+
+theorem filterWithIdxAux_erase_of_not_P {i : Nat} {x : α} {xs : List α} {P : α → Bool}
+    (hnP : ¬ P x) :
+    (filterWithIdxAux P i (x :: xs)).map (fun (x, i) => (x, i - 1)) = filterWithIdxAux P i xs := by
+  induction xs generalizing i with
+  | nil => grind
+  | cons head tail ih => grind
+
+theorem filterWithIdx_erase_of_not_P {x : α} {xs : List α} {P : α → Bool} (hnP : ¬ P x) :
+    (filterWithIdx (x :: xs) P).map (fun (x, i) => (x, i - 1)) = filterWithIdx xs P := by
+  grind [filterWithIdxAux_erase_of_not_P]
+
+theorem filterWithIdxAux_erase_of_P {i : Nat} {x : α} {xs : List α} {P : α → Bool} (hP : P x) :
+    (filterWithIdxAux P i (x :: xs)).map (fun (x, i) => (x, i - 1))
+    = (x, i-1) :: filterWithIdxAux P i xs := by
+  induction xs generalizing i with
+  | nil => grind
+  | cons x xs ih => grind
+
+theorem filterWithIdx_erase_of_P (x : α) (xs : List α) (P : α → Bool) (hP : P x) :
+    (filterWithIdx (x :: xs) P).map (fun (x, i) => (x, i - 1))
+    = (x, 0) :: filterWithIdx xs P := by
+  grind [filterWithIdxAux_erase_of_P]
 
 end Utils
 end Earley
