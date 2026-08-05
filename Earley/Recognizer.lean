@@ -246,7 +246,7 @@ public def updateBinAux :  BinItem T N  → BinItems T N → BinItems T N
       match (x.pointer, y.pointer) with
       -- Merge any reduction pointers for matching items
       | (Pointer.reduction xp xP, Pointer.reduction yp yP) =>
-        ⟨x.item, Pointer.reduction xp (yp::yP.append xP)⟩::xs
+        ⟨y.item, Pointer.reduction xp (yp::yP.append xP)⟩::xs
       -- Abort, if an item with an irrelevant pointer already exists in the List
       | _ => x::xs
     else
@@ -278,6 +278,7 @@ omit [LawfulBEq (EarleyItem T N)] in
 @[simp, grind =]
 lemma updateBin_nil (xs : BinItems T N) : updateBin xs [] = xs := by simp [updateBin]
 
+omit [LawfulBEq (EarleyItem T N)] in
 theorem memItem_of_updateBinAux (xs : BinItems T N) (y : BinItem T N) (x : EarleyItem T N)
     (hmem : x ∈ items (updateBinAux y xs)) : x ∈ items xs ∨ x = y.item := by
   induction xs with
@@ -313,6 +314,7 @@ theorem noDup_of_updateBin (xs ys : BinItems T N) (hx : (items xs).Nodup) :
   | case1 xs => grind
   | case2 xs y ys ih1 => grind [noDup_of_updateBinAux xs y]
 
+omit [LawfulBEq (EarleyItem T N)] in
 lemma wfBinItems_of_updateBinAux (G : ContextFreeGrammarList T N) (wlen : Nat) {k : Nat}
     (bin : BinItems T N) (hwfbin : BinItems.WF G wlen k bin) (y : BinItem T N)
     (hwfy : isWellFormed G.rules wlen y.item ∧ y.item.endIdx = k) :
@@ -417,6 +419,7 @@ lemma wfBinPointers_of_updateBinAux {wlen : Nat} {k : Nat} (bins : EarleyBins T 
   | nil => grind
   | cons x xs ih => grind
 
+omit [LawfulBEq (EarleyItem T N)] in
 lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (wlen : Nat) {k : Nat}
     (xs ys : BinItems T N) (hwfx : BinItems.WF G wlen k xs)
     (hwfy : ∀ y ∈ ys, isWellFormed G.rules wlen y.item ∧ y.item.endIdx = k) :
