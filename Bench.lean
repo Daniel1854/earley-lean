@@ -100,7 +100,7 @@ def benchRecognizer {N : Type}
   | .cached =>
     let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
-    let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyList G w)
+    let bins ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyCached G w)
     let t2 ← IO.monoMsNow
     let binSize ← IO.lazyPure (fun () => sizeCachedBins bins)
     IO.println s!"{numChars},{t2-t1},{binSize},0,{binSize}"

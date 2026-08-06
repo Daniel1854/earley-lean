@@ -16,9 +16,9 @@ This module represents an optimized implementation of the Earley algorithm.
 For more details on the general algorithm, see `Recognizer`.
 
 In comparison to the cached implementation in `CachedRecognizerPointers`, it doesn't maintain
-pointers to reconstruct a parse tree afterwards. This is simply a dummy implementation.
-
-TODO: Since this is a dummy implementation, maybe sorry's instead of half-proofs are sufficient.
+pointers to reconstruct a parse tree afterwards.
+This is simply a dummy implementation to compare performance without proofs,
+relying on `Inhabited` for array/hashmap accesses.
 -/
 
 @[expose] public section
@@ -48,6 +48,7 @@ public structure CachedEarleyBin (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T
   raw : Array (EarleyItem T N)
   items : ItemCache T N
   completions : CompletionCache T N
+deriving Inhabited
 
 abbrev CachedEarleyBins (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
     [Hashable N] [Hashable (EarleyItem T N)] (n : Nat) : Type :=
@@ -55,39 +56,6 @@ abbrev CachedEarleyBins (T N : Type) [BEq T] [BEq N] [BEq (EarleyItem T N)]
 
 variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] [Hashable N]
   [Hashable (EarleyItem T N)]
-
-section WellFormedBin
-
-/--
-The items of an EarleyBin are well-formed, if
-- there are no duplicate items in the bin
-- all items in the bin are well-formed
-- the endIdx of all items match the index of the bin
--/
-@[grind]
-public def EarleyItems.WF (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
-    (bin : Array (EarleyItem T N)) : Prop :=
-  bin.toList.Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w.size x ∧ x.endIdx = k
-
-/--
-CachedEarleyBins are well-formed, if all of its bins and its caches are well-formed.
--/
-@[grind]
-public def CachedEarleyBins.WF (G : ContextFreeGrammarList T N) (w : Array T)
-    (bins : CachedEarleyBins T N (w.size + 1)) : Prop :=
-  ∀ k, (hk : k < bins.size) → EarleyItems.WF G w k bins[k].raw
-  -- FIXME: missing invariant about the cache stating that the items correspond
-  --        to the items in each bin ? Or do I want to prove this separately
-  --        since I dont need it for index proofs?
-  --∧ something about itemCache corresponding to the items in each bin
-  --∧ something about completionCache corresponding to the filtered items in each bin
-
-/--
-A combination of an EarleyBins with its cache and a well-formedness Invariant about it.
--/
-public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) where
-  bins : CachedEarleyBins T N (w.size + 1)
-  inv : CachedEarleyBins.WF G w bins
 
 /--
 List-based implementation of the .init operation.
@@ -99,7 +67,8 @@ public def initCached (G : ContextFreeGrammarList T N) : List (EarleyItem T N) :
   rules.map (fun r => ⟨r,0,0,0⟩)
 
 /--
-List-based implementation of the .scan operation.
+Equal to list-based implementation of the .scan operation,
+but it takes an `Array T` as the input word.
 
 Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
 if `a` matches the word for given index `k`.
@@ -113,7 +82,7 @@ public def scanCached (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : 
     []
 
 /--
-List-based implementation of the .predict operation.
+Equal to list-based implementation of the .predict operation.
 
 Returns a fresh item for each rule, which got `A` as its lhs.
 -/
@@ -124,15 +93,15 @@ public def predictCached (G : ContextFreeGrammarList T N) (A : N) (k : Nat) :
   rules.map (fun r => ⟨r,0,k,k⟩)
 
 /--
-List-based implementation of the .complete operation.
+Cached implementation of the .complete operation.
 
 Returns items for each successful completion of item `y` using its startIdx for bins.
 -/
 @[inline]
-public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n)
-    (h : y.startIdx < n) : List (EarleyItem T N) :=
+public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n) :
+    List (EarleyItem T N) :=
   -- The origin bin filtered for matchings with y
-  let xMatches : List (EarleyItem T N) := bins[y.startIdx].completions.getD y.rule.input []
+  let xMatches : List (EarleyItem T N) := bins[y.startIdx]!.completions.getD y.rule.input []
   -- Matchings mapped onto a new item
   xMatches.map (fun x => incItem x y.endIdx)
 
@@ -166,25 +135,15 @@ public def updateBinsCached {n : Nat} (bins : CachedEarleyBins T N n) (k : Nat)
     (newBin : List (EarleyItem T N)) : CachedEarleyBins T N n :=
   Vector.modify bins k (fun x => updateBinCached x newBin)
 
-omit [LawfulBEq (EarleyItem T N)] in
-public theorem startIdx_of_Wf {G : ContextFreeGrammarList T N} {w : Array T} (x : EarleyItem T N)
-    {bins : CachedEarleyBins T N (w.size + 1)} (hbins : CachedEarleyBins.WF G w bins)
-    (k : Nat) (hk : k < w.size + 1) (j : Nat) (hj : j < bins[k].raw.size)
-    (hmemx : x = bins[k].raw[j]) : x.startIdx < w.size + 1 := by
-  have : x ∈ bins[k].raw := by grind
-  grind
-
-end WellFormedBin
-
 /--
 Computes the k-th bin starting from index j and returns the updated bins.
 -/
-public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
-    (bins : CachedEarleyBins T N (w.size + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
-    (hbins : CachedEarleyBins.WF G w bins) : WfEarleyBinsCached G w :=
+public partial def earleyBinCached (G : ContextFreeGrammarList T N) {w : Array T}
+    (bins : CachedEarleyBins T N (w.size + 1)) (k : Nat) (hk : k < bins.size) (j : Nat) :
+    CachedEarleyBins T N (w.size + 1) :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].raw.size then
-    ⟨bins, hbins⟩
+    bins
   else
     let x := bins[k].raw[j]
     let bins' := match nextSymbol x with
@@ -203,22 +162,9 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
           updateBinsCached bins (k+1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
-      let newItems := completeCached x bins (by grind [startIdx_of_Wf x hbins])
+      let newItems := completeCached x bins
       updateBinsCached bins k newItems
-    have : CachedEarleyBins.WF G w bins' := by sorry
-    earleyBinList bins' k (by omega) (j+1) this
-termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
-decreasing_by
-  apply Nat.sub_lt_sub_left
-  · specialize hbins k (by lia)
-    let wfItemsBin := { x | isWellFormed G.rules w.size x }
-    have : bins[k].raw.size ≤ wfItemsBin.ncard := by
-      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G w.size
-      let P := (fun x => isWellFormed G.rules w.size x)
-      apply Recognizer.length_lte_ncard_of_superset bins[k].raw.toList wfItemsBin P
-        (by grind) (by grind) hbins.left
-    grind
-  · simp
+    earleyBinCached G bins' k (by omega) (j+1)
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
@@ -226,44 +172,42 @@ TODO: I could use of Std.HashSet.ofList and something more clever for the HashMa
       but utilizing updateBin is easier to reason with. It shouldnt be much worse perf-wise
 -/
 @[grind]
-public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
+public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
+    CachedEarleyBins T N (w.size + 1) :=
   -- Starting with some capacity can be lucrative depending on the benchmark.
-  let bins : Vector (CachedEarleyBin T N) (w.size + 1) :=
-    Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
-  let bins' := updateBinsCached bins 0 (initCached G)
-  ⟨bins', (by sorry)⟩ --grind [initList, wfBinItems_of_initList])⟩
+  let bins := Vector.replicate (w.size + 1) ⟨Array.empty,  {},  {}⟩
+  updateBinsCached bins 0 (initCached G)
 
 /--
 Computes up to the k-th bin.
 Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 @[grind]
-public def earleyBinsList (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
-    (h : k < w.size + 1) : WfEarleyBinsCached G w :=
+public def earleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
+    (h : k < w.size + 1) : CachedEarleyBins T N (w.size + 1) :=
   match h : k with
   | 0 =>
-    let ⟨bins, inv⟩ := initCachedBins G w
-    earleyBinList bins 0 (by simp) 0 inv
+    let bins := initCachedBins G w
+    earleyBinCached G bins 0 (by lia) 0
   | i+1 =>
     -- Given the first i-th bins being computed, we can compute i+1
-    let ⟨bins, inv⟩ := earleyBinsList G w i (by lia)
-    earleyBinList bins k (by lia) 0 inv
+    let bins := earleyBinsCached G w i (by lia)
+    earleyBinCached G bins k (by lia) 0
 
 /--
 Returns the bins after trying to recognize `w` by using `G`.
 -/
 @[grind]
-public def earleyList (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBinsCached G w :=
-  earleyBinsList G w w.size (by simp)
+public def earleyCached (G : ContextFreeGrammarList T N) (w : Array T) :
+    CachedEarleyBins T N (w.size + 1) :=
+  earleyBinsCached G w w.size (by simp)
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
-
-TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 @[grind]
-public def recognizeList (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=
-  let bins := earleyList G w |>.bins
+public def recognizeCached (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=
+  let bins := earleyCached G w
   let finalItems := bins[w.size].raw
   ∃ x ∈ finalItems, isFinished G.initial w.size x
 

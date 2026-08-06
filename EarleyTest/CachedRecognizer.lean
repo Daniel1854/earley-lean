@@ -81,56 +81,56 @@ def exW3 : Array T := #[T.a, T.b]
 
 /-- info: #[(N.S → [] @ [T.a], 0, 0), (N.S → [] @ [T.a, N.S], 0, 0)] -/
 #guard_msgs in
-#eval! (earleyList G exW1).bins[0].raw
+#eval! (earleyCached G exW1)[0].raw
 /--
 info: #[(N.S → [T.a] @ [], 0, 1), (N.S → [T.a] @ [N.S], 0, 1), (N.S → [] @ [T.a], 1, 1), (N.S → [] @ [T.a, N.S], 1, 1)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW1).bins[1].raw
+#eval! (earleyCached G exW1)[1].raw
 /--
 info: #[(N.S → [T.a] @ [], 1, 2), (N.S → [T.a] @ [N.S], 1, 2), (N.S → [T.a, N.S] @ [], 0, 2), (N.S → [] @ [T.a], 2, 2),
   (N.S → [] @ [T.a, N.S], 2, 2)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW2).bins[2].raw
+#eval! (earleyCached G exW2)[2].raw
 /--
 info: #[(N.S → [T.a] @ [], 2, 3), (N.S → [T.a] @ [N.S], 2, 3), (N.S → [T.a, N.S] @ [], 1, 3), (N.S → [] @ [T.a], 3, 3),
   (N.S → [] @ [T.a, N.S], 3, 3), (N.S → [T.a, N.S] @ [], 0, 3)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW2).bins[3].raw
+#eval! (earleyCached G exW2)[3].raw
 /--
 info: #[(N.S → [T.a] @ [], 0, 1), (N.S → [T.a] @ [N.S], 0, 1), (N.S → [] @ [T.a], 1, 1), (N.S → [] @ [T.a, N.S], 1, 1)]
 -/
 #guard_msgs in
-#eval! (earleyList G exW3).bins[1].raw
+#eval! (earleyCached G exW3)[1].raw
 /-- info: #[] -/
 #guard_msgs in
-#eval! (earleyList G exW3).bins[2].raw
+#eval! (earleyCached G exW3)[2].raw
 /-- info: #[] -/
 #guard_msgs in
-#eval! (earleyList G #[T.b, T.b]).bins[1].raw
+#eval! (earleyCached G #[T.b, T.b])[1].raw
 
 /--
 info: false
 -/
 #guard_msgs in
-#eval! recognizeList G #[]
+#eval! recognizeCached G #[]
 /--
 info: true
 -/
 #guard_msgs in
-#eval! recognizeList G exW1
+#eval! recognizeCached G exW1
 /--
 info: true
 -/
 #guard_msgs in
-#eval! recognizeList G exW2
+#eval! recognizeCached G exW2
 /--
 info: false
 -/
 #guard_msgs in
-#eval! recognizeList G exW3
+#eval! recognizeCached G exW3
 
 end BasicExample
 end CachedRecognizer
