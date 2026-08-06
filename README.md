@@ -37,9 +37,11 @@ and you can look at the rendered file.
   - [x] Termination Proof
   - [x] Correctness Proof
 - [x] Evaluation/Benchmark: mostly done
-- [ ] Performance Improvement to O(n^3)
+- [x] Performance Improvement to O(n^3)
   - [x] Implementation: Cached containment and completion version with and without Pointers
-  - [ ] Correctness Proof for the version with the pointers
+  - [x] Correctness Proof for the version with the pointers
+  - [ ] Cached Parser Refinement
+  - [ ] Sorryfree recognizer without pointers for completeness?
 
 Possible improvements upon the results of Rau depending on my pace:
 - Improving worst-case to O(n^3)

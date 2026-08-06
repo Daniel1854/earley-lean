@@ -98,13 +98,13 @@ theorem memFilterWithIdxAux_of_mem {x : α} (i : Nat) {l : List α} {P : α → 
     specialize ih (i+1)
     grind
 
--- TODO: this one is unused
+-- TODO: unused
 theorem memFilterWithIdx_of_mem {x : α} {l : List α} (P : α → Bool)
     (hmem : x ∈ l) (hp : P x) : ∃ n, (x, n) ∈ filterWithIdx l P := by
   rw [filterWithIdx]
   apply memFilterWithIdxAux_of_mem 0 hmem hp
 
--- TODO: this one is unused
+-- TODO: unused
 theorem memFilterWithIdxAux_of_getElem {x : α} (i k : Nat) {l : List α} {P : α → Bool}
     (hk : k < l.length) (hx : x = l[k]) (hp : P x) : (x, k+i) ∈ filterWithIdxAux P i l := by
   induction l generalizing i k with
@@ -135,14 +135,14 @@ theorem notP_of_emptyFilterWithIdx {x : α} {l : List α} {P : α → Bool}
   rw [filterWithIdx] at hempty
   apply notP_of_emptyFilterWithIdxAux hempty hP
 
--- unused
+-- TODO: unused
 theorem emptyFilterWithIdxAux_of_notP {i : Nat} {l : List α} {P : α → Bool}
     (h : ∀ x ∈ l, ¬ P x) : filterWithIdxAux P i l = [] := by
   induction l generalizing i with
   | nil => grind
   | cons y ys ih => grind
 
--- unused
+-- TODO: unused
 theorem emptyFilterWithIdx_of_notP {l : List α} {P : α → Bool} (h : ∀ x ∈ l, ¬ P x) :
     filterWithIdx l P = [] := by
   rw [filterWithIdx]

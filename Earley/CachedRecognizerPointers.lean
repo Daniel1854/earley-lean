@@ -29,7 +29,6 @@ the first pointer of the reduction pointer anyway, this doesn't affect the algor
 This could be a more appropriate next step instead of the current implementation?
 
 TODO: CachedParser would use `Array.findIdx?` instead of filterWithIdx?
-TODO: clean some proofs up after completionCache.WF has been introduced as part of CachedEarleyBin
 -/
 
 @[expose] public section
@@ -93,26 +92,8 @@ abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
   Std.HashMap N (List (EarleyItem T N × Nat))
 
 /--
-A CompletionCache is well-formed, if both
-- the raw array is well-formed in relation to the completion cache
-- the completion cache is well-formed in relation to raw array
-
-TODO: An inductive predicate definition would be really nice, but then the structure of my proofs
-doesnt work at all since I am unable to remove elements from my linked list entries?
-A bit unclear how that would interact.
-
-A CompletionCache is well-formed in relation to a raw array,
-if the list stored for each non-terminal `List (item, i)` corresponds to the raw array in a way,
-such that all items that got that non-terminal as their next symbol are recorded
-together with their index in the raw array.
-
-TODO: this last half-sentence is too wiggly and wont suffice for proofs I think.
-      Maybe I need a relation on the Nat within the possible completions for one NT as well
-      since it is strictly increasing?
-
-TODO: Do I need `x.nextSymbol == A` somewhere?
-FIXME: (raw.isEmpty → completions = ∅) should be derivable in some way.
-       its not good that i need to prove this at points
+A CompletionCache is well-formed, if the list stored for each non-terminal `List (item, i)`
+corresponds exactly to the result `filterWithIdx` computes for that non-terminal for the raw array.
 -/
 @[grind]
 public def CompletionCache.WF {T N : Type} [BEq T] [BEq N] [Hashable N]
@@ -306,7 +287,6 @@ public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} 
     (hC' : completions' = bin.completions.map (fun _ xs => xs.map (fun (x, idx) => (x, idx - 1)))) :
     CompletionCache.WF xs.toArray completions' := by
   intro A
-  simp only [hC']
   have inv := bin.invCompletions
   specialize inv A
   specialize hnext A
@@ -314,12 +294,11 @@ public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} 
       bin.completions).getD A [] =
       (bin.completions.getD A []).map (fun x => (x.1, x.2 - 1)) := by
     grind [Std.HashMap.getD_of_map]
-  rw [this]
-  rw [inv]
   grind [filterWithIdx_erase_of_not_P]
 
 /--
-List-based implementation of the .scan operation.
+Equal to list-based implementation of the .scan operation,
+but it takes an `Array T` as the input word.
 
 Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
 if `a` matches the word for given index `k`.
@@ -496,7 +475,6 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
    -- - remove x from the items cache, while also decrementing all indices in the items cache
    -- - remove x from the completions cache, while also decrementing
    --   all indices in all lists of the completion cache
-   -- TODO: this is the same that is required for reasoning with filterWithIdxAux right?
   | case4 y x xs hneqI ih =>
     let raw' := xs.toArray
     let items' := binCached.items.erase x.item
