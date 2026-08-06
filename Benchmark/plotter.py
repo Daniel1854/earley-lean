@@ -49,7 +49,8 @@ def grammar_to_bnf(grammar: Grammar) -> str:
 
 class Variant(Enum):
     LEAN_NAIVE = "lean-naive"  # lean with naive algorithm
-    LEAN_OPT = "lean-opt"  # lean with caches
+    LEAN_OPT = "lean-opt"  # lean with caches, but no pointer maintenance
+    LEAN_ITEM_POINTERS = "lean-item-pointers"  # lean with only the itemcache
     LEAN_OPT_POINTERS = "lean-opt-pointers"  # lean with caches
     ISABELLE = "isabelle"  # exported isabelle code
     SCALA_NAIVE = "scala-naive"  # isabelle code handwritten in scala
@@ -66,6 +67,7 @@ class Experiment:
         if self.variant in [
             Variant.LEAN_NAIVE,
             Variant.LEAN_OPT,
+            Variant.LEAN_ITEM_POINTERS,
             Variant.LEAN_OPT_POINTERS,
         ]:
             return f"lean/lean_{postfix}"
@@ -98,12 +100,13 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             Experiment(variant=variant, grammar=grammar)
             for variant in [
                 Variant.LEAN_OPT,
+                Variant.LEAN_ITEM_POINTERS,
                 Variant.LEAN_OPT_POINTERS,
                 Variant.SCALA_OPT,
             ]
         ]
     else:
-        variant = Variant.LEAN_OPT
+        variant = Variant.LEAN_OPT_POINTERS
         experiments = [
             Experiment(variant=variant, grammar=grammar) for grammar in Grammar
         ]

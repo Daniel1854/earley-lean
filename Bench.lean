@@ -1,25 +1,27 @@
 import Earley.Recognizer
-import Earley.CachedRecognizer
 import Earley.CachedRecognizerPointers
+import Earley.CachedRecognizer
+import Earley.ItemCachedRecognizerPointers
 
 open Earley.Recognizer
 
 inductive Variant where
 | default : Variant
 | cached : Variant
+| itemCachedPointers : Variant
 | cachedPointers : Variant
 
 -- Matching is indeed less performant if there are more elements within the inductive type.
 inductive N1 where
 | S : N1
-deriving BEq, Hashable, ReflBEq, LawfulBEq
+deriving BEq, Hashable, ReflBEq, LawfulBEq, Inhabited
 
 inductive N2 where
 | S : N2
 | X : N2
 | Y : N2
 | Z : N2
-deriving BEq, Hashable, ReflBEq, LawfulBEq
+deriving BEq, Hashable, ReflBEq, LawfulBEq, Inhabited
 
 inductive T where
 | a : T
@@ -79,15 +81,24 @@ def sizeCachedPointersBins {N : Type} {n : Nat}
     (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.size) |>.sum
 
+def sizeItemCachedPointersBins {N : Type} {n : Nat}
+    [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
+    (bins : Earley.ItemCachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
+  bins.map (fun bin => bin.raw.size) |>.sum
+
 def sizeCachedPointersPointers {N : Type} {n : Nat}
     [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
     (bins : Earley.CachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
-def benchRecognizer {N : Type}
+def sizeItemCachedPointersPointers {N : Type} {n : Nat}
     [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
-    (G : ContextFreeGrammarList T N)
-    (variant : Variant) (numChars : UInt32) : IO Unit := do
+    (bins : Earley.ItemCachedRecognizerPointers.CachedEarleyBins T N n) : Nat :=
+  bins.map (fun bin => bin.raw.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
+
+def benchRecognizer {N : Type} [LawfulBEq T] [BEq N] [LawfulBEq N]
+    [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N] [Inhabited (BinItem T N)]
+    (G : ContextFreeGrammarList T N) (variant : Variant) (numChars : UInt32) : IO Unit := do
   match variant with
   | .default =>
     let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
@@ -104,6 +115,14 @@ def benchRecognizer {N : Type}
     let t2 ← IO.monoMsNow
     let binSize ← IO.lazyPure (fun () => sizeCachedBins bins)
     IO.println s!"{numChars},{t2-t1},{binSize},0,{binSize}"
+  | .itemCachedPointers =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
+    let t1 ← IO.monoMsNow
+    let bins  ← IO.lazyPure (fun () => Earley.ItemCachedRecognizerPointers.earleyCached G w)
+    let t2 ← IO.monoMsNow
+    let binSize ← IO.lazyPure (fun () => sizeItemCachedPointersBins bins)
+    let pointerSize ← IO.lazyPure (fun () => sizeItemCachedPointersPointers bins)
+    IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
   | .cachedPointers =>
     let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
@@ -127,12 +146,14 @@ def main (args : List String) : IO UInt32 := do
     IO.println "Valid values for VARIANT are:"
     IO.println "'lean-naive'          | naive algorithm"
     IO.println "'lean-opt'            | cache for containment check and completion filtering"
+    IO.println "'lean-item-pointers'  | cache for containment check + maintaining pointers"
     IO.println "'lean-opt-pointers'   | caches + maintaining pointers"
     return 1
   let grammarIdx := String.toNat! args[0]! |>.toUInt32
   let variant ← match args[1]! with
     | "lean-naive" => pure Variant.default
     | "lean-opt" => pure Variant.cached
+    | "lean-item-pointers" => pure Variant.itemCachedPointers
     | "lean-opt-pointers" => pure Variant.cachedPointers
     | _ =>
       IO.println s!"No controlflow for variant={args[1]!}"

@@ -10,6 +10,7 @@ import Earley.Proofs.Model
 import Earley.Proofs.Finiteness
 import Earley.Proofs.Recognizer
 import Earley.Proofs.Parser
-import Earley.CachedRecognizer
 import Earley.CachedRecognizerPointers
 import Earley.Proofs.CachedRecognizerPointers
+import Earley.CachedRecognizer
+import Earley.ItemCachedRecognizerPointers

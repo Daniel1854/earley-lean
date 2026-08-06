@@ -23,6 +23,7 @@ usage() {
   echo "Valid values for VARIANT are:"
   echo "'lean-naive'          | naive algorithm"
   echo "'lean-opt'            | cache for containment check and completion filtering"
+  echo "'lean-item-pointers'  | cache for containment check + maintaining pointers"
   echo "'lean-opt-pointers'   | caches + maintaining pointers"
   exit 1
 }
@@ -38,6 +39,8 @@ if [ "${GRAMMAR_INDEX}" == 1 ]; then
     INPUT_SIZES=(10 20 50 100 150 200 225 250 275 300 350 400)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 20 50 100 200 300 500 700 1000 1500)
+  elif [ "${VARIANT}" == "lean-item-pointers" ]; then
+    INPUT_SIZES=(10 20 50 100 200 300 500 700 1000)
   elif [ "${VARIANT}" == "lean-opt-pointers" ]; then
     INPUT_SIZES=(10 20 50 100 200 300 500 700 1000)
   fi
@@ -46,6 +49,8 @@ elif [ "${GRAMMAR_INDEX}" == 2 ]; then
     INPUT_SIZES=(10 20 50 100 200 500 700 800 900 1000 1100 1200 1300 1400 1500)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 20 50 100 200 500 700 1000 2000 3000 5000 7000 10000 12000 14000 15000)
+  elif [ "${VARIANT}" == "lean-item-pointers" ]; then
+    INPUT_SIZES=(10 20 50 100 200 500 700 1000 1500 2000)
   elif [ "${VARIANT}" == "lean-opt-pointers" ]; then
     INPUT_SIZES=(10 20 50 100 200 500 700 1000 2000 3000 4000)
   fi
@@ -54,6 +59,8 @@ elif [ "${GRAMMAR_INDEX}" == 3 ]; then
     INPUT_SIZES=(10 20 50 100 200 500 700 800 900 1000 1100 1200 1300 1400 1500)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 20 50 100 200 500 700 1000 2000 3000 5000 10000 15000)
+  elif [ "${VARIANT}" == "lean-item-pointers" ]; then
+    INPUT_SIZES=(10 20 50 100 200 500 700 1000 1500 2000)
   elif [ "${VARIANT}" == "lean-opt-pointers" ]; then
     INPUT_SIZES=(10 20 50 100 200 500 700 1000 2000 3000 4000)
   fi
@@ -61,6 +68,8 @@ elif [ "${GRAMMAR_INDEX}" == 4 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
     INPUT_SIZES=(10 100 200 500 700 1000 2000 5000 10000 20000 30000 50000 60000 70000 80000 90000 100000)
   elif [ "${VARIANT}" == "lean-opt" ]; then
+    INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
+  elif [ "${VARIANT}" == "lean-item-pointers" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
   elif [ "${VARIANT}" == "lean-opt-pointers" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
@@ -70,6 +79,8 @@ elif [ "${GRAMMAR_INDEX}" == 5 ]; then
     INPUT_SIZES=(10 100 200 500 700 1000 2000 5000 10000 20000 30000 50000 60000 70000 80000 90000 100000)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000 15000000)
+  elif [ "${VARIANT}" == "lean-item-pointers" ]; then
+    INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000)
   elif [ "${VARIANT}" == "lean-opt-pointers" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000)
   fi
