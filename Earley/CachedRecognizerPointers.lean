@@ -27,8 +27,6 @@ These optimizations do make it such that maintaining only one origin information
 would be way more convenient, and since the implementation for `build_tree` only uses
 the first pointer of the reduction pointer anyway, this doesn't affect the algorithms currently.
 This could be a more appropriate next step instead of the current implementation?
-
-TODO: CachedParser would use `Array.findIdx?` instead of filterWithIdx?
 -/
 
 @[expose] public section

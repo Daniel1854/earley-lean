@@ -240,6 +240,7 @@ public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (
     let bins := rawList cachedBins
     -- Find the finished item, and follow its pointers.
     let P := fun x => isFinished G.initial w.size x.item
+    -- One _could_ use Array.findIdx here, but the implementation isn't actually more efficient.
     match h : filterWithIdx bins[w.size] P with
     | [] => none
     | (_, i)::_ =>
