@@ -11,6 +11,8 @@ public import Earley.Derivation
 public import Earley.Proofs.Finiteness
 public import Earley.Recognizer
 public import Earley.Proofs.Recognizer
+public import Earley.CachedRecognizerPointers
+public import Earley.Proofs.CachedRecognizerPointers
 public import Earley.Parser
 
 /-!
@@ -35,6 +37,8 @@ TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
 namespace Earley
 namespace Proofs
 namespace Parser
+
+section Naive
 
 open Earley.Model
 open Earley.Model.EarleyItem
@@ -175,6 +179,39 @@ public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq
     (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) :
     G.Generates (mapT w) ↔ ∃ t, parse Gₗ w = some t := by
   grind [soundnessParse, completenessParse]
+
+end Naive
+
+section Cached
+
+open Earley.Model
+open Earley.Recognizer
+open Earley.CachedRecognizerPointers
+open Earley.Proofs.CachedRecognizerPointers
+open Earley.Parser
+open Utils
+
+variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
+  [Hashable N] [Hashable (EarleyItem T N)]
+
+public theorem parseCached_eq_parse {G : ContextFreeGrammarList T N} (w : Array T) :
+    parseCached G w = parse G w.toList := by
+  simp only [parseCached, parse, Array.toList_eq_nil_iff, Array.length_toList]
+  have : rawList (earleyCached G w).bins = (earleyList G w.toList).bins := by
+    grind [earleyCachedBins_eq_earleyListBins]
+  grind
+
+/--
+A refinement proof for the the same algorithm, but utilizing a cached implementation
+to compute the bins.
+-/
+public theorem correctnessCachedParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)] (w : Array T)
+    {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) :
+    G.Generates (mapT w.toList) ↔ ∃ t, parseCached Gₗ w = some t := by
+  grind [parseCached_eq_parse, correctnessParse]
+
+end Cached
 
 end Parser
 end Proofs

@@ -7,6 +7,7 @@ module
 public import Earley.Model
 public import Earley.Recognizer
 public import Earley.Filter
+public import Earley.CachedRecognizerPointers
 
 /-!
 This module represents a functional implementation of the Earley algorithm on the production of
@@ -20,6 +21,8 @@ https://doi.org/10.4230/LIPIcs.ITP.2024.31
 
 namespace Earley
 namespace Parser
+
+section Naive
 
 open Earley.Model
 open Earley.Model.EarleyItem
@@ -214,6 +217,36 @@ public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (
     | (_, i)::_ =>
       have := filterWithIdx_le_length bins[w.length] P i (by grind)
       buildTree G w hw bins inv w.length (by simp) i this
+
+end Naive
+
+section Cached
+
+open Earley.Model
+open Earley.Model.EarleyItem
+open Earley.CachedRecognizerPointers
+open Earley.Utils
+
+variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
+  [Hashable N] [Hashable (EarleyItem T N)]
+
+public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (Tree T N) :=
+  -- TODO: strictly speaking, this can be inferred from the result of earleyList,
+  --       but this is easier to split upon for now.
+  if hw : w = #[] then
+    none
+  else
+    let ⟨cachedBins, inv⟩ := earleyCached G w
+    let bins := rawList cachedBins
+    -- Find the finished item, and follow its pointers.
+    let P := fun x => isFinished G.initial w.size x.item
+    match h : filterWithIdx bins[w.size] P with
+    | [] => none
+    | (_, i)::_ =>
+      have := filterWithIdx_le_length bins[w.size] P i (by grind)
+      buildTree G w.toList (by grind) bins inv w.size (by simp) i this
+
+end Cached
 
 end Parser
 end Earley
