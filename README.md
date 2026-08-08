@@ -36,10 +36,10 @@ and you can look at the rendered file.
   - [x] Graphviz
   - [x] Termination Proof
   - [x] Correctness Proof
-- [x] Evaluation/Benchmark: mostly done
+- [x] Evaluation/Benchmark
+  - [x] Cached Version without pointers w/ no proofs
+  - [x] 100% Mimic'd Scala Recognizer Version w/ no proofs
 - [x] Performance Improvement to O(n^3)
   - [x] Implementation: Cached containment and completion version with and without Pointers
   - [x] Correctness Proof for the version with the pointers
   - [x] Cached Parser Refinement
-  - [x] Partial Recognizer without pointers for perf measurements
-  - [ ] Mimic Scala 100% Recognizer for perf measurements ?
