@@ -14,3 +14,4 @@ import Earley.CachedRecognizerPointers
 import Earley.Proofs.CachedRecognizerPointers
 import Earley.CachedRecognizer
 import Earley.ItemCachedRecognizerPointers
+import Earley.ScalaRecognizer

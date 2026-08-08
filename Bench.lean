@@ -2,11 +2,13 @@ import Earley.Recognizer
 import Earley.CachedRecognizerPointers
 import Earley.CachedRecognizer
 import Earley.ItemCachedRecognizerPointers
+import Earley.ScalaRecognizer
 
 open Earley.Recognizer
 
 inductive Variant where
 | default : Variant
+| scala : Variant
 | cached : Variant
 | itemCachedPointers : Variant
 | cachedPointers : Variant
@@ -71,6 +73,16 @@ def sizePointer (p : Pointer) : Nat :=
 def sizePointers {N : Type} {n : Nat} (bins : EarleyBins T N n) : Nat :=
   bins.map (fun bin => bin.map (fun item => sizePointer item.pointer) |>.sum) |>.sum
 
+def sizeListBins {N : Type}
+    [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
+    (bins : Earley.ScalaRecognizer.EarleyBins T N) : Nat :=
+  bins.map (fun bin => bin.length) |>.sum
+
+def sizeListPointersBins {N : Type}
+    [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
+    (bins : Earley.ScalaRecognizer.EarleyBins T N) : Nat :=
+  bins.map (fun bin => bin.length) |>.sum
+
 def sizeCachedBins {N : Type} {n : Nat}
     [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N]
     (bins : Earley.CachedRecognizer.CachedEarleyBins T N n) : Nat :=
@@ -99,22 +111,32 @@ def sizeItemCachedPointersPointers {N : Type} {n : Nat}
 def benchRecognizer {N : Type} [LawfulBEq T] [BEq N] [LawfulBEq N]
     [LawfulBEq (Earley.Model.EarleyItem T N)] [Hashable N] [Inhabited (BinItem T N)]
     (G : ContextFreeGrammarList T N) (variant : Variant) (numChars : UInt32) : IO Unit := do
-  let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
   match variant with
   | .default =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.Recognizer.earleyList G w)
     let t2 ← IO.monoMsNow
     let binSize ← IO.lazyPure (fun () => sizeBins bins)
     let pointerSize ← IO.lazyPure (fun () => sizePointers bins)
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
+  | .scala =>
+    let w ← IO.lazyPure (fun () => List.replicate numChars.toNat T.a)
+    let t1 ← IO.monoMsNow
+    let bins ← IO.lazyPure (fun () => Earley.ScalaRecognizer.earleyList G w)
+    let t2 ← IO.monoMsNow
+    let binSize ← IO.lazyPure (fun () => sizeListBins bins)
+    let pointerSize ← IO.lazyPure (fun () => sizeListPointersBins bins)
+    IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
   | .cached =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let bins ← IO.lazyPure (fun () => Earley.CachedRecognizer.earleyCached G w)
     let t2 ← IO.monoMsNow
     let binSize ← IO.lazyPure (fun () => sizeCachedBins bins)
     IO.println s!"{numChars},{t2-t1},{binSize},0,{binSize}"
   | .itemCachedPointers =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let bins  ← IO.lazyPure (fun () => Earley.ItemCachedRecognizerPointers.earleyCached G w)
     let t2 ← IO.monoMsNow
@@ -122,6 +144,7 @@ def benchRecognizer {N : Type} [LawfulBEq T] [BEq N] [LawfulBEq N]
     let pointerSize ← IO.lazyPure (fun () => sizeItemCachedPointersPointers bins)
     IO.println s!"{numChars},{t2-t1},{binSize},{pointerSize},{binSize + pointerSize}"
   | .cachedPointers =>
+    let w ← IO.lazyPure (fun () => Array.replicate numChars.toNat T.a)
     let t1 ← IO.monoMsNow
     let ⟨bins, _⟩ ← IO.lazyPure (fun () => Earley.CachedRecognizerPointers.earleyCached G w)
     let t2 ← IO.monoMsNow
@@ -142,6 +165,7 @@ def main (args : List String) : IO UInt32 := do
     IO.println ""
     IO.println "Valid values for VARIANT are:"
     IO.println "'lean-naive'          | naive algorithm"
+    IO.println "'lean-scala'          | naive algorithm ported 100% from scala"
     IO.println "'lean-opt'            | cache for containment check and completion filtering"
     IO.println "'lean-item-pointers'  | cache for containment check + maintaining pointers"
     IO.println "'lean-opt-pointers'   | caches + maintaining pointers"
@@ -149,6 +173,7 @@ def main (args : List String) : IO UInt32 := do
   let grammarIdx := String.toNat! args[0]! |>.toUInt32
   let variant ← match args[1]! with
     | "lean-naive" => pure Variant.default
+    | "lean-scala" => pure Variant.scala
     | "lean-opt" => pure Variant.cached
     | "lean-item-pointers" => pure Variant.itemCachedPointers
     | "lean-opt-pointers" => pure Variant.cachedPointers

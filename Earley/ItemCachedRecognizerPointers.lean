@@ -5,12 +5,8 @@ Authors: Daniel Soukup
 -/
 module
 public import Earley.Model
-public import Earley.Proofs.Model
-public import Earley.Slice
 public import Earley.Filter
-public import Earley.Proofs.Finiteness
 public import Earley.Recognizer
-public import Earley.Proofs.Recognizer
 
 /-!
 This module represents an optimized implementation of the Earley algorithm.

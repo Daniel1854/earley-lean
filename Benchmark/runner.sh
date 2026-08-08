@@ -22,6 +22,7 @@ usage() {
   echo ""
   echo "Valid values for VARIANT are:"
   echo "'lean-naive'          | naive algorithm"
+  echo "'lean-scala'          | naive algorithm ported 100% from scala"
   echo "'lean-opt'            | cache for containment check and completion filtering"
   echo "'lean-item-pointers'  | cache for containment check + maintaining pointers"
   echo "'lean-opt-pointers'   | caches + maintaining pointers"
@@ -37,6 +38,8 @@ fi
 if [ "${GRAMMAR_INDEX}" == 1 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
     INPUT_SIZES=(10 100 125 150 175 200 225 250 275 300 325 350 375 400)
+  elif [ "${VARIANT}" == "lean-scala" ]; then
+    INPUT_SIZES=(10 100 125 150 175 200 225 250 275 300 325 350 375 400)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then
@@ -47,6 +50,8 @@ if [ "${GRAMMAR_INDEX}" == 1 ]; then
 elif [ "${GRAMMAR_INDEX}" == 2 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
     INPUT_SIZES=(10 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500)
+  elif [ "${VARIANT}" == "lean-scala" ]; then
+    INPUT_SIZES=(10 100 200 300 400 500 600 700 800 900 1000 1100 1200)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then
@@ -57,6 +62,8 @@ elif [ "${GRAMMAR_INDEX}" == 2 ]; then
 elif [ "${GRAMMAR_INDEX}" == 3 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
     INPUT_SIZES=(10 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500)
+  elif [ "${VARIANT}" == "lean-scala" ]; then
+    INPUT_SIZES=(10 100 200 300 400 500 600 700 800 900 1000 1100 1200)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then
@@ -67,6 +74,8 @@ elif [ "${GRAMMAR_INDEX}" == 3 ]; then
 elif [ "${GRAMMAR_INDEX}" == 4 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
+  elif [ "${VARIANT}" == "lean-scala" ]; then
+    INPUT_SIZES=(10 100 1000 10000 15000 20000 25000 30000)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then
@@ -77,6 +86,8 @@ elif [ "${GRAMMAR_INDEX}" == 4 ]; then
 elif [ "${GRAMMAR_INDEX}" == 5 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000)
+  elif [ "${VARIANT}" == "lean-scala" ]; then
+    INPUT_SIZES=(10 100 1000 2500 5000 7500 10000 12500)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000 15000000)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then

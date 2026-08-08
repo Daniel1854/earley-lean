@@ -49,6 +49,7 @@ def grammar_to_bnf(grammar: Grammar) -> str:
 
 class Variant(Enum):
     LEAN_NAIVE = "lean-naive"  # lean with naive algorithm
+    LEAN_SCALA = "lean-scala"  # lean with algorithm 100% from scala
     LEAN_OPT = "lean-opt"  # lean with caches, but no pointer maintenance
     LEAN_ITEM_POINTERS = "lean-item-pointers"  # lean with only the itemcache
     LEAN_OPT_POINTERS = "lean-opt-pointers"  # lean with caches
@@ -66,6 +67,7 @@ class Experiment:
         postfix = f"grammar={self.grammar.value}_variant={self.variant.value}.csv"
         if self.variant in [
             Variant.LEAN_NAIVE,
+            Variant.LEAN_SCALA,
             Variant.LEAN_OPT,
             Variant.LEAN_ITEM_POINTERS,
             Variant.LEAN_OPT_POINTERS,
@@ -89,9 +91,14 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             grammar is not None
         ), "Called plot with grammar mode, but didnt supply a grammar!"
         if grammar in [Grammar.ONE, Grammar.TWO, Grammar.THREE]:
-            variants = [Variant.ISABELLE, Variant.SCALA_NAIVE, Variant.LEAN_NAIVE]
+            variants = [
+                Variant.ISABELLE,
+                Variant.SCALA_NAIVE,
+                Variant.LEAN_NAIVE,
+                Variant.LEAN_SCALA,
+            ]
         else:
-            variants = [Variant.ISABELLE, Variant.SCALA_NAIVE]
+            variants = [Variant.ISABELLE, Variant.SCALA_NAIVE, Variant.LEAN_SCALA]
         experiments = [
             Experiment(variant=variant, grammar=grammar) for variant in variants
         ]
@@ -149,6 +156,8 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             marker = "D"
         elif idx == 6:
             marker = "<"
+        elif idx == 7:
+            marker = ">"
         else:
             assert False, "controlflow issue"
 
