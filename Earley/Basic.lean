@@ -4,7 +4,6 @@ public import Lean.LibrarySuggestions.Default
 
 /-!
 This module houses basic types and instances, that should be included everywhere.
-TODO: I am not sure if they should live within a namespace?
 -/
 
 deriving instance BEq for Symbol
@@ -15,6 +14,8 @@ deriving instance BEq for ContextFreeRule
 deriving instance ReflBEq for ContextFreeRule
 deriving instance LawfulBEq for ContextFreeRule
 deriving instance Hashable for ContextFreeRule
+
+namespace Earley
 
 /--
 Variant of `ContextFreeGrammar` that uses a List internally to store the rules.
@@ -66,7 +67,7 @@ public def Vector.modify {α : Type} {n : Nat} (xs : Vector α n) (i : Nat) (f :
 @[grind =]
 public theorem Vector.getElem_modify {α : Type} {n : Nat} {xs : Vector α n} {i j : Nat} (f : α → α)
     (hi : i < n) : (Vector.modify xs j f)[i] = if j = i then f xs[i] else xs[i] := by
-  simp only [modify, getElem_mk]
+  simp only [modify, Vector.getElem_mk]
   grind
 
 public theorem Std.HashMap.getD_of_map {α β : Type} [BEq α] [LawfulBEq α] [Hashable α] {f : β → β}
@@ -75,3 +76,5 @@ public theorem Std.HashMap.getD_of_map {α β : Type} [BEq α] [LawfulBEq α] [H
   match h : m[k]? with
   | none => grind [Std.HashMap.getD_eq_fallback_of_contains_eq_false]
   | some val => grind [Std.HashMap.getElem?_eq_some_getD]
+
+end Earley

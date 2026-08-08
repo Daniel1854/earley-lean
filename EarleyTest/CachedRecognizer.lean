@@ -11,6 +11,7 @@ This suite tests the basic functionality of the Recognizer and Parser.
 -/
 
 namespace CachedRecognizer
+open Earley
 open Earley.CachedRecognizer
 
 variable {α β : Type} [Repr α] [Repr β] [ToString α] [ToString β]

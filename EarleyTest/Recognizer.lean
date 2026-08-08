@@ -12,6 +12,7 @@ This suite tests the basic functionality of the Recognizer and Parser.
 -/
 
 namespace Recognizer
+open Earley
 open Earley.Recognizer
 open Earley.Parser
 

@@ -14,6 +14,7 @@ It plays with the general mathlib API and basic usage of the functions for the e
 -/
 
 namespace Basic
+open Earley
 
 /- Simple Usage Examples for Mathlib Types -/
 inductive N where

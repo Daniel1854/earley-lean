@@ -4,6 +4,7 @@ import Earley.CachedRecognizer
 import Earley.ItemCachedRecognizerPointers
 import Earley.ScalaRecognizer
 
+open Earley
 open Earley.Recognizer
 
 inductive Variant where
