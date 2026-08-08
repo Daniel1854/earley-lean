@@ -646,8 +646,6 @@ public def earleyCached (G : ContextFreeGrammarList T N) (w : Array T) :
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
-
-TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 @[grind]
 public def recognizeCached (G : ContextFreeGrammarList T N) (w : Array T) : Bool :=

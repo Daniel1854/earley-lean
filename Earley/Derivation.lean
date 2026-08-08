@@ -176,7 +176,7 @@ lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hwo
 Given an equality of List concatenations,
 if the length of `a` is smaller or equal to the length of `c`,
 then we know that `a` has to be the first `a.length` elements of `c`.
-TODO: I'm surprised there doesn't exist a lemma for that
+TODO: I'm surprised this doesn't exist as a lemma already.
 -/
 lemma take_of_append_longer {α : Type} {a b c d : List α} (h : a ++ b = c ++ d)
     (hac : a.length ≤ c.length) : a = List.take a.length c := by

@@ -178,8 +178,6 @@ lemma earleyBinList_idem_of_lower_idx {G : ContextFreeGrammarList T N} {w : Arra
   | case1 bins hk j hbins hj => grind
   | case2 bins hk j hbins hj x bins' hbins' => grind
 
--- TODO: very notably, hj' is derivable from hj, but if I supply the proof on the fly via grind,
---       the fun_induction isn't able to apply the cases correctly.
 lemma updateBinAux_getElem_of_lower_idx (xs : BinItems T N) (y : BinItem T N) (j : Nat)
     (hj : j < xs.length) (hj' : j < (updateBinAux y xs).length) :
     (updateBinAux y xs)[j].item = xs[j].item := by
@@ -206,7 +204,7 @@ lemma updateBins_getElem_of_lower_idx {w : Array T} {bins : EarleyBins T N (w.si
   grind [updateBin_getElem_of_lower_idx]
 
 -- TODO: very notably, hlen is derivable from hj, but if I supply the proof on the fly via grind,
---       the fun_induction isn't able to apply the cases correctly.
+--       then fun_induction isn't able to apply the cases correctly.
 lemma earleyBinList_getElem_of_lower_idx {G : ContextFreeGrammarList T N} {w : Array T}
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
     (k j i : Nat) (hk : k < bins.size) (hj : j < bins[k].length) (hij : j < i)
@@ -382,31 +380,6 @@ lemma setOfBinsEarleyBinList_extensive {G : ContextFreeGrammarList T N} {w : Arr
           simp only [hw, ↓reduceDIte]
           apply setOfBinsUpdateBins_extensive (k+1)
       | .nonterminal n => apply setOfBinsUpdateBins_extensive k
-
-section Unused
-
--- I think I should never reason on that level about extensive ?
-lemma earleyBinsList_extensiveAux (G : ContextFreeGrammarList T N) (w : Array T) (k n : Nat)
-    (hi : k ≤ n) (hk : n < w.size) {x : EarleyItem T N}
-    (hmem : x ∈ items (earleyBinsList G w n (by lia)).bins[k]) :
-    x ∈ items (earleyBinsList G w (n+1) (by lia)).bins[k] := by
-  grind [earleyBinList_extensive]
-
-lemma earleyBinsList_extensive (G : ContextFreeGrammarList T N) (w : Array T) (k n m : Nat)
-    (hk : k ≤ n) (hn : n ≤ m) (hm : m < w.size + 1) {x : EarleyItem T N}
-    (hmem : x ∈ items (earleyBinsList G w n (by lia)).bins[k]) :
-    x ∈ items (earleyBinsList G w m (by lia)).bins[k] := by
-  induction m with
-  | zero =>
-    grind [earleyBinsList_extensiveAux]
-  | succ m ih =>
-    if h : n = m+1 then
-      grind
-    else
-      specialize ih (by grind) (by lia) hmem
-      apply earleyBinsList_extensiveAux G w k m (by lia) (by lia) ih
-
-end Unused
 
 lemma updateBinAux_sub {s : Set (EarleyItem T N)} (xs : BinItems T N) (y : BinItem T N)
     (hx : {x | x ∈ items xs} ⊆ s) (hy : y.item ∈ s) :
@@ -886,9 +859,8 @@ lemma scanModel_sub_scanL {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] [L
     {a : Symbol T G.NT} (k : Nat) (hk : k < w.size) {x : EarleyItem T G.NT}
     (hx : x = ⟨r, pos, i, k⟩) (hmem : x ∈ items (earleyBinsList Gₗ w k (by lia)).bins[k])
     (hnext : x.nextSymbol = some a) (hw : (mapT w)[k]'(by grind) = a) :
-    ⟨r, pos+1, i, k+1⟩ ∈
-    items ((earleyBinsList Gₗ w k (by lia)).bins[k+1]) := by
-  -- TODO: Should've went with w : Array T in the model as well. But for now, no need to change.
+    ⟨r, pos+1, i, k+1⟩ ∈ items ((earleyBinsList Gₗ w k (by lia)).bins[k+1]) := by
+  -- Should've went with w : Array T in the model as well. But for now, no need to change.
   have : ∃ a', a = Symbol.terminal a' := by grind
   rcases this with ⟨a, ha⟩
   -- Get the index of x to showcase that the call upon that item triggers scanX

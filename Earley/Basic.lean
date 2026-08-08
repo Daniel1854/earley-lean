@@ -2,6 +2,11 @@ module
 public import Mathlib.Computability.ContextFreeGrammar
 public import Lean.LibrarySuggestions.Default
 
+/-!
+This module houses basic types and instances, that should be included everywhere.
+TODO: I am not sure if they should live within a namespace?
+-/
+
 deriving instance BEq for Symbol
 deriving instance ReflBEq for Symbol
 deriving instance LawfulBEq for Symbol
@@ -10,9 +15,6 @@ deriving instance BEq for ContextFreeRule
 deriving instance ReflBEq for ContextFreeRule
 deriving instance LawfulBEq for ContextFreeRule
 deriving instance Hashable for ContextFreeRule
-
--- TODO: These types don't require anything else and should be included everywhere.
---       At least a namespace would be useful, maybe it should be a separate file regardless.
 
 /--
 Variant of `ContextFreeGrammar` that uses a List internally to store the rules.

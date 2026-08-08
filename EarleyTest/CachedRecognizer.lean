@@ -8,9 +8,6 @@ import Earley.CachedRecognizer
 
 /-!
 This suite tests the basic functionality of the Recognizer and Parser.
-
-TODO: Unclear if these Repr instances are worthwhile for anything besides these tests.
-      Should they be ToString?
 -/
 
 namespace CachedRecognizer

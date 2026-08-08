@@ -61,23 +61,6 @@ variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (Ea
 def rawList {n : Nat} (bins : CachedEarleyBins T N n) : EarleyBins T N n :=
   bins.map (fun x => x.raw.toList)
 
-/--
-Equal to list-based implementation of the .scan operation,
-but it takes an `Array T` as the input word.
-
-Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
-if `a` matches the word for given index `k`.
-
-TODO: I could merge scanList with scanCached by reasoning about some getElem instance?
-      But there is not much merit to it currently since the proof is trivial.
--/
-public def scanCached (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size)
-    (pre : Nat) : BinItems T N :=
-  if w[k] == a then
-    [⟨incItem x (x.endIdx+1), Pointer.predecessor pre⟩]
-  else
-    []
-
 public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBins T N n) (j : Nat) :
     BinItems T N :=
   -- The origin bin filtered for matchings with y
@@ -138,7 +121,7 @@ public partial def earleyBinCached (G : ContextFreeGrammarList T N) {w : Array T
           bins
         else
           -- Add a potential .scan operations on the current item to the next bin
-          let newItem := scanCached w x.item a k (by omega) j
+          let newItem := scanList w x.item a k (by omega) j
           updateBinsCached bins (k + 1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
@@ -182,8 +165,6 @@ public def earleyCached (G : ContextFreeGrammarList T N) (w : Array T) :
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
-
-TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 @[grind]
 public def recognizeCached (G : ContextFreeGrammarList T N) (w : Array T) : Bool :=

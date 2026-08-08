@@ -31,9 +31,6 @@ so Rau only reasons about epsilon free grammars.
 
 The implementation and its proofs follows the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
-
-TODO: think about if I want to replace wlen with (w : Array T) since now all the relevant versions
-      use Arrays for w anyway?
 -/
 
 @[expose] public section
@@ -119,10 +116,12 @@ public def BinItems.WF {L : Type} (G : ContextFreeGrammarList T N) (wlen : Nat) 
   ∀ x ∈ bin, isWellFormed G.rules wlen x.item ∧ x.item.endIdx = k
 
 /--
-A pointer is well-formed with respect to an EarleyBins, if TODO
-TODO: Since the pointers require access to previous bins, it's a bit inconvenient to merge.
-      I could make BinPointers.WF reason about the index and simply merge?
-      But the proofs get quite a bit more involved then.
+A pointer is well-formed with respect to an EarleyBins, if the pointer points to a stored bin item.
+`k` is the index of the bin, at which the pointer is stored at.
+
+Since reduction pointers can point towards any earlier bin than k, this is a very global property
+and difficult to reason about locally. This makes it too inconvenient to merge it with
+the soundness property about pointers.
 -/
 @[grind]
 public def Pointer.WF {wlen : Nat} (bins : EarleyBins T N (wlen + 1)) (pointer : Pointer)
@@ -140,9 +139,11 @@ public def BinPointers.WF {L : Type} {wlen : Nat} (bins : EarleyBins T N (wlen +
   ∀ x ∈ bin, Pointer.WF bins x.pointer k
 
 /--
+A pointer is called sound, if the reduction pointer points towards an earlier item.
 Interestingly enough, we only reason about the first pointer
 since it is the only one used for buildTree anyway.
-There are problematic details when merging reduction pointers.
+There are problematic details when merging reduction pointers since the item could in theory
+skip ahead of the item that triggered the .complete operation.
 -/
 @[grind]
 public def Pointer.isSound (pointer : Pointer) (k j : Nat) : Prop :=
@@ -181,8 +182,6 @@ List-based implementation of the .scan operation.
 
 Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
 if `a` matches the word for given index `k`.
-TODO: Returning an Option would be more sensible since appending to a linked list is expensive?
-      But I want to be close to the scala code for easier comparison.
 -/
 public def scanList (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size)
     (pre : Nat) : BinItems T N :=
@@ -826,8 +825,6 @@ public def earleyList (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyB
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
-
-TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 @[grind]
 public def recognizeList (G : ContextFreeGrammarList T N) (w : Array T) [LawfulBEq T] : Bool :=

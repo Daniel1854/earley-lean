@@ -5,7 +5,6 @@ Authors: Daniel Soukup
 -/
 module
 public import Earley.Basic
--- TODO: what exactly do I need to import for the @[simp]/attribute to be recognized?
 
 /-!
 This module houses an alternative slice API to `List.extract`.

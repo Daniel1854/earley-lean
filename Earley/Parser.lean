@@ -45,7 +45,7 @@ inductive Tree (T N : Type) where
   | node (data : Symbol T N) (succ : List (Tree T N)) : Tree T N
 deriving BEq, Repr
 
--- TODO: this should probably live somewhere else.
+-- This may want to live somewhere else. Some Util module with the graphviz function?
 instance [ToString T] [ToString N] : ToString (Symbol T N) where
  toString sym := match sym with
    | Symbol.terminal t => toString t
@@ -83,7 +83,6 @@ def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
   let ⟨graph, _⟩ := toGraphvizAux "Digraph tree {" 1 t
   graph ++ "\n}"
 
--- TODO: A bit curious that grind isn't able to extract that information well
 omit [BEq T] [BEq N] in
 lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : Array T}
     {endIdxA i j m n : Nat} {ps : List ReductionPointer}
@@ -204,8 +203,8 @@ Tries to parse a word with given grammar, and returns a parse tree if succesful.
 -/
 public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : Array T) :
     Option (Tree T N) :=
-  -- TODO: strictly speaking, this can be inferred from the result of earleyList,
-  --       but this is easier to split upon for now.
+  -- This could be inferred from the result of earleyList,
+  -- but this is easier to to reason about and performance-wise should be equal.
   if hw : w = #[] then
     none
   else
@@ -231,8 +230,8 @@ variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (Ea
   [Hashable N] [Hashable (EarleyItem T N)]
 
 public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (Tree T N) :=
-  -- TODO: strictly speaking, this can be inferred from the result of earleyList,
-  --       but this is easier to split upon for now.
+  -- This could be inferred from the result of earleyList,
+  -- but this is easier to to reason about and performance-wise should be equal.
   if hw : w = #[] then
     none
   else

@@ -112,7 +112,6 @@ theorem complete2 : isComplete exItem2 = false := rfl
 theorem complete3 : isComplete exItem3 = true := rfl
 theorem complete4 : isComplete exItem4 = false := rfl
 
--- TODO: I don't understand why. This is derived, but somehow I need it explicit since it's a field?
 instance : BEq G.NT where
   beq fst snd := match fst,snd with
     | N.S, N.S => true

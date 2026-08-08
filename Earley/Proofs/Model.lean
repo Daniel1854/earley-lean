@@ -184,7 +184,7 @@ public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sy
     (hx : x = ⟨rule, pos, i, j⟩) (hmem : x ∈ EarleySet G w) (hbounds : j < w.length)
     (hw : w[j] = a) (hnext : nextSymbol x = some a) (hsound : isSound G w x) :
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
-  -- TODO: grind is able to prove this now, but probably wiser to keep the proof?
+  -- grind is able to prove this now, but probably wiser to keep the proof.
   simp only [isSound, betaItem]
   simp only [isSound, betaItem, hx] at hsound
   simp only [nextSymbol, hx] at hnext

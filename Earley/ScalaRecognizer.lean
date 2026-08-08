@@ -69,8 +69,6 @@ List-based implementation of the .scan operation.
 
 Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
 if `a` matches the word for given index `k`.
-TODO: Returning an Option would be more sensible since appending to a linked list is expensive?
-      But I want to be close to the scala code for easier comparison.
 -/
 public def scanList (w : List T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.length)
     (pre : Nat) : BinItems T N :=
@@ -204,8 +202,6 @@ public def earleyList (G : ContextFreeGrammarList T N) (w : List T) : EarleyBins
 
 /--
 Returns if a given word gets recognized by the Grammar by using a variant of the Earley algorithm.
-
-TODO: what code gets compiled from `∃ x ∈ List ?
 -/
 public def recognizeList (G : ContextFreeGrammarList T N) (w : List T) [LawfulBEq T] : Bool :=
   let bins := earleyList G w

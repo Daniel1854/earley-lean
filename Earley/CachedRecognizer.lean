@@ -167,8 +167,6 @@ public partial def earleyBinCached (G : ContextFreeGrammarList T N) {w : Array T
 
 /--
 Initialize bins by constructing the first bin through using .init for all G.rules.
-TODO: I could use of Std.HashSet.ofList and something more clever for the HashMap cache,
-      but utilizing updateBin is easier to reason with. It shouldnt be much worse perf-wise
 -/
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
