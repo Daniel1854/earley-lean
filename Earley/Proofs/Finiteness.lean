@@ -15,9 +15,6 @@ This module houses proofs surrounding Finiteness of EarleyItems
 
 The proofs follow the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
-
-TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
-      https://leanprover-community.github.io/contribute/naming.html
 -/
 
 @[expose] public section
@@ -51,7 +48,7 @@ Due the WellFormed-constraints, this results in a Product Set `Top` of
 The members of the Product are all individually finite, therefore the Product is also finite.
 Since the well-formed EarleyItems are simply a subset of this `Top`, that set also has to be finite.
 -/
-public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (wlen : Nat)
+public theorem finiteWFEarleyItems_of_nonEmptyRules (G : ContextFreeGrammarList T N) (wlen : Nat)
     (hempty : G.rules ≠ []) : Finite { x | isWellFormed G.rules wlen x } := by
   -- The maximum length of any rule
   let M := G.rules.map (fun r => r.output.length) |>.max (by simp [hempty])
@@ -83,12 +80,12 @@ public theorem finiteEarleyNonEmpty (G : ContextFreeGrammarList T N) (wlen : Nat
 /--
 There is only a finite number of well-formed EarleyItems for a specific grammar and word.
 -/
-public theorem finiteEarleyWF (G : ContextFreeGrammarList T N) (wlen : Nat) :
+public theorem finiteWFEarleyItems (G : ContextFreeGrammarList T N) (wlen : Nat) :
     Finite { x | isWellFormed G.rules wlen x} := by
   cases h : G.rules
   · simp [isWellFormed]
     grind [Finite.exists_equiv_fin, Finite.of_fintype]
-  · grind [finiteEarleyNonEmpty]
+  · grind [finiteWFEarleyItems_of_nonEmptyRules]
 
 /--
 The EarleySet only has a finite number of elements.
@@ -96,7 +93,7 @@ The EarleySet only has a finite number of elements.
 This is a nice theorem to have proven in general, even without any usage,
 but this also showcases some annoyance with CFG vs CFGList that I need to work around.
 -/
-public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
+public theorem finiteEarleySet (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
     Finite (EarleySet G w) := by
   have hwf := wfEarley G w
   have hsub : EarleySet G w ⊆ { x | isWellFormed G.rules w.length x } := by grind
@@ -104,7 +101,7 @@ public theorem finiteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Sym
   let G' : ContextFreeGrammarList T G.NT := ⟨G.initial, G.rules.toList, this⟩
   have hsub' : EarleySet G w ⊆ { x | isWellFormed G'.rules w.length x } := by
     grind [Finset.mem_toList]
-  have hf := finiteEarleyWF G' w.length
+  have hf := finiteWFEarleyItems G' w.length
   exact Set.Finite.subset hf hsub'
 
 end Finiteness

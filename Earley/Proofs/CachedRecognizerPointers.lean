@@ -46,8 +46,8 @@ open Utils
 variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
   [Hashable N] [Hashable (EarleyItem T N)]
 
-lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Array T) (j k : Nat)
-    (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
+public theorem earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Array T)
+    (j k : Nat) (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
     (binsCached : CachedEarleyBins T N (w.size + 1))
     (hbinsCached : EarleyBins.WF G (rawList binsCached)) (hk : k < bins.size)
     (heq : rawList binsCached = bins) :
@@ -84,7 +84,7 @@ lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Arr
 termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
 decreasing_by exact decreasingAux hbins j k (by grind) (by simp only [not_le] at this; exact this)
 
-lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : Array T)
+public theorem earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : Array T)
     (k : Nat) (hk : k < w.size + 1) :
     rawList (earleyBinsCached G w k hk).bins = (earleyBinsList G w k hk).bins := by
   induction k with

@@ -115,7 +115,7 @@ lemma foldl_add_nth {α : Type} (xs : List (List α)) (m k : Nat) (hk : k < xs.l
       have := ih x.length (k-1) (by grind)
       grind
 
-lemma foldl_le_acc (xs : List Nat) (n : Nat) : n ≤ xs.foldl Add.add n := by
+lemma acc_le_foldl (xs : List Nat) (n : Nat) : n ≤ xs.foldl Add.add n := by
   induction xs generalizing n with
   | nil => grind
   | cons head tail ih => grind
@@ -130,7 +130,7 @@ lemma foldl_le_of_le (xs : List Nat) (m k j : Nat) (hk : k < xs.length) (hjk : j
     else if hj : j = 0 then
       simp only [hj, List.take_zero, List.foldl_nil, List.getElem_cons_zero]
       have := @List.take_succ_cons _ x xs (k-1)
-      grind [foldl_le_acc]
+      grind [acc_le_foldl]
     else
       specialize ih (m+x) (k-1) (j-1) (by grind) (by grind)
       have := @List.take_succ_cons _ x xs (k-1)
@@ -247,6 +247,5 @@ public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (
       buildTree G w (by grind) bins inv w.size (by simp) i this
 
 end Cached
-
 end Parser
 end Earley

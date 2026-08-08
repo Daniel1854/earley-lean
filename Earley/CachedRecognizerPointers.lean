@@ -5,14 +5,9 @@ Authors: Daniel Soukup
 -/
 module
 public import Earley.Model
-public import Earley.Proofs.Model
-public import Earley.Slice
 public import Earley.Filter
-public import Earley.Proofs.Finiteness
 public import Earley.Recognizer
 public import Earley.Proofs.Recognizer
-public import Std.Data.HashMap.Lemmas
-public import Mathlib.Data.Set.Card
 
 /-!
 
@@ -128,7 +123,7 @@ public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (wlen : Nat
 section WellFormedBin
 
 omit [LawfulBEq T] [LawfulBEq N] in
-public lemma itemCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
+lemma itemCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
     (heq : ∀ i, (hi : i < bin.raw.size ∧ i < raw'.size) → bin.raw[i].item = raw'[i].item)
     (h : bin.raw.size = raw'.size) : ItemCache.WF raw' bin.items := by
   constructor
@@ -138,7 +133,7 @@ public lemma itemCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (
     grind
 
 omit [LawfulBEq T] [LawfulBEq N] in
-public lemma completionCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
+lemma completionCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : Array (BinItem T N)}
     (heq : ∀ i, (hi : i < bin.raw.size ∧ i < raw'.size) → bin.raw[i].item = raw'[i].item)
     (h : bin.raw.size = raw'.size) : CompletionCache.WF raw' bin.completions := by
   have := bin.invCompletions
@@ -147,7 +142,7 @@ public lemma completionCacheWF_of_eq_Items {bin : CachedEarleyBin T N} {raw' : A
   grind [Array.toList_map]
 
 omit [LawfulBEq T] [LawfulBEq N] in
-public lemma itemCacheWF_of_push {bin : CachedEarleyBin T N} {y : BinItem T N}
+lemma itemCacheWF_of_push {bin : CachedEarleyBin T N} {y : BinItem T N}
     (h : ¬ bin.items.contains y.item = true) {raw' : Array (BinItem T N)}
     (hR : raw' = bin.raw.push y) {items' : ItemCache T N}
     (hI : items' = bin.items.insert y.item bin.raw.size) : ItemCache.WF raw' items' := by
@@ -157,7 +152,7 @@ public lemma itemCacheWF_of_push {bin : CachedEarleyBin T N} {y : BinItem T N}
   · have := bin.invItems.right
     grind
 
-public lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A : N}
+lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A : N}
     {y : BinItem T N} (hnext : y.item.nextSymbol = some (Symbol.nonterminal A))
     {raw' : Array (BinItem T N)} (hR : raw' = bin.raw.push y)
     {completions' : CompletionCache T N} (hC : completions' = bin.completions.alter A
@@ -191,7 +186,7 @@ public lemma completionCacheWF_of_push_of_nextA (bin : CachedEarleyBin T N) {A :
     simp only [items, List.map_append, List.map_cons, List.map_nil]
     grind [filterWithIdx_cons_of_notP]
 
-public lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
+lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
     {y : BinItem T N} (hnext : ∀ A, y.item.nextSymbol ≠ some (Symbol.nonterminal A)) :
     CompletionCache.WF (bin.raw.push y) bin.completions := by
   have := bin.invCompletions
@@ -202,7 +197,7 @@ public lemma completionCacheWF_of_push_of_nextNotA {bin : CachedEarleyBin T N}
   grind [filterWithIdx_cons_of_notP]
 
 omit [LawfulBEq T] [LawfulBEq N] in
-public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
+lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
     (xs : BinItems T N) (heq : bin.raw.toList = x :: xs) (hN : (items (x :: xs)).Nodup)
     (items' : ItemCache T N) (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1)) :
     ItemCache.WF xs.toArray items' := by
@@ -237,7 +232,7 @@ public lemma itemCacheWF_of_erase (bin : CachedEarleyBin T N) (x : BinItem T N)
     have : (x ::xs)[idx].item = bin.raw[idx].item := by grind
     grind
 
-public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x : BinItem T N}
+lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x : BinItem T N}
     {xs : BinItems T N} (heq : bin.raw.toList = x :: xs)
     (A : N) (hnext : x.item.nextSymbol = some (Symbol.nonterminal A))
     {completions' completions'' : CompletionCache T N}
@@ -278,7 +273,7 @@ public lemma completionCacheWF_of_erase_of_nextA {bin : CachedEarleyBin T N} {x 
     rw [inv]
     grind [filterWithIdx_erase_of_not_P]
 
-public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {x : BinItem T N}
+lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} {x : BinItem T N}
     {xs : BinItems T N} (heq : bin.raw.toList = x :: xs)
     (hnext : ∀ A, x.item.nextSymbol ≠ some (Symbol.nonterminal A))
     {completions' : CompletionCache T N}
@@ -308,7 +303,7 @@ public def completeCached (y : EarleyItem T N) {n : Nat} (bins : CachedEarleyBin
   xMatches.map (fun ⟨x,i⟩ => ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 omit [LawfulBEq T] [LawfulBEq N] in
-lemma completeCached_eq_completeList {wlen : Nat}
+public theorem completeCached_eq_completeList {wlen : Nat}
     (bins : EarleyBins T N (wlen + 1)) (y : EarleyItem T N) (hS : y.startIdx < (wlen + 1))
     (binsCached : CachedEarleyBins T N (wlen + 1)) (heq : bins = rawList binsCached) (j : Nat) :
     completeCached y binsCached hS j = completeList y bins hS j := by
@@ -383,7 +378,7 @@ public lemma updateBinCached_new (bin : CachedEarleyBin T N) (newBin : BinItems 
   fun_induction updateBinCached bin newBin <;> grind
 
 -- A very mechanical proof, but thats to be expected since it is such an unnatural thing.
-public lemma updateBinCached_eq_updateBinCached_of_erase {bin bin' : CachedEarleyBin T N}
+lemma updateBinCached_eq_updateBinCached_of_erase {bin bin' : CachedEarleyBin T N}
     (x y : BinItem T N) (xs : BinItems T N) (heq : bin.raw.toList = x :: xs)
     (hneq : x.item ≠ y.item) (items' : ItemCache T N)
     (hitems : items' = (bin.items.erase x.item).map (fun _ y => y - 1))
@@ -484,7 +479,7 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
       rw [← ih]
       grind [updateBinCached_eq_updateBinCached_of_erase]
 
-theorem updateBinCached_cons (bin : CachedEarleyBin T N) (y : BinItem T N) (ys : BinItems T N) :
+lemma updateBinCached_cons (bin : CachedEarleyBin T N) (y : BinItem T N) (ys : BinItems T N) :
     updateBinCached bin (y :: ys) = updateBinCached (updateBinCached bin [y]) ys := by
   rw [updateBinCached]
   rw (occs := .pos [1]) [updateBinCached]
@@ -495,7 +490,7 @@ theorem updateBinCached_cons (bin : CachedEarleyBin T N) (y : BinItem T N) (ys :
     simp only [h, Bool.false_eq_true, ↓reduceDIte, List.append_eq, updateBin_nil]
     split <;> simp
 
-lemma updateBinCached_eq_updateBin (bin : BinItems T N) (newBin : BinItems T N)
+public theorem updateBinCached_eq_updateBin (bin : BinItems T N) (newBin : BinItems T N)
     (binCached : CachedEarleyBin T N) (heq : binCached.raw.toList = bin) (hN : (items bin).Nodup) :
     (updateBinCached binCached newBin).raw.toList = updateBin bin newBin := by
   fun_induction updateBin bin newBin generalizing binCached with
@@ -505,7 +500,7 @@ lemma updateBinCached_eq_updateBin (bin : BinItems T N) (newBin : BinItems T N)
     specialize ih (updateBinCached binCached [y]) this (by grind [noDup_of_updateBinAux])
     grind [updateBinCached_cons]
 
-lemma updateBinsCached_eq_updateBins {G : ContextFreeGrammarList T N} {w : Array T}
+public theorem updateBinsCached_eq_updateBins {G : ContextFreeGrammarList T N} {w : Array T}
     (bins : EarleyBins T N (w.size + 1)) (k : Nat)
     (newBin : BinItems T N) (binsCached : CachedEarleyBins T N (w.size + 1))
     (hbins : EarleyBins.WF G (rawList binsCached)) (heq : rawList binsCached = bins) :

@@ -386,7 +386,7 @@ lemma updateBinAux_of_Red_of_neqItem (xs : BinItems T N) (y : BinItem T N) (i j 
       grind [List.nodup_iff_getElem?_ne_getElem?]
     grind [updateBinAux_of_Red_of_neqItemAux]
 
-theorem updateBinAux_of_updRed (xs xs' : BinItems T N) (y : BinItem T N) (i : Nat)
+lemma updateBinAux_of_updRed (xs xs' : BinItems T N) (y : BinItem T N) (i : Nat)
     (hNoDup : (items xs).Nodup) {xp yp : ReductionPointer} {xP yP : List ReductionPointer}
     (hi : i < xs.length) (hx : xs[i].pointer = Pointer.reduction xp xP) (heq : y.item = xs[i].item)
     (hy : y.pointer = .reduction yp yP) (hxs' : xs' = updateBinAux y xs) :
@@ -514,7 +514,7 @@ lemma soundPointers_of_updateBin (wlen : Nat) (k : Nat) (bins : EarleyBins T N (
     specialize ih bins' hbins' (by grind)
     grind
 
-lemma wfBins_of_updateBin (G : ContextFreeGrammarList T N) (wlen : Nat) {k : Nat}
+theorem wfBins_of_updateBin (G : ContextFreeGrammarList T N) (wlen : Nat) {k : Nat}
     (bins : EarleyBins T N (wlen + 1)) (hwf : EarleyBins.WF G bins)
     (ys : BinItems T N) (hk : k < wlen + 1)
     (hwfy : ∀ y ∈ ys, isWellFormed G.rules wlen y.item ∧ y.item.endIdx = k)
@@ -684,7 +684,7 @@ lemma wfBins_of_completeList {G : ContextFreeGrammarList T N} {wlen j k : Nat}
   · grind [wfPointers_of_completeList wlen j k hbins y hk (by grind) (by lia)]
   · grind [soundPointers_of_completeList wlen j k bins hbins y hk]
 
-lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
+theorem wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
     (bins bins' : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
     (hk : k < bins.size) (hj : ¬ (j ≥ bins[k].length))
     (h : bins' =
@@ -714,7 +714,7 @@ lemma wfBins_of_earleyBinList {G : ContextFreeGrammarList T N} {w : Array T} (j 
         grind [wfBins_of_scanList]
   | none => grind [wfBins_of_completeList]
 
-lemma length_lte_ncard_of_superset {α : Type} (xs : List α) (s : Set α) [Finite s]
+theorem length_lte_ncard_of_superset {α : Type} (xs : List α) (s : Set α) [Finite s]
     (P : α → Prop) (hs : s = { x | P x }) (hx : ∀ x ∈ xs, P x) (hNoDup : xs.Nodup) :
     xs.length ≤ s.ncard := by
   have : xs.length ≤ { x | x ∈ xs }.ncard := by
@@ -746,7 +746,7 @@ lemma decreasingAux {G : ContextFreeGrammarList T N} {wlen : Nat} {bins : Earley
   · specialize hbins k (by lia)
     let wfItemsBin := { x | isWellFormed G.rules wlen x }
     have : (items bins[k]).length ≤ wfItemsBin.ncard := by
-      have hF := Earley.Proofs.Finiteness.finiteEarleyWF G wlen
+      have hF := Proofs.Finiteness.finiteWFEarleyItems G wlen
       have ⟨hNoDup, _⟩ := hbins
       let P := (fun x => isWellFormed G.rules wlen x)
       apply length_lte_ncard_of_superset (items bins[k]) wfItemsBin P (by grind) (by grind) hNoDup

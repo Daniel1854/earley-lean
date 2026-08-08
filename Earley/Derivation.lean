@@ -118,7 +118,7 @@ lemma Derivation_trans_produces (G : ContextFreeGrammar T) {u v w : List (Symbol
 /--
 A given Derivation for rewriting `u` to `v` implies that you can derive `v` from `u`.
 -/
-lemma Derivation_implies_derives {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
+lemma Derives_of_Derivation {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
     (D : List (ContextFreeRule T G.NT)) (hD : Derivation G u D v) : G.Derives u v := by
   induction D generalizing u with
   | nil => rw [hD]
@@ -127,7 +127,7 @@ lemma Derivation_implies_derives {G : ContextFreeGrammar T} {u v : List (Symbol 
 /--
 Given that you can derive `v` from `u`, there is a Derivation that rewrites `u` to `v`.
 -/
-lemma derives_implies_Derivation {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
+lemma Derivation_of_Derives {G : ContextFreeGrammar T} {u v : List (Symbol T G.NT)}
     (h : G.Derives u v) : ∃ D, Derivation G u D v  := by
   simp only [Derives] at h
   induction h with
@@ -143,13 +143,13 @@ lemma derives_implies_Derivation {G : ContextFreeGrammar T} {u v : List (Symbol 
 /--
 G derives `u` from `v` if and only if there is a Derivation that rewrites `u` to `v`.
 -/
-lemma derives_iff_Derivation (G : ContextFreeGrammar T) (u v : List (Symbol T G.NT)) :
+theorem derives_iff_Derivation (G : ContextFreeGrammar T) (u v : List (Symbol T G.NT)) :
     G.Derives u v ↔ ∃ D, Derivation G u D v  := by
   constructor
-  · apply derives_implies_Derivation
+  · apply Derivation_of_Derives
   · intro hex
     rcases hex with ⟨D,hD⟩
-    apply Derivation_implies_derives D hD
+    apply Derives_of_Derivation D hD
 
 /--
 Given `r.Rewrites u v` with `length u = 1`, we know that the only meaningful rule could be r=⟨u,v⟩
@@ -167,7 +167,7 @@ Given a Derivation starting from a single non terminal symbol to the word,
 we can extract the first rule that has been applied and construct the derivation for the rest.
 -/
 @[grind .]
-lemma Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hword : isWord G w)
+theorem Derivation_step (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) (hword : isWord G w)
     {u : G.NT} (D : List (ContextFreeRule T G.NT)) (hD : Derivation G [Symbol.nonterminal u] D w) :
     ∃ v D', Derivation G v D' w  ∧ ⟨u, v⟩ ∈ G.rules  := by
   cases D <;> grind
@@ -206,7 +206,7 @@ lemma take_of_append_shorter {α : Type} {d : α} {a b c e : List α} (h : a ++ 
 Given a Derivation from multiple inputs, we can split up the inputs and
 derive their output separetely.
 -/
-lemma Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G.NT)}
+theorem Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T G.NT)}
     {D : List (ContextFreeRule T G.NT)} (hD : Derivation G (a ++ b) D c) :
     ∃ a' b' E F, Derivation G a E a'  ∧ Derivation G b F b'  ∧ c = a' ++ b' ∧
       E.length ≤ D.length ∧ F.length ≤ D.length := by

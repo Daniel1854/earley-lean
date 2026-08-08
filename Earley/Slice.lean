@@ -43,7 +43,7 @@ lemma slice_nil {α : Type} (i j : Nat) : slice ([] : List α) i j = [] := by
 /--
 `slice` returns the same sublist as `extract`.
 -/
-lemma slice_eq_extract {α : Type} (xs : List α) (i j : Nat) :
+theorem slice_eq_extract {α : Type} (xs : List α) (i j : Nat) :
     slice xs i j = xs.extract i j := by
   induction xs, i, j using slice.induct with
   | case1 => simp
@@ -87,7 +87,7 @@ Two slices appended, where the first one ends with the index the second one star
 can be merged into one slice.
 -/
 @[grind =]
-lemma slice_concat {α : Type} (xs : List α) {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) :
+lemma slice_append {α : Type} (xs : List α) {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) :
     slice xs i j ++ slice xs j k = slice xs i k := by
   simp only [slice_eq_extract, List.extract_eq_take_drop]
   ext l h
@@ -100,7 +100,7 @@ the slice without the increment and a direct access to that endIdx.
 @[grind =]
 lemma slice_succ_right {α : Type} (xs : List α) {i j : Nat} (hle : i ≤ j) (hb : j < xs.length) :
     slice xs i (j + 1) = (slice xs i j) ++ [xs[j]] := by
-  have := @slice_concat _ xs i j (j+1) hle (by lia)
+  have := @slice_append _ xs i j (j+1) hle (by lia)
   rw [← this]
   have := slice_one xs hb
   simp [this]
@@ -118,8 +118,7 @@ lemma succ_of_len {α : Type} (xs : List α) (i j : Nat) (h : (slice xs i j).len
 Given that a slice of a list is equal to two lists appended,
 there always exists an index to split the slice into the two lists.
 -/
-@[grind <=]
-lemma slice_concat_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice xs i k = ys ++ zs)
+theorem slice_append_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice xs i k = ys ++ zs)
     (hik : i ≤ k) : ∃ j, ys = slice xs i j ∧ zs = slice xs j k ∧ i ≤ j ∧ j ≤ k := by
   induction xs, i, k using slice.induct generalizing ys zs with
   | case1 i k =>

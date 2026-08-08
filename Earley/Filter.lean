@@ -35,7 +35,7 @@ theorem filterWithIdxAux_eq_zipFilter (l : List α) (P : α → Bool) (i : Nat) 
   | nil => grind
   | cons x xs ih => grind
 
-theorem filterWithIdxAux_cong_filter (l : List α) (P : α → Bool) (i : Nat) :
+lemma filterWithIdxAux_cong_filter (l : List α) (P : α → Bool) (i : Nat) :
     (filterWithIdxAux P i l).map (fun ⟨item,_⟩ => item) = l.filter P := by
   induction l generalizing i <;> grind
 
@@ -49,12 +49,12 @@ lemma filterWithIdxAux_le_length {α : Type} (l : List α) (P : α → Bool) :
   | nil => grind
   | cons x xs ih => grind [filterWithIdxAux_eq_zipFilter]
 
-lemma filterWithIdx_le_length {α : Type} (l : List α) (P : α → Bool) :
+theorem filterWithIdx_le_length {α : Type} (l : List α) (P : α → Bool) :
     ∀ i ∈ (filterWithIdx l P).map Prod.snd, i < l.length := by
   have := filterWithIdxAux_le_length l P
   grind
 
-theorem P_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α → Bool)
+lemma P_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α → Bool)
     (hmem : (x, n) ∈ filterWithIdxAux P i l) : P x := by
   induction l generalizing i with
   | nil => grind
@@ -70,7 +70,7 @@ lemma filterWithIdxAuxI_le_getElem {α : Type} (l : List α) (i : Nat) (P : α �
   | nil => grind
   | cons x xs ih => grind
 
-theorem getElem_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α → Bool)
+lemma getElem_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α → Bool)
     (hmem : (x, n) ∈ filterWithIdxAux P i l) : l[n - i]? = some x := by
   induction l generalizing i with
   | nil => grind
@@ -90,7 +90,7 @@ theorem getElem_of_filterWithIdx {x : α} {n : Nat} (l : List α) (P : α → Bo
   rw [filterWithIdx] at hmem
   apply getElem_of_filterWithIdxAux l P hmem
 
-theorem memFilterWithIdxAux_of_mem {x : α} (i : Nat) {l : List α} {P : α → Bool}
+lemma memFilterWithIdxAux_of_mem {x : α} (i : Nat) {l : List α} {P : α → Bool}
     (hmem : x ∈ l) (hp : P x) : ∃ n, (x, n) ∈ filterWithIdxAux P i l := by
   induction l generalizing i with
   | nil => grind
@@ -98,7 +98,7 @@ theorem memFilterWithIdxAux_of_mem {x : α} (i : Nat) {l : List α} {P : α → 
     specialize ih (i+1)
     grind
 
-theorem mem_of_memFilterWithIdxAux {x : α} {i n : Nat} {l : List α} {P : α → Bool}
+lemma mem_of_memFilterWithIdxAux {x : α} {i n : Nat} {l : List α} {P : α → Bool}
     (hmem : (x, n) ∈ filterWithIdxAux P i l) : x ∈ l := by
   induction l generalizing i with
   | nil => grind
@@ -109,7 +109,7 @@ theorem mem_of_memFilterWithIdx {x : α} {n : Nat} {l : List α} {P : α → Boo
   rw [filterWithIdx] at hmem
   apply mem_of_memFilterWithIdxAux hmem
 
-theorem notP_of_emptyFilterWithIdxAux {x : α} {i : Nat} {l : List α} {P : α → Bool}
+lemma notP_of_emptyFilterWithIdxAux {x : α} {i : Nat} {l : List α} {P : α → Bool}
     (hempty : filterWithIdxAux P i l = []) (hP : P x) : x ∉ l := by
   induction l generalizing i with
   | nil => grind
@@ -120,7 +120,7 @@ theorem notP_of_emptyFilterWithIdx {x : α} {l : List α} {P : α → Bool}
   rw [filterWithIdx] at hempty
   apply notP_of_emptyFilterWithIdxAux hempty hP
 
-theorem filterWithIdxAux_cons_of_notP {i : Nat} {l : List α} {P : α → Bool} {x : α} (hnP : ¬ P x) :
+lemma filterWithIdxAux_cons_of_notP {i : Nat} {l : List α} {P : α → Bool} {x : α} (hnP : ¬ P x) :
     filterWithIdxAux P i (l ++ [x]) = filterWithIdxAux P i l := by
   induction l generalizing i with
   | nil => grind
@@ -131,7 +131,7 @@ theorem filterWithIdx_cons_of_notP {l : List α} {P : α → Bool} {x : α} (hnP
   rw [filterWithIdx]
   grind [filterWithIdxAux_cons_of_notP]
 
-theorem filterWithIdxAux_cons_of_P {i : Nat} {l : List α} {P : α → Bool} {x : α} (hP : P x) :
+lemma filterWithIdxAux_cons_of_P {i : Nat} {l : List α} {P : α → Bool} {x : α} (hP : P x) :
     filterWithIdxAux P i (l ++ [x]) = filterWithIdxAux P i l ++ [(x, l.length + i)] := by
   induction l generalizing i with
   | nil => grind
@@ -141,7 +141,7 @@ theorem filterWithIdx_cons_of_P {l : List α} {P : α → Bool} {x : α} (hP : P
     filterWithIdx (l ++ [x]) P = filterWithIdx l P ++ [(x, l.length)] := by
   grind [filterWithIdxAux_cons_of_P]
 
-theorem filterWithIdxAux_erase_of_not_P {i : Nat} {x : α} {xs : List α} {P : α → Bool}
+lemma filterWithIdxAux_erase_of_not_P {i : Nat} {x : α} {xs : List α} {P : α → Bool}
     (hnP : ¬ P x) :
     (filterWithIdxAux P i (x :: xs)).map (fun (x, i) => (x, i - 1)) = filterWithIdxAux P i xs := by
   induction xs generalizing i with
@@ -152,7 +152,7 @@ theorem filterWithIdx_erase_of_not_P {x : α} {xs : List α} {P : α → Bool} (
     (filterWithIdx (x :: xs) P).map (fun (x, i) => (x, i - 1)) = filterWithIdx xs P := by
   grind [filterWithIdxAux_erase_of_not_P]
 
-theorem filterWithIdxAux_erase_of_P {i : Nat} {x : α} {xs : List α} {P : α → Bool} (hP : P x) :
+lemma filterWithIdxAux_erase_of_P {i : Nat} {x : α} {xs : List α} {P : α → Bool} (hP : P x) :
     (filterWithIdxAux P i (x :: xs)).map (fun (x, i) => (x, i - 1))
     = (x, i-1) :: filterWithIdxAux P i xs := by
   induction xs generalizing i with

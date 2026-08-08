@@ -27,9 +27,6 @@ This module houses the correctness proofs for the
 
 The proofs follow the work from Rau et Nipkow:
 https://doi.org/10.4230/LIPIcs.ITP.2024.31
-
-TODO: Rename a ton of lemmas since I forgot about the style in the middle /o\
-      https://leanprover-community.github.io/contribute/naming.html
 -/
 
 @[expose] public section
@@ -42,13 +39,10 @@ section Naive
 
 open Earley.Model
 open Earley.Model.EarleyItem
-open Earley.Proofs.Model
-open Earley.Proofs.Finiteness
 open Earley.Recognizer
 open Earley.Proofs.Recognizer
 open Earley.Parser
 open Utils
-open ContextFreeRule
 open ContextFreeGrammar
 
 variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
