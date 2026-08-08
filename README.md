@@ -40,10 +40,6 @@ and you can look at the rendered file.
 - [x] Performance Improvement to O(n^3)
   - [x] Implementation: Cached containment and completion version with and without Pointers
   - [x] Correctness Proof for the version with the pointers
-  - [ ] Cached Parser Refinement
-  - [ ] Sorryfree recognizer without pointers for completeness?
-
-Possible improvements upon the results of Rau depending on my pace:
-- Improving worst-case to O(n^3)
-- Handle epsilon derivations: precompute null-able items in a fixpoint iteration?
-- More exciting proofs about the parse tree?
+  - [x] Cached Parser Refinement
+  - [x] Partial Recognizer without pointers for perf measurements
+  - [ ] Mimic Scala 100% Recognizer for perf measurements ?
