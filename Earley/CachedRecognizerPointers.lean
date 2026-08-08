@@ -295,29 +295,6 @@ public lemma completionCacheWF_of_erase_of_nextNotA {bin : CachedEarleyBin T N} 
   grind [filterWithIdx_erase_of_not_P]
 
 /--
-Equal to list-based implementation of the .scan operation,
-but it takes an `Array T` as the input word.
-
-Gets called with the next symbol being the terminal `a` of the item `x` and returns a new item
-if `a` matches the word for given index `k`.
-
-TODO: I could merge scanList with scanCached by reasoning about some getElem instance?
-      But there is not much merit to it currently since the proof is trivial.
--/
-public def scanCached (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (h : k < w.size)
-    (pre : Nat) : BinItems T N :=
-  if w[k] == a then
-    [⟨incItem x (x.endIdx+1), Pointer.predecessor pre⟩]
-  else
-    []
-
-omit [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] [Hashable N]
-  [Hashable (EarleyItem T N)] in
-lemma scanCached_eq_scanList (w : Array T) (x : EarleyItem T N) (a : T) (k : Nat) (hk : k < w.size)
-    (pre : Nat) : scanCached w x a k hk pre = scanList w.toList x a k hk pre := by
-  grind [scanList, scanCached]
-
-/--
 Cached implementation of the .complete operation.
 
 Returns items for each successful completion of item `y` using its startIdx for bins.
@@ -551,7 +528,7 @@ lemma wfBins_of_earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T} (
             bins
           else
             -- Add a potential .scan operations on the current item to the next bin
-            let newItem := scanCached w bins[k].raw[j].item a k (by omega) j
+            let newItem := scanList w bins[k].raw[j].item a k (by omega) j
             updateBinsCached bins (k + 1) newItem
       | none =>
         -- Add all potential .complete operations on the current item to the current bin
@@ -568,8 +545,7 @@ lemma wfBins_of_earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T} (
       if hk : k ≥ w.size then
         simp [hk, hbins]
       else
-        simp only [hk, ↓reduceDIte, scanCached_eq_scanList,
-          updateBinsCached_eq_updateBins (hbins := hbins)]
+        simp only [hk, ↓reduceDIte, updateBinsCached_eq_updateBins (hbins := hbins)]
         apply wfBins_of_scanList hbins
         · simp [rawList]
         · grind
@@ -605,9 +581,8 @@ public def earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T}
         if hk : k ≥ w.size then
           bins
         else
-          -- Add a potential .scan operations on the current item to the next bin
-          let newItem := scanCached w x.item a k (by omega) j
-          updateBinsCached bins (k + 1) newItem
+          let newItem := scanList w x.item a k (by omega) j
+          updateBinsCached bins (k+1) newItem
     | none =>
       -- Add all potential .complete operations on the current item to the current bin
       let newItems := completeCached x.item bins (by grind) j

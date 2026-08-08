@@ -91,9 +91,9 @@ def G : ContextFreeGrammarList T N := {
   nodup := by simp [exRule1, exRule2]
 }
 
-def exW1 : List T := [T.a]
-def exW2 : List T := [T.a, T.a, T.a]
-def exW3 : List T := [T.a, T.b]
+def exW1 : Array T := #[T.a]
+def exW2 : Array T := #[T.a, T.a, T.a]
+def exW3 : Array T := #[T.a, T.b]
 
 /-- info: [((N.S → [] @ [T.a], 0, 0), null), ((N.S → [] @ [T.a, N.S], 0, 0), null)] -/
 #guard_msgs in
@@ -142,13 +142,13 @@ info: []
 info: []
 -/
 #guard_msgs in
-#eval! (earleyList G [T.b, T.b]).bins[1]
+#eval! (earleyList G #[T.b, T.b]).bins[1]
 
 /--
 info: false
 -/
 #guard_msgs in
-#eval! recognizeList G []
+#eval! recognizeList G #[]
 /--
 info: true
 -/
@@ -172,7 +172,7 @@ info: some (Earley.Parser.Tree.node
    Earley.Parser.Tree.node (Symbol.nonterminal N.S) [Earley.Parser.Tree.leaf (Symbol.terminal T.a)]])
 -/
 #guard_msgs in
-#eval! (parse G [T.a, T.a])
+#eval! (parse G #[T.a, T.a])
 
 -- #eval! saveTree (parse G [T.a, T.a]) "Examples/tree1.gv"
 
@@ -264,11 +264,11 @@ def G : ContextFreeGrammarList T N := {
   nodup := by simp [exRule1, exRule2, exRule3, exRule4, exRule5, exRule6, exRule7, exRule8]
 }
 
-def exW1 : List T := [T.Zero]
-def exW2 : List T := [T.Zero, T.Plus, T.One]
-def exW3 : List T := [T.Zero, T.Mul, T.One, T.Plus, T.One]
-def exW4 : List T := [T.Open, T.One, T.Plus, T.Zero, T.Close, T.Mul, T.Two]
-def exW5 : List T := [T.Mul, T.Plus, T.One]
+def exW1 : Array T := #[T.Zero]
+def exW2 : Array T := #[T.Zero, T.Plus, T.One]
+def exW3 : Array T := #[T.Zero, T.Mul, T.One, T.Plus, T.One]
+def exW4 : Array T := #[T.Open, T.One, T.Plus, T.Zero, T.Close, T.Mul, T.Two]
+def exW5 : Array T := #[T.Mul, T.Plus, T.One]
 
 /--
 info: true

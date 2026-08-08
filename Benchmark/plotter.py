@@ -88,22 +88,34 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         assert (
             grammar is not None
         ), "Called plot with grammar mode, but didnt supply a grammar!"
+        if grammar in [Grammar.ONE, Grammar.TWO, Grammar.THREE]:
+            variants = [Variant.ISABELLE, Variant.SCALA_NAIVE, Variant.LEAN_NAIVE]
+        else:
+            variants = [Variant.ISABELLE, Variant.SCALA_NAIVE]
         experiments = [
-            Experiment(variant=variant, grammar=grammar)
-            for variant in [Variant.ISABELLE, Variant.SCALA_NAIVE, Variant.LEAN_NAIVE]
+            Experiment(variant=variant, grammar=grammar) for variant in variants
         ]
     elif mode is Mode.GRAMMAR_OPT:
         assert (
             grammar is not None
         ), "Called plot with grammar mode, but didnt supply a grammar!"
-        experiments = [
-            Experiment(variant=variant, grammar=grammar)
-            for variant in [
+        if grammar in [Grammar.ONE, Grammar.TWO, Grammar.THREE]:
+            variants = [
                 Variant.LEAN_OPT,
                 Variant.LEAN_ITEM_POINTERS,
                 Variant.LEAN_OPT_POINTERS,
                 Variant.SCALA_OPT,
             ]
+        else:
+            variants = [
+                Variant.LEAN_OPT,
+                Variant.LEAN_NAIVE,
+                Variant.LEAN_ITEM_POINTERS,
+                Variant.LEAN_OPT_POINTERS,
+                Variant.SCALA_OPT,
+            ]
+        experiments = [
+            Experiment(variant=variant, grammar=grammar) for variant in variants
         ]
     else:
         variant = Variant.LEAN_OPT_POINTERS

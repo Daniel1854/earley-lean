@@ -54,7 +54,7 @@ lemma earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N) (w : Arr
     rawList (earleyBinCached binsCached k hk j hbinsCached).bins =
     (earleyBinList bins k hk j hbins).bins := by
   rw [earleyBinCached, earleyBinList]
-  simp only [ge_iff_le, scanCached_eq_scanList, completeCached_eq_completeList, Array.length_toList]
+  simp only [ge_iff_le, completeCached_eq_completeList]
   split
   · rename_i h
     have : List.length bins[k] ≤ j := by grind
@@ -86,12 +86,12 @@ decreasing_by exact decreasingAux hbins j k (by grind) (by simp only [not_le] at
 
 lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : Array T)
     (k : Nat) (hk : k < w.size + 1) :
-    rawList (earleyBinsCached G w k hk).bins = (earleyBinsList G w.toList k hk).bins := by
+    rawList (earleyBinsCached G w k hk).bins = (earleyBinsList G w k hk).bins := by
   induction k with
   | zero =>
-    simp only [earleyBinsCached, Array.length_toList, earleyBinsList]
+    simp only [earleyBinsCached, earleyBinsList]
     apply earleyBinCached_eq_earleyBinList
-    simp only [initCachedBins, initBins, Array.length_toList]
+    simp only [initCachedBins, initBins]
     have invItems : ItemCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
     have invCompletions : CompletionCache.WF (#[] : Array (BinItem T N)) ∅ := by grind
     let bins := Vector.replicate (w.size + 1) ([] : BinItems T N)
@@ -120,15 +120,15 @@ lemma earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : A
 public theorem soundnessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
     (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
-    (hex : recognizeCached Gₗ w) : G.Generates (mapT w.toList) := by
-  apply soundnessEarleyList w.toList h
+    (hex : recognizeCached Gₗ w) : G.Generates (mapT w) := by
+  apply soundnessEarleyList w h
   grind [earleyCachedBins_eq_earleyListBins]
 
 public theorem completenessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
     (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G)
-    (hgen : G.Generates (mapT w.toList)) : recognizeCached Gₗ w := by
-  have hex := completenessEarleyList w.toList h heps hgen
+    (hgen : G.Generates (mapT w)) : recognizeCached Gₗ w := by
+  have hex := completenessEarleyList w h heps hgen
   grind [earleyCachedBins_eq_earleyListBins]
 
 /--
@@ -138,7 +138,7 @@ A word can be generated from the grammar iff the algorithm recognizes the word.
 public theorem correctnessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
     (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
-    (heps : isEpsilonFree G) : G.Generates (mapT w.toList) ↔ recognizeCached Gₗ w := by
+    (heps : isEpsilonFree G) : G.Generates (mapT w) ↔ recognizeCached Gₗ w := by
   grind [soundnessEarleyCached, completenessEarleyCached]
 
 end CachedRecognizerPointers

@@ -48,12 +48,12 @@ public theorem eq_of_CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T)
     G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules := by
   grind
 
-public abbrev mapT {T N : Type} (w : List T) : List (Symbol T N) :=
-  w.map Symbol.terminal
+public abbrev mapT {T N : Type} (w : Array T) : List (Symbol T N) :=
+  (w.toList).map Symbol.terminal
 
 @[simp, grind =]
-public theorem map_of_mapT {T N : Type} (w : List T) :
-    (mapT w : List (Symbol T N)) = w.map Symbol.terminal := by
+public theorem map_of_mapT {T N : Type} (w : Array T) :
+    (mapT w : List (Symbol T N)) = (w.toList).map Symbol.terminal := by
   simp [mapT]
 
 @[inline, grind]

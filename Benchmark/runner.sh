@@ -66,7 +66,7 @@ elif [ "${GRAMMAR_INDEX}" == 3 ]; then
   fi
 elif [ "${GRAMMAR_INDEX}" == 4 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
-    INPUT_SIZES=(10 100 1000 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
+    INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 10000000 20000000 30000000)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then
@@ -76,7 +76,7 @@ elif [ "${GRAMMAR_INDEX}" == 4 ]; then
   fi
 elif [ "${GRAMMAR_INDEX}" == 5 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
-    INPUT_SIZES=(10 100 1000 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
+    INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000)
   elif [ "${VARIANT}" == "lean-opt" ]; then
     INPUT_SIZES=(10 100 1000 10000 100000 1000000 5000000 10000000 15000000)
   elif [ "${VARIANT}" == "lean-item-pointers" ]; then

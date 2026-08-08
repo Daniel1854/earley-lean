@@ -85,13 +85,13 @@ def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
 
 -- TODO: A bit curious that grind isn't able to extract that information well
 omit [BEq T] [BEq N] in
-lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : List T}
+lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : Array T}
     {endIdxA i j m n : Nat} {ps : List ReductionPointer}
-    {bins : EarleyBins T N (w.length + 1)} (hbins : EarleyBins.WF G bins)
-    (hm : m < w.length + 1) (hn : n < bins[m].length)
+    {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
+    (hm : m < w.size + 1) (hn : n < bins[m].length)
     (h : bins[m][n].pointer = Pointer.reduction ⟨endIdxA, i, j⟩ ps) :
-    endIdxA ≤ w.length ∧ j < bins[m].length ∧
-    ∀ (h : endIdxA ≤ w.length), i < bins[endIdxA].length ∧
+    endIdxA ≤ w.size ∧ j < bins[m].length ∧
+    ∀ (h : endIdxA ≤ w.size), i < bins[endIdxA].length ∧
     (endIdxA < m ∨ (endIdxA = m ∧ i < n)) ∧ j < n := by
   have ⟨_, _, pInv, sInv⟩:= hbins m (by lia)
   simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv
@@ -150,9 +150,9 @@ lemma foldl_le_of_le (xs : List Nat) (m k j : Nat) (hk : k < xs.length) (hjk : j
 /--
 Reconstruct the parse tree by searching the origin data from the EarleyBins.
 -/
-public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [])
-    (bins : EarleyBins T N (w.length + 1)) (inv : EarleyBins.WF G bins) (k : Nat)
-    (hk : k < w.length + 1) (j : Nat) (hj : j < bins[k].length) : Option (Tree T N) :=
+public def buildTree (G : ContextFreeGrammarList T N) (w : Array T) (hw : w ≠ #[])
+    (bins : EarleyBins T N (w.size + 1)) (inv : EarleyBins.WF G bins) (k : Nat)
+    (hk : k < w.size + 1) (j : Nat) (hj : j < bins[k].length) : Option (Tree T N) :=
   let binItem := bins[k][j]
   match hp : binItem.pointer with
   | .null =>
@@ -160,7 +160,7 @@ public def buildTree (G : ContextFreeGrammarList T N) (w : List T) (hw : w ≠ [
     some (Tree.node (Symbol.nonterminal binItem.item.rule.input) [])
   | .predecessor i => do
     -- Add sub tree starting from terminal
-    have : k - 1 < w.length := by grind
+    have : k - 1 < w.size := by grind
     have : i < bins[k - 1].length := by grind
     let t ← buildTree G w hw bins inv (k-1) (by lia) i this
     match t with
@@ -202,21 +202,21 @@ decreasing_by
 /--
 Tries to parse a word with given grammar, and returns a parse tree if succesful.
 -/
-public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : List T) :
+public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : Array T) :
     Option (Tree T N) :=
   -- TODO: strictly speaking, this can be inferred from the result of earleyList,
   --       but this is easier to split upon for now.
-  if hw : w = [] then
+  if hw : w = #[] then
     none
   else
     let ⟨bins, inv⟩ := earleyList G w
     -- Find the finished item, and follow its pointers.
-    let P := fun x => isFinished G.initial w.length x.item
-    match h : filterWithIdx bins[w.length] P with
+    let P := fun x => isFinished G.initial w.size x.item
+    match h : filterWithIdx bins[w.size] P with
     | [] => none
     | (_, i)::_ =>
-      have := filterWithIdx_le_length bins[w.length] P i (by grind)
-      buildTree G w hw bins inv w.length (by simp) i this
+      have := filterWithIdx_le_length bins[w.size] P i (by grind)
+      buildTree G w hw bins inv w.size (by simp) i this
 
 end Naive
 
@@ -245,7 +245,7 @@ public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (
     | [] => none
     | (_, i)::_ =>
       have := filterWithIdx_le_length bins[w.size] P i (by grind)
-      buildTree G w.toList (by grind) bins inv w.size (by simp) i this
+      buildTree G w (by grind) bins inv w.size (by simp) i this
 
 end Cached
 
