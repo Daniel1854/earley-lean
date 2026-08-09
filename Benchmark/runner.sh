@@ -37,7 +37,7 @@ fi
 
 if [ "${GRAMMAR_INDEX}" == 1 ]; then
   if [ "${VARIANT}" == "lean-naive" ]; then
-    INPUT_SIZES=(10 100 125 150 175 200 225 250 275 300 325 350 375 400)
+    INPUT_SIZES=(425)
   elif [ "${VARIANT}" == "lean-scala" ]; then
     INPUT_SIZES=(10 100 125 150 175 200 225 250 275 300 325 350 375 400)
   elif [ "${VARIANT}" == "lean-opt" ]; then

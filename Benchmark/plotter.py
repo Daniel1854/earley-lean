@@ -1,5 +1,5 @@
 """
-Desired plots: (x: num_chars (log), y: runtime in ms (log)?)
+Desired plots for general comparison: (x: num_chars (log), y: runtime in ms (log)?)
 - Comparison plot of each grammar for the scala-variants and lean
 - Comparison plot of the grammars for lean
 - Comparison plot of the binsizes for each grammar
@@ -12,6 +12,9 @@ from matplotlib import pyplot as plt
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+
+# TODO: do I even want to polyfit these?
+# from numpy.polynomial.polynomial import polyfit
 
 
 class Mode(Enum):
@@ -51,7 +54,7 @@ class Variant(Enum):
     LEAN_NAIVE = "lean-naive"  # lean with naive algorithm
     LEAN_SCALA = "lean-scala"  # lean with algorithm 100% from scala
     LEAN_OPT = "lean-opt"  # lean with caches, but no pointer maintenance
-    LEAN_ITEM_POINTERS = "lean-item-pointers"  # lean with only the itemcache
+    # LEAN_ITEM_POINTERS = "lean-item-pointers"  # lean with only the itemcache
     LEAN_OPT_POINTERS = "lean-opt-pointers"  # lean with caches
     ISABELLE = "isabelle"  # exported isabelle code
     SCALA_NAIVE = "scala-naive"  # isabelle code handwritten in scala
@@ -69,7 +72,7 @@ class Experiment:
             Variant.LEAN_NAIVE,
             Variant.LEAN_SCALA,
             Variant.LEAN_OPT,
-            Variant.LEAN_ITEM_POINTERS,
+            # Variant.LEAN_ITEM_POINTERS,
             Variant.LEAN_OPT_POINTERS,
         ]:
             return f"lean/lean_{postfix}"
@@ -109,23 +112,23 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         if grammar in [Grammar.ONE, Grammar.TWO, Grammar.THREE]:
             variants = [
                 Variant.LEAN_OPT,
-                Variant.LEAN_ITEM_POINTERS,
+                # Variant.LEAN_ITEM_POINTERS,
                 Variant.LEAN_OPT_POINTERS,
                 Variant.SCALA_OPT,
             ]
         else:
             variants = [
                 Variant.LEAN_OPT,
-                Variant.LEAN_NAIVE,
-                Variant.LEAN_ITEM_POINTERS,
+                # Variant.LEAN_ITEM_POINTERS,
                 Variant.LEAN_OPT_POINTERS,
                 Variant.SCALA_OPT,
+                Variant.LEAN_NAIVE,
             ]
         experiments = [
             Experiment(variant=variant, grammar=grammar) for variant in variants
         ]
     else:
-        variant = Variant.LEAN_OPT_POINTERS
+        variant = Variant.LEAN_NAIVE
         experiments = [
             Experiment(variant=variant, grammar=grammar) for grammar in Grammar
         ]
@@ -136,8 +139,8 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         if mode is Mode.SIZES:
             y = df["num_bins"].values
         else:
-            # y = df["num_miliseconds"].map(lambda x: x / 1000).values
-            y = df["num_miliseconds"].values
+            y = df["num_miliseconds"].map(lambda x: x / 1000).values
+            # y = df["num_miliseconds"].values
         if mode in GRAMMAR_MODES:
             label = f"{experiment.variant.value}"
         else:
@@ -161,7 +164,13 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         else:
             assert False, "controlflow issue"
 
-        ax.plot(n, y, marker=marker, fillstyle="none", label=label)
+        ax.plot(n, y, linestyle="-", marker=marker, fillstyle="none", label=label)
+        # TODO: Polyfit ?
+        # ax.plot(n, y, linestyle=" ", marker=marker, fillstyle="none", label=label)
+        # c, b, a = polyfit(n, y, 2)
+        # ax.plot(n, c + b * n + a * n * n, "-")
+        # b, a = polyfit(n, y, 1)
+        # ax.plot(n, b + a * n, "-")
 
     ax.grid(True, linestyle="--")
 
@@ -172,14 +181,21 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         ax.set_yscale("log")
         ax.legend(loc="lower right")
     elif mode in [Mode.GRAMMAR_NAIVE, Mode.GRAMMAR_OPT]:
-        ax.set_ylabel("Duration [ms]")
+        ax.set_ylabel("Duration [s]")
+        ax.legend(loc="lower right")
+    elif mode is Mode.COMP:
+        ax.set_xscale("log")
+        # ax.set_xlim(xmin=10, xmax=100_000)
+        ax.set_yscale("log")
+        # ax.set_ylim(ymin=1, ymax=100)
+        ax.set_ylabel("Duration [s]")
         ax.legend(loc="lower right")
     else:
         ax.set_xscale("log")
         # ax.set_xlim(xmin=10, xmax=100_000)
         ax.set_yscale("log")
-        ax.set_ylim(ymin=1, ymax=100_000)
-        ax.set_ylabel("Duration [ms]")
+        # ax.set_ylim(ymin=1, ymax=100)
+        ax.set_ylabel("Duration [s]")
         ax.legend(loc="upper left")
 
     # ax.legend(loc="center right")
