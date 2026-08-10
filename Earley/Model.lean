@@ -141,7 +141,7 @@ Its purpose is only to prove correctness for the general judgement/ideas.
 -/
 @[grind cases]
 public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT)) :
-    Set (EarleyItem T G.NT) where
+    EarleyItem T G.NT → Prop where
   /--
   Every rule with the LHS matching the initial NT introduces an EarleyItem at the starting position.
   -/
@@ -152,7 +152,7 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   introduces an EarleyItem parsing that extra symbol.
   -/
   | scan {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat}
-      {a : Symbol T G.NT} (hx : x = ⟨rule,pos,i,j⟩) (hmem : x ∈ EarleySet G w)
+      {a : Symbol T G.NT} (hx : x = ⟨rule,pos,i,j⟩) (hmem : EarleySet G w x)
       (hbounds : j < w.length) (hw : w[j] = a) (hnext : nextSymbol x = some a) :
       EarleySet G w ⟨rule,pos+1,i,j+1⟩
   /--
@@ -160,7 +160,7 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   introduces an EarleyItem where that rule gets followed through.
   -/
   | predict {x : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {pos i j : Nat}
-      (hx : x = ⟨rule1,pos,i,j⟩) (hmemx : x ∈ EarleySet G w)
+      (hx : x = ⟨rule1,pos,i,j⟩) (hmemx : EarleySet G w x)
       (hmemr2 : rule2 ∈ G.rules) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
       EarleySet G w ⟨rule2,0,j,j⟩
   /-
@@ -169,8 +169,8 @@ public inductive EarleySet (G : ContextFreeGrammar T) (w : List (Symbol T G.NT))
   -/
   | complete {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT}
       {posx posy i j k : Nat}
-      (hx : x = ⟨rule1,posx,i,j⟩) (hmemx : x ∈ EarleySet G w)
-      (hy : y = ⟨rule2,posy,j,k⟩) (hmemy : y ∈ EarleySet G w)
+      (hx : x = ⟨rule1,posx,i,j⟩) (hmemx : EarleySet G w x)
+      (hy : y = ⟨rule2,posy,j,k⟩) (hmemy : EarleySet G w y)
       (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input)) :
       EarleySet G w ⟨rule1,posx+1,i,k⟩
 

@@ -94,12 +94,12 @@ This is a nice theorem to have proven in general, even without any usage,
 but this also showcases some annoyance with CFG vs CFGList that I need to work around.
 -/
 public theorem finiteEarleySet (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT)) :
-    Finite (EarleySet G w) := by
+    Finite { x | EarleySet G w x } := by
   have hwf := wfEarley G w
-  have hsub : EarleySet G w ⊆ { x | isWellFormed G.rules w.length x } := by grind
+  have hsub : { x | EarleySet G w x } ⊆ { x | isWellFormed G.rules w.length x } := by grind
   have : G.rules.toList.Nodup := Finset.nodup_toList G.rules
   let G' : ContextFreeGrammarList T G.NT := ⟨G.initial, G.rules.toList, this⟩
-  have hsub' : EarleySet G w ⊆ { x | isWellFormed G'.rules w.length x } := by
+  have hsub' : { x | EarleySet G w x} ⊆ { x | isWellFormed G'.rules w.length x } := by
     grind [Finset.mem_toList]
   have hf := finiteWFEarleyItems G' w.length
   exact Set.Finite.subset hf hsub'
