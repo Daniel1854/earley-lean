@@ -430,7 +430,10 @@ lemma soundPointers_of_completeList {G : ContextFreeGrammar T} [BEq G.NT] [Lawfu
   have : y.startIdx < k ∨ y.startIdx = k := by grind
   rcases this with h | h
   · grind [completeList]
-  · have : isSound G (mapT w) y := by grind [soundItemEarley]
+  · have : EarleySet G (mapT w) y := by
+      have : y ∈ setOfBins bins := by grind
+      apply Set.mem_of_mem_of_subset this hsub
+    have : isSound G (mapT w) y := by grind [soundItemEarley]
     have := false_of_impossibleCompletedItem heps this (by grind) (by grind)
     grind
 

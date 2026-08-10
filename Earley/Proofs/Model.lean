@@ -95,7 +95,7 @@ lemma bounds_of_nextSymbol_eq_some {G : ContextFreeGrammar T} {x : EarleyItem T 
 Any EarleyItem within an EarleySet is well-formed.
 -/
 public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isWellFormed G.rules w.length x := by
+    (x : EarleyItem T G.NT) (hmem : EarleySet G w x) : isWellFormed G.rules w.length x := by
   unfold isWellFormed
   induction hmem with
   | init rule hmem hstart => grind
@@ -115,7 +115,7 @@ public theorem wfEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol 
     simp only [hy] at ihy
     refine ⟨ihx.left,this, by lia⟩
 
-grind_pattern wfEarley => x ∈ EarleySet G w
+grind_pattern wfEarley => EarleySet G w x
 
 end WellFormed
 
@@ -178,7 +178,7 @@ Since we know that the next symbol is `a`, this is mostly reasoning with slice/d
 -/
 public theorem soundItemScan (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x : EarleyItem T G.NT} {rule : ContextFreeRule T G.NT} {pos i j : Nat} {a : Symbol T G.NT}
-    (hx : x = ⟨rule, pos, i, j⟩) (hmem : x ∈ EarleySet G w) (hbounds : j < w.length)
+    (hx : x = ⟨rule, pos, i, j⟩) (hmem : EarleySet G w x) (hbounds : j < w.length)
     (hw : w[j] = a) (hnext : nextSymbol x = some a) (hsound : isSound G w x) :
     isSound G w ⟨rule,pos+1,i,j+1⟩ := by
   -- grind is able to prove this now, but probably wiser to keep the proof.
@@ -207,8 +207,8 @@ two substrings together: one for α and one for γ.
 -/
 public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
     {x y : EarleyItem T G.NT} {rule1 rule2 : ContextFreeRule T G.NT} {posx posy i j k : Nat}
-    (hx : x = ⟨rule1, posx, i, j⟩) (hmemx : x ∈ EarleySet G w)
-    (hy : y = ⟨rule2, posy, j, k⟩) (hmemy : y ∈ EarleySet G w)
+    (hx : x = ⟨rule1, posx, i, j⟩) (hmemx : EarleySet G w x)
+    (hy : y = ⟨rule2, posy, j, k⟩) (hmemy : EarleySet G w y)
     (hcomp : isComplete y) (hnext : nextSymbol x = some (Symbol.nonterminal rule2.input))
     (hsoundx : isSound G w x) (hsoundy : isSound G w y) :
     isSound G w ⟨rule1,posx+1,i,k⟩ := by
@@ -234,7 +234,7 @@ public theorem soundItemComplete (G : ContextFreeGrammar T) [BEq G.NT] (w : List
 Any EarleyItem within an EarleySet is sound.
 -/
 public theorem soundItemEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (Symbol T G.NT))
-    (x : EarleyItem T G.NT) (hmem : x ∈ EarleySet G w) : isSound G w x := by
+    (x : EarleyItem T G.NT) (hmem : EarleySet G w x) : isSound G w x := by
   induction hmem with
   | init _ hmem =>
     exact soundItemPosZero _ _ hmem
@@ -250,7 +250,7 @@ The soundness criteria for the EarleySet:
 Given a finished item for a word within the set, the grammar has to be able to generate that word.
 -/
 public theorem soundnessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : x ∈ EarleySet G w)
+    {w : List (Symbol T G.NT)} {x : EarleyItem T G.NT} (hmem : EarleySet G w x)
     (hfin : isFinished G.initial w.length x) : G.Generates w := by
   have := soundItemEarley G w x hmem
   unfold Generates
@@ -414,7 +414,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
       have hrs : Derivation G (betaItem y) rs (slice w j k) := by
         simp only [betaItem, List.drop_zero, y]
         exact hu.right
-      have hmemy : y ∈ EarleySet G w := by
+      have hmemy : EarleySet G w y := by
         simp only [y]
         have hr := rule_of_rewrite_step G r hu.left
         rw [hr] at hD
@@ -422,7 +422,7 @@ lemma partiallyCompleteEarley (G : ContextFreeGrammar T) [BEq G.NT] (w : List (S
       -- Through partial completeness of y, we know that there is a complete version of y,
       -- which we can use in combination with x for a completion rule
       let z : EarleyItem T G.NT := ⟨⟨A,u⟩, u.length, j, k⟩
-      have hmemz : z ∈ EarleySet G w := by
+      have hmemz : EarleySet G w z := by
         apply partiallyCompleteUpTo G w k (EarleySet G w)
           hjk (by lia) y _ hmemy (wfEarley G w) hrs hcompk
         · exact 0
@@ -437,7 +437,7 @@ there has to be a finished item within the corresponding EarleySet.
 -/
 public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} (hw : isWord G w) (hgen : G.Generates w) :
-    ∃ x ∈ EarleySet G w, isFinished G.initial w.length x := by
+    ∃ x, EarleySet G w x ∧ isFinished G.initial w.length x := by
   simp only [isFinished, isComplete, Bool.and_eq_true, beq_iff_eq]
   -- Fetch the first rule that has to have been applied
   have := Derivation_of_Derives hgen
@@ -447,7 +447,7 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
   -- Create the initial EarleyItem, which is on the critical path
   let x : EarleyItem T G.NT := ⟨⟨G.initial, u⟩, 0, 0, 0⟩
   have hx : x = ⟨⟨G.initial, u⟩, 0, 0, 0⟩ := by simp [x]
-  have hmemx : x ∈ EarleySet G w := by
+  have hmemx : EarleySet G w x := by
     apply EarleySet.init x.rule hu.right
     simp [hx]
   -- The remaining Derivation links the initial item with the final item via partial completeness
@@ -457,7 +457,7 @@ public theorem completenessEarley {G : ContextFreeGrammar T} [BEq G.NT] [LawfulB
     have partComp := partiallyCompleteEarley G w w.length
     apply partiallyComplete_of_unrestricted_partiallyComplete partComp
   -- Prove a finished EarleyItem exists by fully leaning on EarleySet being partially completed
-  have : ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩ ∈ EarleySet G w := by
+  have : EarleySet G w ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩ := by
     exact partiallyCompleteUpTo G w w.length (EarleySet G w)
       (by lia) (by lia) x hx hmemx (wfEarley G w) hD' partCompShorter
   use ⟨⟨G.initial, u⟩, u.length, 0, w.length⟩
@@ -472,7 +472,7 @@ iff there exists a finished item within the corresponding EarleySet.
 -/
 public theorem correctnessEarleyModel {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     {w : List (Symbol T G.NT)} (hw : isWord G w) :
-    G.Generates w ↔ ∃ x ∈ EarleySet G w, isFinished G.initial w.length x := by
+    G.Generates w ↔ ∃ x, EarleySet G w x ∧ isFinished G.initial w.length x := by
   constructor
   · apply completenessEarley hw
   · intro hex
