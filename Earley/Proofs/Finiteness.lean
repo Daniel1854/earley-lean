@@ -58,7 +58,7 @@ public theorem finiteWFEarleyItems_of_nonEmptyRules (G : ContextFreeGrammarList 
   -- The product of four Finite Sets has to be finite as well.
   have finTop : Finite Top := by
     have hFinMem: Finite ruleSet := by
-      simp only [Set.coe_setOf, ruleSet]
+      simp only [Set.coe_ofPred, ruleSet]
       classical
       infer_instance
     infer_instance

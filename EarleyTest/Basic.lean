@@ -127,25 +127,23 @@ theorem finished4 : isFinished G.initial exW1.length exItem4 = false := rfl
 theorem finished5 : isFinished G.initial exW1.length exItem5 = true := rfl
 
 theorem wf1 : isWellFormed G.rules exW1.length exItem1 := by
-  rw [isWellFormed, exItem1]
+  simp only [isWellFormed, exItem1, zero_le, Std.le_refl, and_self, and_true]
   unfold G
   unfold exRules
   simp
 
 theorem wf2 : ¬isWellFormed G.rules exW1.length exItem2 := by
-  rw [isWellFormed, exItem2, exW1]
-  simp [List.length]
+  simp [isWellFormed, exItem2, exW1]
 
 theorem wf3 : ¬isWellFormed G.rules exW2.length exItem3 := by
-  rw [isWellFormed, exItem3]
-  simp
+  simp [isWellFormed, exItem3]
 
 theorem wf4 : ¬isWellFormed G.rules exW2.length exItem4 := by
-  rw [isWellFormed, exItem4, exItem1, exW2, exRule2]
-  simp [List.length]
+  simp [isWellFormed, exItem4, exItem1, exW2, exRule2]
 
 theorem wf5 : isWellFormed G.rules exW2.length exItem5 := by
-  rw [isWellFormed, exItem5, exW2]
+  simp only [isWellFormed, exItem5, zero_le, exW2, List.length_cons, List.length_nil, zero_add,
+    Nat.reduceAdd, Nat.one_le_ofNat, and_self, and_true]
   unfold G
   unfold exRules
   simp [List.length, exRule1]

@@ -388,13 +388,13 @@ lemma updateBins_sub {wlen : Nat} {bins : EarleyBins T N (wlen + 1)} {k : Nat}
     (newBin : BinItems T N) (hn : {y | y ∈ items newBin} ⊆ s) :
     setOfBins (updateBins bins k newBin) ⊆ s := by
   intro z hmemz
-  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmemz
+  simp only [setOfBins, Order.lt_add_one_iff, Set.mem_ofPred_eq] at hmemz
   rcases hmemz with ⟨i,hi,hmem⟩
   if heq : i = k then
     have hb : {x | x ∈ items bins[k]} ⊆ s := by
       intro x hmemx
       apply hb
-      simp only [setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq]
+      simp only [setOfBins, Order.lt_add_one_iff, Set.mem_ofPred_eq]
       use k, by lia
       apply hmemx
     have := updateBin_sub bins[k] newBin hb hn
@@ -412,7 +412,7 @@ lemma initList_sub_Model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     (h : CFGEqCFGₗ G Gₗ) : { x | x ∈ items (initList Gₗ)} ⊆ EarleySet G (mapT w) := by
   intro x hmem
   simp only [items, initList, List.map_map, List.mem_map, List.mem_filter, beq_iff_eq,
-    Function.comp_apply, Set.mem_setOf_eq] at hmem
+    Function.comp_apply, Set.mem_ofPred_eq] at hmem
   rcases hmem with ⟨r,hmemr,hx⟩
   have hmemx : r ∈ G.rules := by grind [Finset.mem_toList]
   have hstart : r.input = G.initial := by grind
@@ -423,7 +423,7 @@ lemma initBins_sub_Model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) : setOfBins (initBins Gₗ w).bins ⊆ EarleySet G (mapT w) := by
   intro x hmem
-  simp only [setOfBins, initBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmem
+  simp only [setOfBins, initBins, Order.lt_add_one_iff, Set.mem_ofPred_eq] at hmem
   rcases hmem with ⟨k, hk, hx⟩
   if hk0 : k = 0 then
     simp [hk0] at hx
@@ -443,7 +443,7 @@ lemma scanSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] [Law
   apply updateBins_sub (by lia) hsub
   if ht : w[k] = t then
     simp only [items, scanList, ht, BEq.rfl, ↓reduceIte, incItem, List.map_cons, List.map_nil,
-      List.mem_cons, List.not_mem_nil, or_false, Set.setOf_eq_eq_singleton, map_of_mapT,
+      List.mem_cons, List.not_mem_nil, or_false, Set.ofPred_eq_eq_singleton, map_of_mapT,
       Set.singleton_subset_iff]
     apply EarleySet.scan (by simp) (by grind) (by grind) (by grind) hnext
   else
@@ -461,7 +461,7 @@ lemma predictSet_sub_model {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT
   apply updateBins_sub hk hsub
   intro y
   simp only [items, predictList, List.map_map, List.mem_map, List.mem_filter, beq_iff_eq,
-    Function.comp_apply, Set.mem_setOf_eq, map_of_mapT, forall_exists_index, and_imp]
+    Function.comp_apply, Set.mem_ofPred_eq, map_of_mapT, forall_exists_index, and_imp]
   intro r hmemr hr hy
   have hx : x.item = ⟨x.item.rule, x.item.position, x.item.startIdx, k⟩ := by
     have : x.item.endIdx = k := by grind
@@ -484,7 +484,7 @@ lemma completeSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] 
   -- x is the original item to be completed, y isComplete, z is the completed item
   intro z
   simp only [items, completeList, incItem, List.map_map, List.mem_map, Function.comp_apply,
-    Prod.exists, exists_and_right, Set.mem_setOf_eq, map_of_mapT, forall_exists_index, and_imp]
+    Prod.exists, exists_and_right, Set.mem_ofPred_eq, map_of_mapT, forall_exists_index, and_imp]
   intro x xIdx hF hz
   have hcomp : y.item.isComplete = true := by
     clear hF hz hsub
@@ -595,7 +595,7 @@ public theorem soundnessEarleyList {G : ContextFreeGrammar T} [LawfulBEq T] [BEq
         {x | x ∈ items (Vector.toList (earleyList Gₗ w).bins).flatten} := by
       intro x hmem
       grind [Vector.mem_toList_iff]
-    grind [Vector.mem_toList_iff, Set.setOf_subset_setOf]
+    grind [Vector.mem_toList_iff, Set.ofPred_subset_ofPred]
   · grind
 
 end Soundness
@@ -1038,7 +1038,7 @@ lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [LawfulBEq T] [BEq
   induction hmemx with
   | init r hmem hr =>
     use 0, by lia
-    simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf,
+    simp only [setOfModelK, map_of_mapT, setOfBins, Order.lt_add_one_iff, Set.ofPred_subset_ofPred,
       and_imp] at hsub
     have : ⟨r,0,0,0⟩ ∈ EarleySet G (mapT w) := EarleySet.init r hmem hr
     grind [earleyBinList_extensive]
@@ -1060,7 +1060,7 @@ lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [LawfulBEq T] [BEq
       grind [earleyBinList_extensive]
     -- Scan item is already present
     else
-      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.ofPred_subset_ofPred] at hsub
       specialize hsub ⟨r, pos+1, i, j+1⟩ ⟨EarleySet.scan hx hmem _ hw hnext, by grind⟩
       grind [earleyBinList_extensive]
   -- We want to show ⟨r2,0,j,j⟩ ∈ bins[j] from x ∈ bins[j] w/ x=⟨r1,pos,i,j⟩
@@ -1081,7 +1081,7 @@ lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [LawfulBEq T] [BEq
         (earleyBinsListSet_sub_model w h k (by lia))
     -- Predict item is already present
     else
-      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.ofPred_subset_ofPred] at hsub
       specialize hsub ⟨r2,0,j,j⟩ ⟨EarleySet.predict hx (by grind) hmemr2 hnext, by grind⟩
       grind [earleyBinList_extensive]
   -- We want to show z=⟨r1,posx+1,i,kz⟩ ∈ bins[kz] from
@@ -1111,7 +1111,7 @@ lemma modelK_sub_earleyBinsListSet {G : ContextFreeGrammar T} [LawfulBEq T] [BEq
         (earleyBinsListSet_sub_model w h k (by lia))
     -- Complete item is already present
     else
-      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf] at hsub
+      simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.ofPred_subset_ofPred] at hsub
       specialize hsub ⟨r1,posx+1,i,kz⟩ ⟨EarleySet.complete hx hmemx hy hmemy hcomp hnext, by grind⟩
       grind [earleyBinList_extensive]
 
@@ -1121,12 +1121,12 @@ lemma modelK_sub_earleyListSetK {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.
     setOfModelK G w k ⊆ setOfBins (earleyBinsList Gₗ w k hk).bins := by
   induction k with
   | zero =>
-    simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf, and_imp]
+    simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.ofPred_subset_ofPred, and_imp]
     intro x hmemx hke
     use 0, (by lia)
     apply modelKZero_sub_earleyBinsListZeroSet w h heps hmemx (by lia)
   | succ k ih =>
-    simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.setOf_subset_setOf, and_imp]
+    simp only [setOfModelK, setOfBins, Order.lt_add_one_iff, Set.ofPred_subset_ofPred, and_imp]
     intro x hmem hk
     specialize ih (by grind)
     apply modelK_sub_earleyBinsListSet w h heps k (by lia) ih hmem hk
@@ -1135,9 +1135,9 @@ lemma model_sub_earleyListSet {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT
     [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
     (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) : EarleySet G (mapT w) ⊆ earleyListSet Gₗ w := by
   intro x hmem
-  simp only [earleyListSet, setOfBins, earleyList, Order.lt_add_one_iff, Set.mem_setOf_eq]
+  simp only [earleyListSet, setOfBins, earleyList, Order.lt_add_one_iff, Set.mem_ofPred_eq]
   have := modelK_sub_earleyListSetK w h heps
-  simp only [Order.lt_add_one_iff, setOfModelK, map_of_mapT, setOfBins, Set.setOf_subset_setOf,
+  simp only [Order.lt_add_one_iff, setOfModelK, map_of_mapT, setOfBins, Set.ofPred_subset_ofPred,
     and_imp] at this
   grind
 
@@ -1161,7 +1161,7 @@ public theorem completenessEarleyList {G : ContextFreeGrammar T} [LawfulBEq T] [
   -- Use the fact that the set of items generated by the model are the same as the impl
   have heq := model_eq_earleyListSet w h heps
   rw [heq] at hmemx
-  simp only [earleyListSet, setOfBins, Order.lt_add_one_iff, Set.mem_setOf_eq] at hmemx
+  simp only [earleyListSet, setOfBins, Order.lt_add_one_iff, Set.mem_ofPred_eq] at hmemx
   rcases hmemx with ⟨k, hk, hmemx⟩
   -- Well-formedness proves that that item has to reside within the final bin
   let hbins := (earleyList Gₗ w).inv
