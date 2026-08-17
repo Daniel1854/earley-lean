@@ -203,7 +203,7 @@ Tries to parse a word with given grammar, and returns a parse tree if succesful.
 public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : Array T) :
     Option (Tree T N) :=
   -- This could be inferred from the result of earleyList,
-  -- but this is easier to to reason about and performance-wise should be equal.
+  -- but this is easier to reason about and performance-wise should be equal.
   if hw : w = #[] then
     none
   else
@@ -230,7 +230,7 @@ variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (Ea
 
 public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (Tree T N) :=
   -- This could be inferred from the result of earleyList,
-  -- but this is easier to to reason about and performance-wise should be equal.
+  -- but this is easier to reason about and performance-wise should be equal.
   if hw : w = #[] then
     none
   else
