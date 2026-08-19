@@ -17,11 +17,6 @@ For more details on the general algorithm, see `Recognizer`.
 In comparison to the naive implementation in `Recognizer`:
 - it caches if an item already exists in a bin: HashMap (EarleyItem T N) Nat
 - it caches the indices for the items that can be completed: HashMap N (List (EarleyItem T N × Nat))
-
-These optimizations do make it such that maintaining only one origin information per binitem
-would be way more convenient, and since the implementation for `build_tree` only uses
-the first pointer of the reduction pointer anyway, this doesn't affect the algorithms currently.
-This could be a more appropriate next step instead of the current implementation?
 -/
 
 @[expose] public section
