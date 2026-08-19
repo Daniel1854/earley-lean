@@ -47,17 +47,6 @@ open ContextFreeGrammar
 
 variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 
-omit [BEq T] [BEq N] in
-lemma wfPointerAux_of_predPointer {G : ContextFreeGrammarList T N} {wlen i k j : Nat}
-    {bins : EarleyBins T N (wlen + 1)} (hbins : EarleyBins.WF G bins)
-    (hm : k < wlen + 1) (hn : j < bins[k].length)
-    (h : bins[k][j].pointer = Pointer.predecessor i) :
-    k - 1 ≤ wlen ∧ ((h : k - 1 ≤ wlen) → i < bins[k-1].length) := by
-  have ⟨_, _, pInv, _⟩ := hbins k (by simp [hm])
-  simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv
-  specialize pInv bins[k][j] (by simp)
-  grind
-
 section Soundness
 
 /--
