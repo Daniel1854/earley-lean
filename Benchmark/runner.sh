@@ -3,7 +3,7 @@
 # Maybe a simple bash script is sufficient for the running portion.
 #
 # Example calls:
-# bash runner.sh 1 default
+# bash runner.sh 1 lean-naive
 
 set -e
 GRAMMAR_INDEX=$1
