@@ -211,8 +211,7 @@ public def completeList (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
   let xMatches : List (BinItem T N × Nat) := filterWithIdx bins[y.startIdx]
     (fun x => nextSymbol x.item == some (Symbol.nonterminal y.rule.input))
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
-  xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x.item y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
+  xMatches.map (fun ⟨x,i⟩ => ⟨incItem x.item y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 /--
 This version of completeList lends itself easier to reason with in a specific situation,
@@ -225,8 +224,7 @@ public def completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n
   let xMatches : List (EarleyItem T N × Nat) := filterWithIdx (items bins[y.startIdx])
     (fun x => nextSymbol x == some (Symbol.nonterminal y.rule.input))
   -- Matchings mapped onto a new item with the index recorded within the reduction pointer
-  xMatches.map (fun ⟨x,i⟩ =>
-    ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
+  xMatches.map (fun ⟨x,i⟩ => ⟨incItem x y.endIdx, Pointer.reduction ⟨y.startIdx,i,j⟩ []⟩)
 
 omit [LawfulBEq (EarleyItem T N)] in
 theorem completeList_eq_completeListI (y : EarleyItem T N) {n : Nat} (bins : EarleyBins T N n)
