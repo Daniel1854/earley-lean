@@ -72,9 +72,9 @@ public def ItemCache.WF {T N : Type} [BEq (EarleyItem T N)] [Hashable (EarleyIte
   ItemCache.RawWF raw items ∧ ItemCache.EntriesWF raw items
 
 /--
-A cache for accessing the possible rules for a completion within a single bin.
-Maps a non-terminal to all the EarleyItems that the bin contains for it and
-their index within the bin.
+A cache for accessing the possible complete-able items within a single bin.
+Maps a non-terminal to all the EarleyItems with that non-terminal as their nextSymbol in that bin,
+and their index within the bin.
 -/
 abbrev CompletionCache (T N : Type) [BEq N] [Hashable N] : Type :=
   Std.HashMap N (List (EarleyItem T N × Nat))
