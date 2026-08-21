@@ -325,14 +325,14 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
       match (bin.raw[idx].pointer, y.pointer) with
       | (Pointer.reduction xp xP, Pointer.reduction yp yP) =>
         let updItem : BinItem T N := ⟨y.item, Pointer.reduction xp (yp::yP.append xP)⟩
-        have hS : bin.raw.size = (bin.raw.swapAt idx updItem hidx).2.size := by grind
-        have hI : ∀ (i : ℕ) (hi : i < bin.raw.size ∧ i < (bin.raw.swapAt idx updItem hidx).2.size),
-            bin.raw[i].item = (bin.raw.swapAt idx updItem hidx).2[i].item := by
+        have hS : bin.raw.size = (bin.raw.set idx updItem hidx).size := by grind
+        have hI : ∀ (i : ℕ) (hi : i < bin.raw.size ∧ i < (bin.raw.set idx updItem hidx).size),
+            bin.raw[i].item = (bin.raw.set idx updItem hidx)[i].item := by
           have := bin.invItems
           grind
         have invItems' := itemCacheWF_of_eq_Items hI hS
         have invCompletions' := completionCacheWF_of_eq_Items hI hS
-        let newBin := ⟨(bin.raw.swapAt idx updItem hidx).snd, bin.items, invItems',
+        let newBin := ⟨(bin.raw.set idx updItem hidx), bin.items, invItems',
           bin.completions, invCompletions'⟩
         updateBinCached newBin ys
       | _ => updateBinCached bin ys
@@ -385,7 +385,7 @@ lemma updateBinCached_eq_updateBinCached_of_erase {bin bin' : CachedEarleyBin T 
     have : bin.raw.toList.length = bin.raw.size := by grind
     have : 0 < bin.raw.size := by grind
     have : bin'.items.contains y.item = true := by grind
-    simp only [updateBinCached, hcont, this, ↓reduceDIte, List.append_eq, Array.swapAt_def]
+    simp only [updateBinCached, hcont, ↓reduceDIte, List.append_eq, this]
     have : bin.raw[0] = x := by
       have : bin.raw.toList[0] = x := by grind
       grind
@@ -479,7 +479,7 @@ lemma updateBinCached_cons (bin : CachedEarleyBin T N) (y : BinItem T N) (ys : B
   rw [updateBinCached]
   rw (occs := .pos [1]) [updateBinCached]
   if h : bin.items.contains y.item then
-    simp only [h, ↓reduceDIte, List.append_eq, Array.swapAt_def, updateBin_nil]
+    simp only [h, ↓reduceDIte, List.append_eq, updateBin_nil]
     split <;> simp
   else
     simp only [h, Bool.false_eq_true, ↓reduceDIte, List.append_eq, updateBin_nil]

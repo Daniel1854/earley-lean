@@ -82,7 +82,7 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
       match (bin.raw[idx]!.pointer, y.pointer) with
       | (Pointer.reduction xp xP, Pointer.reduction yp yP) =>
         let updItem : BinItem T N := ⟨y.item, Pointer.reduction xp (yp::yP.append xP)⟩
-        let newBin := ⟨(bin.raw.swapAt! idx updItem).snd, bin.items⟩
+        let newBin := ⟨bin.raw.set! idx updItem, bin.items⟩
         updateBinCached newBin ys
       | _ => updateBinCached bin ys
     else
