@@ -320,7 +320,7 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
     if h : bin.items.contains y.item then
       let idx := bin.items[y.item]
       have hidx : idx < bin.raw.size := by
-        have := bin.invItems
+        have := bin.invItems.right
         grind
       match (bin.raw[idx].pointer, y.pointer) with
       | (Pointer.reduction xp xP, Pointer.reduction yp yP) =>
@@ -328,7 +328,7 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
         have hS : bin.raw.size = (bin.raw.set idx updItem hidx).size := by grind
         have hI : ∀ (i : ℕ) (hi : i < bin.raw.size ∧ i < (bin.raw.set idx updItem hidx).size),
             bin.raw[i].item = (bin.raw.set idx updItem hidx)[i].item := by
-          have := bin.invItems
+          have := bin.invItems.right
           grind
         have invItems' := itemCacheWF_of_eq_Items hI hS
         have invCompletions' := completionCacheWF_of_eq_Items hI hS
@@ -415,10 +415,10 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
     (updateBinCached binCached [y]).raw.toList = updateBinAux y bin := by
   fun_induction updateBinAux y bin generalizing binCached with
   | case1 y =>
-    have := binCached.invItems.right
+    have := binCached.invItems.left
     simp only [Array.toList_eq_nil_iff] at heq
     grind
-  -- Matching raw items: merge pointer
+  -- Matching items with reduction pointers : merge pointer
   | case2 y x xs heqI xp xP yp yP heqP =>
     have := binCached.invItems.left
     have : 0 < binCached.raw.size := by grind
@@ -426,7 +426,7 @@ public theorem updateBinCached_eq_updateBinAux (bin : BinItems T N) (y : BinItem
       have : binCached.raw.toList[0] = x := by grind
       grind
     grind [Array.toList_set]
-  -- Matching no-raw items: no-op
+  -- Matching items with no reduction pointers: no-op
   | case3 y x xs heqI hneqP =>
     have := binCached.invItems.left
     have : 0 < binCached.raw.size := by grind
