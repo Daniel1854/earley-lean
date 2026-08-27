@@ -122,9 +122,9 @@ An item is well-formed, if
 public def EarleyItem.isWellFormed {R : Type} (rules : R) [Membership (ContextFreeRule T N) R]
     (wlen : Nat) (item : EarleyItem T N) : Prop :=
   item.rule ∈ rules
-  ∧ item.position <= item.rule.output.length
-  ∧ item.startIdx <= item.endIdx
-  ∧ item.endIdx <= wlen
+  ∧ item.position ≤ item.rule.output.length
+  ∧ item.startIdx ≤ item.endIdx
+  ∧ item.endIdx ≤ wlen
 
 /--
 Returns a new item with the position incremented by one and a new endIdx.
