@@ -341,7 +341,7 @@ lemma eqItems_of_earleyBinList_of_eqItems {G : ContextFreeGrammarList T N} {w : 
         apply eqItems_of_completeList_of_eqItems
         exact heq
       apply eqItems_of_updateBins_of_eqItems heq this
-termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
+termination_by { x | isWellFormed G.rules w.size x }.ncard - j
 decreasing_by
   all_goals
   exact decreasingAux hbins1 j k hk (by lia)

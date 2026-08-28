@@ -64,8 +64,8 @@ public theorem earleyBinCached_eq_earleyBinList (G : ContextFreeGrammarList T N)
     simp only [this, ↓reduceDIte]
     apply earleyBinCached_eq_earleyBinList
     grind [updateBinsCached_eq_updateBins]
-termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
-decreasing_by exact decreasingAux hbins j k (by grind) (by simp only [not_le] at this; exact this)
+termination_by { x | isWellFormed G.rules w.size x }.ncard - j
+decreasing_by exact decreasingAux hbins j k (by lia) (by lia)
 
 public theorem earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T N) (w : Array T)
     (k : Nat) (hk : k < w.size + 1) :

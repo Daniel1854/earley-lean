@@ -579,7 +579,7 @@ public def earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T}
       updateBinsCached bins k newItems
     have : EarleyBins.WF G (rawList bins') := by grind [wfBins_of_earleyBinCached]
     earleyBinCached bins' k (by omega) (j+1) this
-termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
+termination_by { x | isWellFormed G.rules w.size x }.ncard - j
 decreasing_by exact decreasingAux hbins j k (by lia) (by grind)
 
 /--

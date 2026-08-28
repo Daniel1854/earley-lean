@@ -107,6 +107,7 @@ section WellFormedBin
 /--
 The items of an EarleyBin are well-formed, if
 - there are no duplicate items in the bin
+  (currently located at `EarleyBins.WF` due to List <-> Array issues with the optimized version)
 - all items in the bin are well-formed with respect to a bound
 - the endIdx of all items match the index of the bin
 -/
@@ -738,8 +739,8 @@ end WellFormedBin
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma decreasingAux {G : ContextFreeGrammarList T N} {wlen : Nat} {bins : EarleyBins T N (wlen + 1)}
     (hbins : EarleyBins.WF G bins) (j k : Nat) (hk : k < wlen + 1) (hj : j < bins[k].length) :
-    {x | isWellFormed G.rules wlen x}.ncard + 1 - (j + 1) <
-    {x | isWellFormed G.rules wlen x}.ncard + 1 - j := by
+    {x | isWellFormed G.rules wlen x}.ncard - (j + 1) <
+    {x | isWellFormed G.rules wlen x}.ncard - j := by
   apply Nat.sub_lt_sub_left
   · specialize hbins k (by lia)
     let wfItemsBin := { x | isWellFormed G.rules wlen x }
@@ -782,7 +783,7 @@ public def earleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
       updateBins bins k newItems
     have : EarleyBins.WF G bins' := by grind [wfBins_of_earleyBinList]
     earleyBinList bins' k hk (j+1) this
-termination_by { x | isWellFormed G.rules w.size x }.ncard + 1 - j
+termination_by { x | isWellFormed G.rules w.size x }.ncard - j
 decreasing_by exact decreasingAux hbins j k (by lia) (by lia)
 
 /--
