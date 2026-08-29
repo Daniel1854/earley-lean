@@ -35,26 +35,63 @@ open Earley.Utils
 variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
 
 /--
-A pointer is well-formed with respect to an EarleyBins, if the pointer points to a stored bin item.
+If an `EarleyItem` stems from a prediction,
+then the indices have to match and the position has to be zero.
+-/
+public def predicts (x : EarleyItem T N) : Prop :=
+  x.startIdx = x.endIdx ∧ x.position = 0
+
+/--
+If an `EarleyItem` stems from a scan,
+then there has to be an origin item with an appropriate next symbol it got incremented from.
+-/
+public def scans (w : Array T) (x y : EarleyItem T N) (k : Nat) (h : k - 1 < w.size) : Prop :=
+  y = incItem x k ∧ (∃ a, nextSymbol x = some (Symbol.terminal a) ∧ w[k-1] = a)
+
+/--
+If an `EarleyItem` stems from a complete,
+then there have to be origin items with an appropriate next symbol.
+
+TODO: y is the new item
+before I used z as the original item
+-/
+public def completes (x y z : EarleyItem T N) (k : Nat) : Prop :=
+  y = incItem x k
+  ∧ isComplete z ∧ z.startIdx = x.endIdx
+  ∧ (∃ A, nextSymbol x = some (Symbol.nonterminal A) ∧ A = z.rule.input)
+
+/--
+A pointer is well-formed with respect to an EarleyBins, if the pointer points to a stored bin item
+and its corresponding item upholds invariants about the way it got created.
 `k` is the index of the bin, at which the pointer is stored at.
 
 Since reduction pointers can point towards any earlier bin than k, this is a very global property
 and difficult to reason about locally. This makes it too inconvenient to merge it with
 the soundness property about pointers.
+
+We store the invariant about how the item of the pointer got created here
+since it isn't relevant to proofs `EarleyItem`.
+
+TODO: cant attach a grind tag to this definition since it explodes.
 -/
-@[grind]
-public def Pointer.WF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (pointer : Pointer)
+public def Pointer.WF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (entry : BinItem T N)
     (k : Nat) : Prop :=
-  match pointer with
-  | .null => True
-  | .predecessor i => k ≠ 0 ∧ k - 1 ≤ w.size ∧ ((h : k - 1 ≤ w.size) → i < bins[k-1].length)
+  match entry.pointer with
+  | .null => predicts entry.item
+  | .predecessor i => k ≠ 0 ∧ k - 1 < w.size
+    ∧ ((hk : k - 1 < w.size) → i < bins[k-1].length
+      ∧ i < bins[k - 1].length
+      ∧ ((hi : i < bins[k - 1].length) → scans w bins[k-1][i].item entry.item k hk))
   | .reduction p ps => k ≤ w.size ∧ p.endIdxA ≤ w.size
     ∧ ((h : p.endIdxA ≤ w.size) → p.i < bins[p.endIdxA].length)
     ∧ ((h : k ≤ w.size) → p.j < bins[k].length)
+    ∧ ((h1 : p.endIdxA ≤ w.size) → (h2 :p.i < bins[p.endIdxA].length)
+      → (h3 : k ≤ w.size) → (h4 : p.j < bins[k].length)
+      → completes bins[p.endIdxA][p.i].item entry.item bins[k][p.j].item k)
 
 @[grind]
 public def BinPointers.WF {w : Array T} (bins : EarleyBins T N (w.size + 1)) : Prop :=
-  ∀ k, (hk : k < bins.size) → ∀ x ∈ bins[k], Pointer.WF bins x.pointer k
+  ∀ k, (hk : k < bins.size) → ∀ x ∈ bins[k], Pointer.WF bins x k
 
 /--
 A pointer is called sound, if the reduction pointer points towards an earlier item.
@@ -158,18 +195,18 @@ lemma updateBinAux_of_Red_of_eqItem (xs : BinItems T N) (y : BinItem T N) (i j :
 omit [LawfulBEq (EarleyItem T N)] in
 lemma wfBinPointers_of_updateBinAux {w : Array T} {k : Nat} (bins : EarleyBins T N (w.size + 1))
     (hwfbin : BinPointers.WF bins) (hk : k < bins.size) (x : BinItem T N)
-    (hbins : (items bins[k]).Nodup) (hwfy : Pointer.WF bins x.pointer k) :
+    (hbins : (items bins[k]).Nodup) (hwfy : Pointer.WF bins x k) :
     BinPointers.WF (Vector.modify bins k (fun bin => (updateBinAux x bin))) := by
   let bins' := (Vector.modify bins k (fun bin => (updateBinAux x bin)))
   intro k' hk' y hmemy
   have hmemy' : y ∈ bins'[k'] := by grind
   by_cases heq : k = k'
   · sorry
-  · simp only [Pointer.WF, ne_eq, tsub_le_iff_right]
-    simp only [Pointer.WF, ne_eq, tsub_le_iff_right, BinPointers.WF,
+  · simp only [Pointer.WF, ne_eq, and_self_left]
+    simp only [Pointer.WF, ne_eq, and_self_left, BinPointers.WF,
       Order.lt_add_one_iff] at hwfy hwfbin
     split
-    · simp
+    · sorry
     · rename_i p i heq
       --have := hwfbin k' (by lia) y hmemy'
       --simp [heq] at this
@@ -268,7 +305,7 @@ theorem pointerWF_of_updateBin (G : ContextFreeGrammarList T N) (w : Array T) {k
     (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
     (hwf : EarleyBins.PointerWF bins)
     (ys : BinItems T N) (hk : k < w.size + 1)
-    (hwfPy : ∀ y ∈ ys, Pointer.WF bins y.pointer k)
+    (hwfPy : ∀ y ∈ ys, Pointer.WF bins y k)
     (hwfSy : ∀ y ∈ ys, Pointer.isSound y.pointer k bins[k].length) :
     EarleyBins.PointerWF (updateBins bins k ys)  := by
   induction ys generalizing bins k with
@@ -296,8 +333,9 @@ theorem pointerWF_of_updateBin (G : ContextFreeGrammarList T N) (w : Array T) {k
 omit [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_scanList {w : Array T} (j k : Nat) {a : T} {bins : EarleyBins T N (w.size + 1)}
     (x : EarleyItem T N) (hk : k < w.size) (hj : ¬ (j ≥ bins[k].length)) :
-    ∀ y ∈ (scanList w x a k hk j), Pointer.WF bins y.pointer (k+1) := by
-  grind [scanList]
+    ∀ y ∈ (scanList w x a k hk j), Pointer.WF bins y (k+1) := by
+  --grind [scanList]
+  sorry
 
 omit [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_scanList {w : Array T} (j k : Nat) {a : T}
@@ -308,8 +346,9 @@ lemma soundPointers_of_scanList {w : Array T} (j k : Nat) {a : T}
 omit [BEq T] [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_predictList (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
     (A : N) {bins : EarleyBins T N (w.size + 1)} :
-    ∀ x ∈ (predictList G A k), Pointer.WF bins x.pointer k := by
-  grind [predictList]
+    ∀ x ∈ (predictList G A k), Pointer.WF bins x k := by
+  --grind [predictList]
+  sorry
 
 omit [BEq T] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_predictList (G : ContextFreeGrammarList T N) (wlen k : Nat) (A : N)
@@ -321,18 +360,18 @@ omit [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) (j k : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins) (y : EarleyItem T N)
     (hk : k < bins.size) (hmemy : y ∈ (items bins[k])) (hj : j < bins[k].length) :
-    ∀ x ∈ (completeList y bins (by grind) j), Pointer.WF bins x.pointer k := by
+    ∀ x ∈ (completeList y bins (by grind) j), Pointer.WF bins x k := by
   intro x hmemx
   simp only [completeList, List.mem_map, Prod.exists] at hmemx
   let P := fun x : BinItem T N => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)
   let originBin := bins[y.startIdx]'(by grind)
   let filteredOriginBin := filterWithIdx originBin P
-  simp only [Pointer.WF, ne_eq, tsub_le_iff_right]
+  simp only [Pointer.WF, ne_eq, and_self_left]
   -- z is the original item, which will be completed
   rcases hmemx with ⟨z,zIdx,⟨hmemz,hx⟩⟩
   have xP : x.pointer = Pointer.reduction ⟨y.startIdx, zIdx, j⟩ [] := by grind
   simp only [xP]
-  refine ⟨by lia, by grind, ?_, by grind⟩
+  refine ⟨by lia, by grind, ?_, by grind, by sorry⟩
   intro hbounds
   exact filterWithIdx_le_length bins[y.startIdx]
     (fun x => x.item.nextSymbol == some (Symbol.nonterminal y.rule.input)) zIdx (by grind)
@@ -435,7 +474,7 @@ lemma wfPointerAux_of_predPointer {w : Array T} {i k j : Nat}
     k ≠ 0 ∧ k - 1 ≤ w.size ∧ ((h : k - 1 ≤ w.size) → i < bins[k-1].length) := by
   have ⟨pInv, _⟩ := inv
   specialize pInv k hk
-  simp only [Pointer.WF, ne_eq, tsub_le_iff_right] at pInv
+  simp only [Pointer.WF, ne_eq, and_self_left] at pInv
   specialize pInv bins[k][j] (by simp)
   grind
 
@@ -450,7 +489,7 @@ lemma wfPointerAux_of_redPointer {w : Array T} {endIdxA i j m n : Nat} {ps : Lis
   have ⟨pInv, sInv⟩ := inv
   specialize pInv m hm
   specialize sInv m hm
-  simp only [Pointer.WF, ne_eq, tsub_le_iff_right] at pInv
+  simp only [Pointer.WF, ne_eq, and_self_left] at pInv
   specialize pInv bins[m][n] (by simp)
   simp only [h] at pInv
   simp only [Pointer.isSound] at sInv

@@ -471,7 +471,7 @@ public def initBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBin
   let bins' := bins.set 0 b₀ (by simp)
   have : EarleyBins.WF G bins' := by
     have := wfBinItems_of_initList G w.size
-    grind [initList]
+    grind
   ⟨bins', this⟩
 
 /--
