@@ -601,7 +601,7 @@ public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
       rfl
     if hk : k = 0 then
       simp only [hk]
-      have ⟨hN, _⟩ := wfBinItems_of_initList G w.size
+      have ⟨hN, _⟩ := wfBinItems_of_initList G w
       have hsub : (rawList bins')[0] = initList G := by
         have := updateBinCached_new bins[0] (initList G) (by grind) hN
         grind

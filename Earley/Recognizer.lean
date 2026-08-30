@@ -107,14 +107,13 @@ section WellFormedBin
 /--
 The items of an EarleyBin are well-formed, if
 - there are no duplicate items in the bin
-  (currently located at `EarleyBins.WF` due to List <-> Array issues with the optimized version)
 - all items in the bin are well-formed with respect to a bound
 - the endIdx of all items match the index of the bin
 -/
 @[grind]
-public def BinItems.WF {L : Type} (G : ContextFreeGrammarList T N) (wlen : Nat) (k : Nat) (bin : L)
-    [Membership (BinItem T N) L] : Prop :=
-  ∀ x ∈ bin, isWellFormed G.rules wlen x.item ∧ x.item.endIdx = k
+public def BinItems.WF (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
+    (bin : BinItems T N) : Prop :=
+  (items bin).Nodup ∧ ∀ x ∈ bin, isWellFormed G.rules w.size x.item ∧ x.item.endIdx = k
 
 /--
 EarleyBins are well-formed, if all of its bins are well-formed.
@@ -122,8 +121,7 @@ EarleyBins are well-formed, if all of its bins are well-formed.
 @[grind]
 public def EarleyBins.WF (G : ContextFreeGrammarList T N) {w : Array T}
     (bins : EarleyBins T N (w.size + 1)) : Prop :=
-  ∀ k, (hk : k < bins.size) → (items bins[k]).Nodup
-    ∧ BinItems.WF G w.size k bins[k]
+  ∀ k, (hk : k < bins.size) → BinItems.WF G w k bins[k]
 
 /--
 A combination of an EarleyBins with a well-formedness Invariant about it.
@@ -264,14 +262,13 @@ theorem noDup_of_updateBin (xs ys : BinItems T N) (hx : (items xs).Nodup) :
   | case1 xs => grind
   | case2 xs y ys ih1 => grind [noDup_of_updateBinAux xs y]
 
-omit [LawfulBEq (EarleyItem T N)] in
-lemma wfBinItems_of_updateBinAux (G : ContextFreeGrammarList T N) (wlen : Nat) {k : Nat}
-    (bin : BinItems T N) (hwfbin : BinItems.WF G wlen k bin) (y : BinItem T N)
-    (hwfy : isWellFormed G.rules wlen y.item ∧ y.item.endIdx = k) :
-    BinItems.WF G wlen k (updateBinAux y bin)  := by
+lemma wfBinItems_of_updateBinAux (G : ContextFreeGrammarList T N) (w : Array T) {k : Nat}
+    (bin : BinItems T N) (hwfbin : BinItems.WF G w k bin) (y : BinItem T N)
+    (hwfy : isWellFormed G.rules w.size y.item ∧ y.item.endIdx = k) :
+    BinItems.WF G w k (updateBinAux y bin)  := by
   induction bin with
   | nil => grind
-  | cons x xs ih => grind
+  | cons x xs ih => grind [noDup_of_updateBinAux]
 
 @[simp, grind =]
 theorem updateBinAux_cons (xs : BinItems T N) (y : BinItem T N) (hmem : y.item ∉ items xs) :
@@ -280,24 +277,23 @@ theorem updateBinAux_cons (xs : BinItems T N) (y : BinItem T N) (hmem : y.item �
   | nil => grind
   | cons head tail ih => grind
 
-omit [LawfulBEq (EarleyItem T N)] in
-lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (wlen : Nat) {k : Nat}
-    (xs ys : BinItems T N) (hwfx : BinItems.WF G wlen k xs)
-    (hwfy : ∀ y ∈ ys, isWellFormed G.rules wlen y.item ∧ y.item.endIdx = k) :
-    BinItems.WF G wlen k (updateBin xs ys)  := by
+lemma wfBinItems_of_updateBin (G : ContextFreeGrammarList T N) (w : Array T) {k : Nat}
+    (xs ys : BinItems T N) (hwfx : BinItems.WF G w k xs)
+    (hwfy : ∀ y ∈ ys, isWellFormed G.rules w.size y.item ∧ y.item.endIdx = k) :
+    BinItems.WF G w k (updateBin xs ys)  := by
   induction ys generalizing xs with
   | nil => grind
-  | cons y ys ih => grind [wfBinItems_of_updateBinAux, noDup_of_updateBin]
+  | cons y ys ih => grind [wfBinItems_of_updateBinAux]
 
 theorem wfBins_of_updateBin (G : ContextFreeGrammarList T N) (w : Array T) {k : Nat}
     (bins : EarleyBins T N (w.size + 1)) (hwf : EarleyBins.WF G bins)
     (ys : BinItems T N) (hwfy : ∀ y ∈ ys, isWellFormed G.rules w.size y.item ∧ y.item.endIdx = k) :
     EarleyBins.WF G (updateBins bins k ys) := by
-  grind [noDup_of_updateBin, wfBinItems_of_updateBin]
+  grind [wfBinItems_of_updateBin]
 
 omit [BEq T] in
-lemma wfBinItems_of_initList (G : ContextFreeGrammarList T N) (wlen : Nat) :
-    (items (initList G)).Nodup ∧ BinItems.WF G wlen 0 (initList G)  := by
+lemma wfBinItems_of_initList (G : ContextFreeGrammarList T N) (w : Array T) :
+    (items (initList G)).Nodup ∧ BinItems.WF G w 0 (initList G)  := by
   have := G.nodup
   grind [initList]
 
@@ -470,7 +466,7 @@ public def initBins (G : ContextFreeGrammarList T N) (w : Array T) : WfEarleyBin
   let bins := Vector.replicate (w.size + 1) []
   let bins' := bins.set 0 b₀ (by simp)
   have : EarleyBins.WF G bins' := by
-    have := wfBinItems_of_initList G w.size
+    have := wfBinItems_of_initList G w
     grind
   ⟨bins', this⟩
 

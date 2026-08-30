@@ -89,7 +89,7 @@ public theorem earleyCachedBins_eq_earleyListBins (G : ContextFreeGrammarList T 
         rfl
       if hk : k = 0 then
         have hsub : (rawList binsCached')[0] = initList G := by
-          have := (wfBinItems_of_initList G w.size).left
+          have := (wfBinItems_of_initList G w).left
           have := updateBinCached_new binsCached[0] (initList G) (by grind) this
           grind
         grind

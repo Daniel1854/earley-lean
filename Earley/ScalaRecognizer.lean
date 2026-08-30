@@ -106,7 +106,7 @@ while also merging any reduction pointers for duplicate items.
 Predecessor pointers are unique, so duplicate items can be safely discarded
 -/
 @[inline]
-public def updateBinAux :  BinItem T N  → BinItems T N → BinItems T N
+public def updateBinAux : BinItem T N  → BinItems T N → BinItems T N
   | y, [] => [y]
   | y, x::xs => match (x,y) with
     | (⟨xItem, Pointer.reduction xp xP⟩,⟨yItem, Pointer.reduction yp yP⟩) =>
