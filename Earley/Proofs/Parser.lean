@@ -81,8 +81,8 @@ This follows the structure of buildTree quite closely, and the same termination 
 -/
 lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j k : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
-    (hk : k < w.size + 1) (hj : j < bins[k].length) (hw : w ≠ #[]) :
-    ∃ d ts, buildTree G w hw bins hbins k hk j hj = some (Tree.node d ts) := by
+    (hwf : EarleyBins.PointerWF bins) (hk : k < w.size + 1) (hj : j < bins[k].length)
+    (hw : w ≠ #[]) : ∃ d ts, buildTree G w hw bins hbins hwf k hk j hj = some (Tree.node d ts) := by
   unfold buildTree
   simp only [List.append_eq, Option.bind_eq_bind]
   split
@@ -90,23 +90,21 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j k 
     use []
   · rename_i i heq
     have := someNode_of_buildTree G w i (k-1) hbins
-    have : BinPointers.WF bins bins[k] k := by sorry
     grind [wfPointerAux_of_predPointer]
   · rename_i endIdxA pi pj _ heq
-    have pInv : BinPointers.WF bins bins[k] k := by sorry
-    have sInv : ∀ j, (hj : j < bins[k].length) → Pointer.isSound bins[k][j].pointer k j := by sorry
-    have := wfPointerAux_of_redPointer bins _ _ pInv sInv heq
-    have := someNode_of_buildTree G w pi endIdxA hbins (by lia) (by lia) hw
+    have := wfPointerAux_of_redPointer hwf _ _ heq
+    have := someNode_of_buildTree G w pi endIdxA hbins hwf (by lia) (by lia) hw
     rcases this with ⟨d,ts,ht⟩
-    have := someNode_of_buildTree G w pj k hbins (by lia) (by lia) hw
+    have := someNode_of_buildTree G w pj k hbins hwf (by lia) (by lia) hw
     grind
 -- If we go away from the two-dimensional view of the bins to a one-dimensional one,
 -- then each recursive call accesses a smaller index of the bin.
 termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
 decreasing_by
   · rename Nat => i
+    rename_i heq
+    have := wfPointerAux_of_predPointer hwf _ _ heq
     have : k ≠ 0 := by
-      have : BinPointers.WF bins bins[k] k := by sorry
       grind [wfPointerAux_of_predPointer]
     have : ((bins.toList.map List.length).take (k - 1)).foldl Add.add 0 + bins[k-1].length =
         ((bins.toList.map List.length).take k).foldl Add.add 0 := by
@@ -129,9 +127,9 @@ decreasing_by
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma some_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
-    (hj : j < bins[w.size].length) (hw : w ≠ #[]) :
-    ∃ t, buildTree G w hw bins hbins w.size (by simp) j hj = some t := by
-  have := someNode_of_buildTree G w j w.size hbins (by simp) (by lia) hw
+    (hwf : EarleyBins.PointerWF bins) (hj : j < bins[w.size].length) (hw : w ≠ #[]) :
+    ∃ t, buildTree G w hw bins hbins hwf w.size (by simp) j hj = some t := by
+  have := someNode_of_buildTree G w j w.size hbins hwf (by simp) (by lia) hw
   rcases this with ⟨d, ts, h⟩
   use Tree.node d ts
 
