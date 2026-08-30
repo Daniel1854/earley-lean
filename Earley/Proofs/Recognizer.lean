@@ -123,6 +123,27 @@ lemma earleyBinList_extensive {G : ContextFreeGrammarList T N} {w : Array T}
   | case1 bins hk j hbins hj => grind
   | case2 bins hk j hbins hj x bins' hbins' => grind [updateBins_extensive]
 
+omit [LawfulBEq (EarleyItem T N)] in
+lemma length_le_lengthUpdateBinAux (xs : BinItems T N) (y : BinItem T N) :
+    xs.length ≤ (updateBinAux y xs).length := by
+  induction xs generalizing y with
+  | nil => grind
+  | cons x xs ih => grind
+
+omit [LawfulBEq (EarleyItem T N)] in
+lemma length_le_lengthUpdateBin (xs ys : BinItems T N) :
+    xs.length ≤ (updateBin xs ys).length := by
+  induction ys generalizing xs with
+  | nil => grind
+  | cons x xs ih => grind [length_le_lengthUpdateBinAux]
+
+omit [LawfulBEq (EarleyItem T N)] in
+lemma lengthNth_le_lengthUpdateBinNth {n : Nat} (bins : EarleyBins T N n) (ys : BinItems T N)
+    (i k : Nat) (hi : i < n) : bins[i].length ≤ (updateBins bins k ys)[i].length := by
+  induction ys generalizing bins with
+  | nil => grind
+  | cons x xs ih => grind [length_le_lengthUpdateBinAux, length_le_lengthUpdateBin]
+
 lemma lengthNth_le_lengthEarleyBinList {G : ContextFreeGrammarList T N} {w : Array T}
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
     (k j i : Nat) (hk : k < bins.size) (hi : i < bins.size) :

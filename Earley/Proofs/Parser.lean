@@ -90,9 +90,12 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j k 
     use []
   · rename_i i heq
     have := someNode_of_buildTree G w i (k-1) hbins
-    grind
+    have : BinPointers.WF bins bins[k] k := by sorry
+    grind [wfPointerAux_of_predPointer]
   · rename_i endIdxA pi pj _ heq
-    have := wfPointerAux_of_redPointer hbins _ _ heq
+    have pInv : BinPointers.WF bins bins[k] k := by sorry
+    have sInv : ∀ j, (hj : j < bins[k].length) → Pointer.isSound bins[k][j].pointer k j := by sorry
+    have := wfPointerAux_of_redPointer bins _ _ pInv sInv heq
     have := someNode_of_buildTree G w pi endIdxA hbins (by lia) (by lia) hw
     rcases this with ⟨d,ts,ht⟩
     have := someNode_of_buildTree G w pj k hbins (by lia) (by lia) hw
@@ -102,7 +105,9 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j k 
 termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
 decreasing_by
   · rename Nat => i
-    have : k ≠ 0 := by grind
+    have : k ≠ 0 := by
+      have : BinPointers.WF bins bins[k] k := by sorry
+      grind [wfPointerAux_of_predPointer]
     have : ((bins.toList.map List.length).take (k - 1)).foldl Add.add 0 + bins[k-1].length =
         ((bins.toList.map List.length).take k).foldl Add.add 0 := by
       have := foldl_add_nth bins.toList 0 (k-1) (by grind)
