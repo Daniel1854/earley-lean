@@ -111,8 +111,8 @@ def rawList {n : Nat} (bins : CachedEarleyBins T N n) : EarleyBins T N n :=
 /--
 A combination of an EarleyBins with its cache and a well-formedness Invariant about it.
 -/
-public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (wlen : Nat) where
-  bins : CachedEarleyBins T N (wlen + 1)
+public structure WfEarleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) where
+  bins : CachedEarleyBins T N (w.size + 1)
   inv : EarleyBins.WF G (rawList bins)
 
 section WellFormedBin
@@ -554,7 +554,7 @@ Computes the k-th bin starting from index j and returns the updated bins.
 -/
 public def earleyBinCached {G : ContextFreeGrammarList T N} {w : Array T}
     (bins : CachedEarleyBins T N (w.size + 1)) (k : Nat) (hk : k < bins.size) (j : Nat)
-    (hbins : EarleyBins.WF G (rawList bins)) : WfEarleyBinsCached G w.size :=
+    (hbins : EarleyBins.WF G (rawList bins)) : WfEarleyBinsCached G w :=
   -- Return the bins if we are the end of the list of the current bin
   if hj : j ≥ bins[k].raw.size then
     ⟨bins, hbins⟩
@@ -587,7 +587,7 @@ Initialize bins by constructing the first bin through using .init for all G.rule
 -/
 @[grind]
 public def initCachedBins (G : ContextFreeGrammarList T N) (w : Array T) :
-    WfEarleyBinsCached G w.size :=
+    WfEarleyBinsCached G w :=
   -- Starting with some capacity can be lucrative depending on the benchmark.
   have invItems : ItemCache.WF #[] ∅ := by grind
   have invCompletions : CompletionCache.WF #[] ∅ := by grind
@@ -616,13 +616,13 @@ Creates the callstack, such that we can compute the bins in order from 0 to n.
 -/
 @[grind]
 public def earleyBinsCached (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
-    (h : k < w.size + 1) : WfEarleyBinsCached G w.size :=
+    (h : k < w.size + 1) : WfEarleyBinsCached G w :=
   match h : k with
   | 0 =>
     let ⟨bins, inv⟩ := initCachedBins G w
     earleyBinCached bins 0 (by simp) 0 inv
   | i+1 =>
-    -- Given the first i-th bins being computed, we can compute i+1
+    -- Given the first i-to bins being computed, we can compute i+1
     let ⟨bins, inv⟩ := earleyBinsCached G w i (by lia)
     earleyBinCached bins k (by lia) 0 inv
 
@@ -631,7 +631,7 @@ Returns the bins after trying to recognize `w` by using `G`.
 -/
 @[grind]
 public def earleyCached (G : ContextFreeGrammarList T N) (w : Array T) :
-    WfEarleyBinsCached G w.size :=
+    WfEarleyBinsCached G w :=
   earleyBinsCached G w w.size (by simp)
 
 /--

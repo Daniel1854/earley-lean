@@ -84,12 +84,13 @@ def toGraphviz [ToString T] [ToString N] (t : Tree T N) : String :=
   graph ++ "\n}"
 
 omit [BEq T] [BEq N] in
-lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {wlen endIdxA i j m n : Nat}
-    {ps : List ReductionPointer} {bins : EarleyBins T N (wlen + 1)} (hbins : EarleyBins.WF G bins)
-    (hm : m < wlen + 1) (hn : n < bins[m].length)
+lemma wfPointerAux_of_redPointer {G : ContextFreeGrammarList T N} {w : Array T}
+    {endIdxA i j m n : Nat} {ps : List ReductionPointer}
+    {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
+    (hm : m < w.size + 1) (hn : n < bins[m].length)
     (h : bins[m][n].pointer = Pointer.reduction ⟨endIdxA, i, j⟩ ps) :
-    endIdxA ≤ wlen ∧ j < bins[m].length ∧
-    ∀ (h : endIdxA ≤ wlen), i < bins[endIdxA].length ∧
+    endIdxA ≤ w.size ∧ j < bins[m].length ∧
+    ∀ (h : endIdxA ≤ w.size), i < bins[endIdxA].length ∧
     (endIdxA < m ∨ (endIdxA = m ∧ i < n)) ∧ j < n := by
   have ⟨_, _, pInv, sInv⟩:= hbins m (by lia)
   simp only [BinPointers.WF, Pointer.WF, tsub_le_iff_right] at pInv

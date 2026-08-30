@@ -63,9 +63,9 @@ def earleyListSet (G : ContextFreeGrammarList T N) (w : Array T) : Set (EarleyIt
 
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 @[grind →]
-lemma binIdx_of_endIdx (G : ContextFreeGrammarList T N) (wlen : Nat)
-    {bins : EarleyBins T N (wlen + 1)} (hbins : EarleyBins.WF G bins)
-    (x : EarleyItem T N) {k : Nat} (hk : k < wlen + 1)
+lemma binIdx_of_endIdx (G : ContextFreeGrammarList T N) (w : Array T)
+    {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
+    (x : EarleyItem T N) {k : Nat} (hk : k < w.size + 1)
     (hmem : x ∈ items bins[k]) : k = x.endIdx := by
   grind
 
@@ -100,17 +100,17 @@ lemma updateBinY_extensive (xs ys : BinItems T N) : items ys ⊆ items (updateBi
   | nil => grind
   | cons y ys ih => grind [updateBinAuxY_extensive, updateBin_extensive]
 
-lemma updateBins_extensive {wlen : Nat} {bins : EarleyBins T N (wlen + 1)}
-    (k i : Nat) (hi : i < wlen + 1) (newBin : BinItems T N) :
+lemma updateBins_extensive {w : Array T} {bins : EarleyBins T N (w.size + 1)}
+    (k i : Nat) (hi : i < w.size + 1) (newBin : BinItems T N) :
     items bins[i] ⊆ items (updateBins bins k newBin)[i] := by
   grind [updateBin_extensive]
 
-lemma updateBinsNewBin_extensive {wlen : Nat} {bins : EarleyBins T N (wlen + 1)}
-    (k : Nat) (hk : k < wlen + 1) (newBin : BinItems T N) :
+lemma updateBinsNewBin_extensive {w : Array T} {bins : EarleyBins T N (w.size + 1)}
+    (k : Nat) (hk : k < w.size + 1) (newBin : BinItems T N) :
     items newBin ⊆ items (updateBins bins k newBin)[k] := by
   grind [updateBinY_extensive]
 
-lemma setOfBinsUpdateBins_extensive {wlen : Nat} {bins : EarleyBins T N (wlen + 1)}
+lemma setOfBinsUpdateBins_extensive {w : Array T} {bins : EarleyBins T N (w.size + 1)}
     (k : Nat) (newBin : BinItems T N) :
     setOfBins bins ⊆ setOfBins (updateBins bins k newBin) := by
   grind [updateBins_extensive]
@@ -445,7 +445,8 @@ lemma scanSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] [Law
     simp only [items, scanList, ht, BEq.rfl, ↓reduceIte, incItem, List.map_cons, List.map_nil,
       List.mem_cons, List.not_mem_nil, or_false, Set.ofPred_eq_eq_singleton, map_of_mapT,
       Set.singleton_subset_iff]
-    apply EarleySet.scan (by simp) (by grind) (by grind) (by grind) hnext
+    have : x.item.endIdx = k := by grind
+    apply EarleySet.scan (by simp [← this]) (by grind) (by grind) (by grind) hnext
   else
     simp [items, scanList, ht]
 
