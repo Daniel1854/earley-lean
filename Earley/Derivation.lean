@@ -109,8 +109,8 @@ lemma Derivation_trans_produces (G : ContextFreeGrammar T) {u v w : List (Symbol
     simp [Derivation, hr]
   | cons x xs ih =>
     rcases hu with ⟨u',hu⟩
-    have := ih hu.right.right hv
-    rcases this with ⟨D,hD⟩
+    specialize ih hu.right.right hv
+    rcases ih with ⟨D,hD⟩
     simp only [List.cons_append, Derivation, hu, true_and]
     use D, u'
     simp [hu, hD]
@@ -229,9 +229,8 @@ theorem Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T
         = x ++ d.output ++ y := by grind
       rw [this] at ih
       clear this
-      have := ih hD
-      clear ih
-      rcases this with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
+      specialize ih hD
+      rcases ih with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
       use a', b', E, d::F
       refine ⟨?_,?_,hc,by simp; lia,by simp [hlenF]⟩
       · rw [ha]
@@ -255,9 +254,8 @@ theorem Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T
         = x ++ d.output ++ y := by grind
       rw [this] at ih
       clear this
-      have := ih hD
-      clear ih
-      rcases this with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
+      specialize ih hD
+      rcases ih with ⟨a',b',E,F,⟨hE,hF,hc,hlenE,hlenF⟩⟩
       use a', b', d::E, F
       refine ⟨?_,?_,hc,by simp [hlenE],by simp; lia⟩
       · simp only [Derivation_succ]

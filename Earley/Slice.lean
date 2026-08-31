@@ -137,8 +137,8 @@ theorem slice_append_ex {α : Type} {xs ys zs : List α} {i k : Nat} (h : slice 
       simp [slice, h]
     | cons y ys =>
       simp only [slice, List.cons_append, List.cons.injEq] at h
-      have := ih h.right (by simp)
-      rcases this with ⟨j,hj⟩
+      specialize ih h.right (by simp)
+      rcases ih with ⟨j,hj⟩
       use j+1
       simp [h, hj, slice]
   | case4 x xs i k ih =>

@@ -79,9 +79,9 @@ lemma getElem_of_filterWithIdxAux {x : α} {i n : Nat} (l : List α) (P : α →
       grind
     else
       have : (x, n) ∈ filterWithIdxAux P (i+1) ys := by grind
-      have := ih this
+      specialize ih this
       have : i + 1 ≤ n := by
-        have := filterWithIdxAuxI_le_getElem ys (i+1) P n (by grind)
+        apply filterWithIdxAuxI_le_getElem ys (i+1) P n
         grind
       grind
 

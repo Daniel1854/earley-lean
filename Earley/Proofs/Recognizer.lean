@@ -588,8 +588,8 @@ lemma earleyBinsListSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq 
     let hbins := (earleyBinsList Gₗ w k (by lia)).inv
     apply earleyBinListZeroSet_sub_model w h (earleyBinsList Gₗ w k (by lia)).bins hbins (k+1)
     · intro y hmemy
-      have := ih (by lia)
-      apply Set.mem_of_mem_of_subset hmemy this
+      specialize ih (by lia)
+      apply Set.mem_of_mem_of_subset hmemy ih
     · simp only [earleyBinsList] at hmem
       grind [setOfBinsEarleyBinList_extensive]
     · lia
