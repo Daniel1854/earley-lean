@@ -45,7 +45,7 @@ open Earley.Parser
 open Utils
 open ContextFreeGrammar
 
-variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
+variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
 
 section Soundness
 
@@ -90,9 +90,9 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j k 
     use []
   · rename_i i heq
     have := someNode_of_buildTree G w i (k-1) hbins
-    grind [wfPointerAux_of_predPointer]
+    grind [preWF_of_pre]
   · rename_i endIdxA pi pj _ heq
-    have := wfPointerAux_of_redPointer hwf _ _ heq
+    have := redWF_of_red hwf _ _ heq
     have := someNode_of_buildTree G w pi endIdxA hbins hwf (by lia) (by lia) hw
     rcases this with ⟨d,ts,ht⟩
     have := someNode_of_buildTree G w pj k hbins hwf (by lia) (by lia) hw
@@ -102,26 +102,23 @@ lemma someNode_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j k 
 termination_by ((bins.toList.map List.length).take k).foldl Add.add 0 + j
 decreasing_by
   · rename Nat => i
-    rename_i heq
-    have := wfPointerAux_of_predPointer hwf _ _ heq
-    have : k ≠ 0 := by
-      grind [wfPointerAux_of_predPointer]
+    have : k ≠ 0 := by grind [preWF_of_pre]
     have : ((bins.toList.map List.length).take (k - 1)).foldl Add.add 0 + bins[k-1].length =
         ((bins.toList.map List.length).take k).foldl Add.add 0 := by
       have := foldl_add_nth bins.toList 0 (k-1) (by grind)
       grind
     lia
   · rename_i endIdxA pi pj _ _ _ _
-    have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind [wfPointerAux_of_redPointer]
+    have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind
     rcases this with h | h
     · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
              ((bins.toList.map List.length).take k).foldl Add.add 0 := by
         have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
         grind
-      lia
+      grind
     · lia
   · rename Nat => pj
-    have : pj < j := by grind [wfPointerAux_of_redPointer]
+    have : pj < j := by grind
     simp [this]
 
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
@@ -166,15 +163,17 @@ public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq
     G.Generates (mapT w) ↔ ∃ t, parse Gₗ w = some t := by
   grind [soundnessParse, completenessParse]
 
--- TODO: move these somewhere else
+-- TODO: move these someplace else
 /--
 Returns the terminals stored within the parse tree.
 -/
+@[grind]
 def yield : (Tree T N) → List T
 | Tree.leaf (Symbol.nonterminal _) => []
 | Tree.leaf (Symbol.terminal t) => [t]
 | Tree.node _ ts => (ts.map yield).flatten
 
+@[grind]
 def root : (Tree T N) → Symbol T N
 | Tree.leaf d => d
 | Tree.node d _ => d
@@ -182,6 +181,7 @@ def root : (Tree T N) → Symbol T N
 /--
 Each node of the tree has to correspond to a rule of the grammar.
 -/
+@[grind]
 def wfRuleTree (G : ContextFreeGrammarList T N) : Tree T N → Prop
 | Tree.leaf _ => True
 | Tree.node d ts => (∃ r ∈ G.rules, d = Symbol.nonterminal r.input ∧ (ts.map root = r.output))
@@ -190,67 +190,84 @@ def wfRuleTree (G : ContextFreeGrammarList T N) : Tree T N → Prop
 /--
 Each node of the tree has to correspond to an item of the grammar.
 -/
+@[grind]
 def wfItemTree (G : ContextFreeGrammarList T N) (x : EarleyItem T N) : Tree T N → Prop
 | Tree.leaf _ => True
 | Tree.node d ts =>
   (d = Symbol.nonterminal x.rule.input ∧ (ts.map root = x.rule.output.take x.position))
   ∧ (∀ t ∈ ts, wfRuleTree G t)
 
+lemma wfItemTree_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
+    {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
+    (hwf : EarleyBins.PointerWF bins) (hk : k < w.size + 1)
+    (hj : j < bins[k].length) (hw : w ≠ #[])
+    {t : Tree T N} (ht : buildTree G w hw bins hbins hwf k hk j hj = some t) :
+    wfItemTree G bins[k][j].item t := by
+  fun_induction buildTree G w hw bins hbins hwf k hk j hj with
+  | case1 k hk j hj x hpx => grind
+  | case2 k hk j hj x i hpx hk2 ih =>
+    -- 568 case Pre wf_item_tree_build_tree'
+    simp only [wfItemTree]
+    have hx : x = bins[k][j] := by grind
+    have := someNode_of_buildTree G w i (k-1) hbins (by lia) (by lia) (by grind) hw
+    rcases this with ⟨d,ts,ht'⟩
+    simp? [ht'] at ht
+    simp [← ht]
+    --refine ⟨by grind, by grind⟩
+    sorry
+  | case3 k hk j hj x endIdxA i j' ps hpx inv ih1 =>
+    sorry
+
 /--
 The tree of an item is well-formed w.r.t. to yield iff it parses what it claims to parse.
 -/
+@[grind]
 def wfYield (w : List T) (x : EarleyItem T N) (t : Tree T N) : Prop :=
   yield t = slice w x.startIdx x.endIdx
 
-lemma yieldBuildTree_eq_word {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
+lemma wfYield_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
     (hwf : EarleyBins.PointerWF bins) (hk : k < w.size + 1)
     (hj : j < bins[k].length) (hw : w ≠ #[])
     {t : Tree T N} (ht : buildTree G w hw bins hbins hwf k hk j hj = some t) :
     wfYield w.toList bins[k][j].item t := by
   fun_induction buildTree G w hw bins hbins hwf k hk j hj with
-  | case1 k hk j hj x hpx =>
-    simp [wfYield]
-    simp at ht
-    simp [← ht, yield]
-    sorry -- predicts
+  | case1 k hk j hj x hpx => grind
   | case2 k hk j hj x i hpx hk2 ih =>
     sorry
-  | case3 k hk j hj x endIdxA i j' ps hpx inv ih1 ih2 =>
+  | case3 k hk j hj x endIdxA i j' ps hpx inv ih1 =>
     sorry
 
--- TODO: if I manage, also extend it to cached : )
-public theorem yieldParse_eq_word {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) {t : Tree T G.NT} (ht : parse Gₗ w = some t) :
-    -- wf_rule_tree G t
-    root t = Symbol.nonterminal Gₗ.initial
-    ∧ yield t = w.toList := by
+public theorem yieldParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array T)
+    {t : Tree T N} (ht : parse Gₗ w = some t) :
+    wfRuleTree Gₗ t ∧ root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by
   simp only [parse, Option.dite_none_left_eq_some] at ht
   rcases ht with ⟨hnEmpty, ht⟩
   split at ht
   · simp at ht
   · rename_i x j _ heq
+    -- Collect proofs that the relevant item for the call to buildTree satisfies isFinished
+    -- and thus their indices match with the expected parse
     let finalBin := (earleyList Gₗ w).bins[w.size]
-    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial w.size x.item
+    let P := fun x : BinItem T N => isFinished Gₗ.initial w.size x.item
     have hmem : (x, j) ∈ (filterWithIdx finalBin P) := by grind
     have hfin := P_of_filterWithIdx (earleyList Gₗ w).bins[w.size] P hmem
     have hj : j < List.length finalBin := by grind
     have hx : (earleyList Gₗ w).bins[w.size][j].item = x.item := by
       have := getElem_of_filterWithIdx finalBin P hmem
       grind
-    --have : (hwf : EarleyBins.PointerWF bins)  :=
     have hwf := pointerWF_of_earleyList Gₗ w
-    have h := yieldBuildTree_eq_word j w.size (earleyList Gₗ w).inv hwf (by lia) hj hnEmpty ht
+    have hbins := (earleyList Gₗ w).inv
+    have h := wfYield_of_buildTree j w.size hbins hwf (by lia) hj hnEmpty ht
     simp only [wfYield, hx] at h
-    simp only [isFinished, Bool.and_eq_true, beq_iff_eq, P] at hfin
-
     have : x.item.startIdx = 0 ∧ x.item.endIdx = w.toList.length := by grind
-    refine ⟨?_, by grind⟩
-    simp [root]
-    have : x.item.rule.input = Gₗ.initial := by grind
-    -- line 1185, requires wf_rule_tree and wf_item_tree
-    sorry
+    -- Only for easier matching.
+    have := someNode_of_buildTree Gₗ w j w.size hbins (by lia) (by lia) (by lia) hnEmpty
+    rcases this with ⟨d,ts,ht'⟩
+    simp only [ht, Option.some.injEq] at ht'
+    -- Makes wfRuleTree trivial
+    have := wfItemTree_of_buildTree j w.size hbins hwf (by lia) hj hnEmpty ht
+    grind
 
 end Naive
 
@@ -274,6 +291,15 @@ public theorem parseCached_eq_parse {G : ContextFreeGrammarList T N} (w : Array 
   grind
 
 /--
+A refinement proof of yield for the the same algorithm, but utilizing a cached implementation
+to compute the bins.
+-/
+public theorem yieldCachedParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array T)
+    {t : Tree T N} (ht : parseCached Gₗ w = some t) :
+    wfRuleTree Gₗ t ∧ root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by
+  grind [parseCached_eq_parse, yieldParse_eq_word]
+
+/--
 A refinement proof of correctness for the the same algorithm, but utilizing a cached implementation
 to compute the bins.
 -/
@@ -283,17 +309,6 @@ public theorem correctnessCachedParse {G : ContextFreeGrammar T} [BEq G.NT] [Law
     G.Generates (mapT w) ↔ ∃ t, parseCached Gₗ w = some t := by
   grind [parseCached_eq_parse, correctnessParse]
 
-/--
-A refinement proof of yiled for the the same algorithm, but utilizing a cached implementation
-to compute the bins.
--/
-public theorem yieldCachedParse_eq_word {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)] (w : Array T)
-    {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G)
-    {t : Tree T G.NT} (ht : parseCached Gₗ w = some t) :
-    -- wf_rule_tree G t -- TODO: if I manage, also extend it to cached : )
-    root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by
-  grind [parseCached_eq_parse, yieldParse_eq_word]
 
 end Cached
 
