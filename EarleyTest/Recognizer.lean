@@ -89,6 +89,9 @@ def G : ContextFreeGrammarList T N := {
   nodup := by simp [exRule1, exRule2]
 }
 
+lemma heps : Utils.isEpsilonFree G.rules := by
+  grind [G, exRule1, exRule2]
+
 def exW1 : Array T := #[T.a]
 def exW2 : Array T := #[T.a, T.a, T.a]
 def exW3 : Array T := #[T.a, T.b]
@@ -170,9 +173,9 @@ info: some (Earley.Parser.Tree.node
    Earley.Parser.Tree.node (Symbol.nonterminal N.S) [Earley.Parser.Tree.leaf (Symbol.terminal T.a)]])
 -/
 #guard_msgs in
-#eval! (parse G #[T.a, T.a])
+#eval! (parse G #[T.a, T.a] heps)
 
--- #eval! saveTree (parse G [T.a, T.a]) "Examples/tree1.gv"
+-- #eval! saveTree (parse G [T.a, T.a] heps) "Examples/tree1.gv"
 
 end BasicExample
 
@@ -261,6 +264,11 @@ def G : ContextFreeGrammarList T N := {
   rules := [exRule1, exRule2, exRule3, exRule4, exRule5, exRule6, exRule7, exRule8],
   nodup := by simp [exRule1, exRule2, exRule3, exRule4, exRule5, exRule6, exRule7, exRule8]
 }
+lemma heps : Utils.isEpsilonFree G.rules := by
+  simp only [Utils.isEpsilonFree, G, List.mem_cons, List.not_mem_nil, or_false,
+    Bool.not_eq_eq_eq_not, Bool.not_true, List.isEmpty_eq_false_iff, ne_eq, forall_eq_or_imp,
+    forall_eq]
+  simp [exRule1, exRule2, exRule3, exRule4, exRule5, exRule6, exRule7, exRule8]
 
 def exW1 : Array T := #[T.Zero]
 def exW2 : Array T := #[T.Zero, T.Plus, T.One]
@@ -302,7 +310,7 @@ info: some (Earley.Parser.Tree.node
      [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.Zero)]]])
 -/
 #guard_msgs in
-#eval! (parse G exW1)
+#eval! (parse G exW1 heps)
 /--
 info: some (Earley.Parser.Tree.node
   (Symbol.nonterminal N.Sum)
@@ -317,7 +325,7 @@ info: some (Earley.Parser.Tree.node
      [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.One)]]])
 -/
 #guard_msgs in
-#eval! (parse G exW2)
+#eval! (parse G exW2 heps)
 /--
 info: some (Earley.Parser.Tree.node
   (Symbol.nonterminal N.Sum)
@@ -336,7 +344,7 @@ info: some (Earley.Parser.Tree.node
      [Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.One)]]])
 -/
 #guard_msgs in
-#eval! (parse G exW3)
+#eval! (parse G exW3 heps)
 /--
 info: some (Earley.Parser.Tree.node
   (Symbol.nonterminal N.Sum)
@@ -367,12 +375,12 @@ info: some (Earley.Parser.Tree.node
       Earley.Parser.Tree.node (Symbol.nonterminal N.Factor) [Earley.Parser.Tree.leaf (Symbol.terminal T.Two)]]])
 -/
 #guard_msgs in
-#eval! (parse G exW4)
+#eval! (parse G exW4 heps)
 /-- info: none -/
 #guard_msgs in
-#eval! (parse G exW5)
+#eval! (parse G exW5 heps)
 
---#eval! saveTree (parse G exW4) "Examples/tree2.gv"
+--#eval! saveTree (parse G exW4 heps) "Examples/tree2.gv"
 
 end LessBasicExample
 

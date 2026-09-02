@@ -110,14 +110,11 @@ decreasing_by
       grind
     lia
   · rename_i endIdxA pi pj _ _ _ _
-    have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind
-    rcases this with h | h
-    · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
-             ((bins.toList.map List.length).take k).foldl Add.add 0 := by
-        have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
-        grind
+    have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
+           ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+      have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
       grind
-    · lia
+    grind
   · rename Nat => pj
     have : pj < j := by grind
     simp [this]
@@ -278,7 +275,6 @@ lemma wfYield_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k :
       Option.some.injEq] at ht
     grind [redWF_of_red]
 
-omit [LawfulBEq T] in
 public theorem yieldParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array T)
     {heps : isEpsilonFree Gₗ.rules} {t : Tree T N} (ht : parse Gₗ w heps = some t) :
     wfRuleTree Gₗ t ∧ root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by

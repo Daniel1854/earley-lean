@@ -75,13 +75,13 @@ public def Pointer.PreWF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (ent
       ∧ i < bins[k - 1].length
       ∧ ((hi : i < bins[k - 1].length) → scans w bins[k-1][i].item entry.item k hk))
 
--- Rau does define it for all elements
+-- TODO: Rau does define it for all elements
 public def Pointer.RedWF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (entry : BinItem T N)
     (k : Nat) : Prop :=
-  ∀ p ps, entry.pointer = Pointer.reduction p ps → k ≤ w.size ∧ p.endIdxA ≤ w.size
+  ∀ p ps, entry.pointer = Pointer.reduction p ps → k ≤ w.size ∧ p.endIdxA < k
     ∧ ((h : p.endIdxA ≤ w.size) → p.i < bins[p.endIdxA].length)
     ∧ ((h : k ≤ w.size) → p.j < bins[k].length)
-    ∧ ((h1 : p.endIdxA ≤ w.size) → (h2 :p.i < bins[p.endIdxA].length)
+    ∧ ((h1 : p.endIdxA ≤ w.size) → (h2 : p.i < bins[p.endIdxA].length)
       → (h3 : k ≤ w.size) → (h4 : p.j < bins[k].length)
       → completes bins[p.endIdxA][p.i].item entry.item bins[k][p.j].item k)
 
@@ -107,22 +107,23 @@ public def BinPointers.WF {w : Array T} (bins : EarleyBins T N (w.size + 1)) : P
   ∀ k, (hk : k < bins.size) → ∀ x ∈ bins[k], Pointer.WF bins x k
 
 /--
-A pointer is called sound, if the reduction pointer points towards an earlier item.
+A pointer is called sound, if the reduction pointer points towards an earlier item
+for the completed item. The original item resides in a previous bin due to Pointer.RedWF.
 Interestingly enough, we only reason about the first pointer
 since it is the only one used for buildTree anyway.
 There are problematic details when merging reduction pointers since the item could in theory
 skip ahead of the item that triggered the .complete operation.
 -/
 @[grind]
-public def Pointer.isSound (pointer : Pointer) (k j : Nat) : Prop :=
+public def Pointer.isSound (pointer : Pointer) (j : Nat) : Prop :=
   match pointer with
   | .null | .predecessor _ => True
-  | .reduction p _ => (p.endIdxA < k ∨ (p.endIdxA = k ∧ p.i < j)) ∧ p.j < j
+  | .reduction p _ => p.j < j
 
 @[grind]
 public def BinPointers.isSound {w : Array T} (bins : EarleyBins T N (w.size + 1)) : Prop :=
   ∀ k, (hk : k < bins.size) → ∀ j, (hj : j < bins[k].length)
-    → Pointer.isSound bins[k][j].pointer k j
+    → Pointer.isSound bins[k][j].pointer j
 
 /--
 EarleyBins is well-formed w.r.t to their pointers, if all of its bins got well-formed pointers.
@@ -177,10 +178,7 @@ lemma redWF_of_red {w : Array T} {bins : EarleyBins T N (w.size + 1)}
     (hwf : EarleyBins.PointerWF bins) {k : Nat} (hk : k < bins.size)
     {j : Nat} (hj : j < bins[k].length) {p : ReductionPointer} {ps : List ReductionPointer}
     (hp : bins[k][j].pointer = Pointer.reduction p ps) :
-    p.endIdxA ≤ w.size
-      ∧ p.j < bins[k].length
-      ∧ ((h : p.endIdxA ≤ w.size) → p.i < bins[p.endIdxA].length)
-      ∧ (p.endIdxA < k ∨ (p.endIdxA = k ∧ p.i < j)) ∧ p.j < j := by
+    p.endIdxA < k ∧ p.j < j ∧ ((h : p.endIdxA ≤ w.size) → p.i < bins[p.endIdxA].length) := by
   have : bins[k][j] ∈ bins[k] := by grind
   grind [Pointer.RedWF]
 
@@ -250,29 +248,106 @@ lemma updateBinAux_of_Red_of_eqItem (xs : BinItems T N) (y : BinItem T N) (i j :
   | nil => grind
   | cons x xs ih => grind
 
-lemma wfBinPointers_of_updateBinAux' {w : Array T} {k : Nat} (bins : EarleyBins T N (w.size + 1))
+omit [LawfulBEq T] [LawfulBEq N] in
+lemma wfPointerX_of_updateBinAux {w : Array T} {k : Nat} (bins : EarleyBins T N (w.size + 1))
+    (hk : k < bins.size) (x y : BinItem T N) (hwfy : Pointer.WF bins x k)
+    (hmemy : y ∈ updateBinAux x bins[k]) (heq : y = x) :
+    Pointer.WF (Vector.modify bins k (fun bin => (updateBinAux x bin))) y k := by
+  have hmemy : y ∈ updateBinAux x bins[k] := by grind
+  refine ⟨by grind, by grind [Pointer.PreWF], ?_⟩
+  grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.RedWF]
+
+omit [LawfulBEq T] [LawfulBEq N] in
+lemma wfBinPointers_of_updateBinAux_of_neq_k {w : Array T} {k k' : Nat}
+    (bins : EarleyBins T N (w.size + 1)) (hwfbin : BinPointers.WF bins)
+    (hneq : k ≠ k') (x y : BinItem T N)
+    (hk' : k' < (Vector.modify bins k fun bin => updateBinAux x bin).size)
+    (hmemy : y ∈ (Vector.modify bins k fun bin => updateBinAux x bin)[k']) :
+    Pointer.WF (Vector.modify bins k (fun bin => (updateBinAux x bin))) y k' := by
+  refine ⟨by grind, ?_, ?_⟩
+  · grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.PreWF]
+  · grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.RedWF]
+
+-- A rather brutal proof.
+omit [LawfulBEq T] [LawfulBEq N] in
+lemma wfBinRedPointers_of_updateBinAux_of_eq_k {w : Array T} (bins : EarleyBins T N (w.size + 1))
+    {k j j' : Nat} (hk : k < bins.size) (x y : BinItem T N)
+    (hk' : k < (Vector.modify bins k fun bin => updateBinAux x bin).size)
+    (hbins : (items bins[k]).Nodup) (hwfy : Pointer.WF bins x k)
+    (hwfbin : ∀ x ∈ bins[k], Pointer.WF bins x k) (hmemx : x.item ∈ items bins[k])
+    (hj : j < bins[k].length) (hjI' : j' < (updateBinAux x bins[k]).length)
+    {xp bp : ReductionPointer} {xP bP : List ReductionPointer}
+    (hx : x.pointer = Pointer.reduction xp xP) (hb : bins[k][j].pointer = Pointer.reduction bp bP)
+    (heqX : x.item = bins[k][j].item) (heqY : (updateBinAux x bins[k])[j'] = y) :
+    Pointer.WF (Vector.modify bins k (fun bin => (updateBinAux x bin))) y k := by
+  have hupdRed := updateBinAux_of_updRed bins[k] (updateBinAux x bins[k]) x j hbins hj
+      hb heqX hx (by simp)
+  by_cases hxy : j = j'
+  · refine ⟨by grind [Pointer.NullWF], by grind [Pointer.PreWF], ?_⟩
+    have : y.pointer = Pointer.reduction bp (xp :: xP.append bP) := by grind
+    intro p ps hps
+    have := hwfbin bins[k][j] (by grind)
+    grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.RedWF]
+  · have : y ∈ bins[k] := by
+      grind
+    refine ⟨by grind, by grind [Pointer.PreWF], ?_⟩
+    grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.RedWF]
+
+omit [LawfulBEq T] [LawfulBEq N] in
+lemma wfBinPointers_of_updateBinAux {w : Array T} {k : Nat} (bins : EarleyBins T N (w.size + 1))
     (hwfbin : BinPointers.WF bins) (hk : k < bins.size) (x : BinItem T N)
     (hbins : (items bins[k]).Nodup) (hwfy : Pointer.WF bins x k) :
     BinPointers.WF (Vector.modify bins k (fun bin => (updateBinAux x bin))) := by
-  let bins' := (Vector.modify bins k (fun bin => (updateBinAux x bin)))
-  intro idx hidx y hmemy
-  have hmemy' : y ∈ bins'[idx] := by grind
-  simp only [BinPointers.WF, Order.lt_add_one_iff] at hwfbin
-  by_cases heq : k = idx
-  · sorry
-    --simp only [Pointer.WF, ne_eq, and_self_left]
-    --specialize hwfbin k' (by lia)
-  · refine ⟨by grind, ?_, ?_⟩
-    · grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.PreWF]
-    · grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.RedWF]
+  intro k' hk' y hmemy
+  simp only [BinPointers.WF, Pointer.WF, Order.lt_add_one_iff] at hwfbin
+  simp only [Pointer.WF] at hwfy
+  by_cases heq : k = k'
+  · subst heq
+    specialize hwfbin k (by lia)
+    have hmemy : y ∈ updateBinAux x bins[k] := by grind
+    have := wfPointerX_of_updateBinAux bins hk x y hwfy hmemy
+    have : x.item ∉ items bins[k] ∨
+          (x.item ∈ items bins[k] ∧ ∃ i, x.pointer = .null ∨ x.pointer = .predecessor i) ∨
+          (x.item ∈ items bins[k] ∧ ¬ ∃ i, x.pointer = .null ∨ x.pointer = .predecessor i) := by
+      simp only [not_exists, not_or]
+      grind
+    rcases this with hnmem | ⟨hmem, hex⟩ | ⟨hmem, hnex⟩
+    · have : y ∈ bins[k] ++ [x] := by grind
+      refine ⟨by grind, by grind [Pointer.PreWF], by grind [Pointer.RedWF]⟩
+    · rcases hex with ⟨i,hi⟩
+      have : Vector.modify bins k (fun bin => (updateBinAux x bin)) = bins := by grind
+      grind
+    · simp only [not_exists, not_or] at hnex
+      match hx : x.pointer with
+      | .null | .predecessor i => grind [hnex 0]
+      | .reduction xp xP =>
+        have := List.getElem_of_mem hmem
+        rcases this with ⟨j, hjI, heqX⟩
+        have := List.getElem_of_mem hmemy
+        rcases this with ⟨j', hjI', heqY⟩
+        have hj' : j < bins[k].length := by grind
+        have heqX : x.item = bins[k][j].item := by
+          simp only [items, List.getElem_map] at heqX
+          simp [heqX]
+        -- In theory, .null and predecessor should never happen.
+        match hb : bins[k][j].pointer with
+        | .null =>
+          have := updateBinAux_of_Red_of_eqItem bins[k] x j 0 hbins (by grind) (by simp [hb]) heqX
+          have : Vector.modify bins k (fun bin => (updateBinAux x bin)) = bins := by grind
+          grind
+        | .predecessor i =>
+          have := updateBinAux_of_Red_of_eqItem bins[k] x j i hbins (by grind) (by simp [hb]) heqX
+          have : Vector.modify bins k (fun bin => (updateBinAux x bin)) = bins := by grind
+          grind
+        | .reduction bp bP => grind [wfBinRedPointers_of_updateBinAux_of_eq_k]
+  · grind [wfBinPointers_of_updateBinAux_of_neq_k]
 
 omit [LawfulBEq T] [LawfulBEq N] in
-lemma soundPointers_of_updateBinAux (wlen : Nat) {k : Nat} (bins : EarleyBins T N (wlen + 1))
-    (hbins : ∀ k, (hk : k ≤ wlen) → (items bins[k]).Nodup ∧ ∀ j, (hj : j < bins[k].length)
-      → Pointer.isSound bins[k][j].pointer k j)
-    (y : BinItem T N) (hk : k < wlen + 1) (hwf : Pointer.isSound y.pointer k bins[k].length) :
-    ∀ j, (hj : j < (updateBinAux y bins[k]).length) →
-    Pointer.isSound (updateBinAux y bins[k])[j].pointer k j := by
+lemma soundPointers_of_updateBinAux {w : Array T} (bins : EarleyBins T N (w.size + 1))
+    {k : Nat} (hk : k < bins.size) (hbins : (items bins[k]).Nodup)
+    (hwf : EarleyBins.PointerWF bins)
+    (y : BinItem T N) (hwfy : Pointer.isSound y.pointer bins[k].length) :
+    BinPointers.isSound (Vector.modify bins k (fun bin => (updateBinAux y bin))) := by
   have : y.item ∉ items bins[k] ∨
         (y.item ∈ items bins[k] ∧ ∃ i, y.pointer = .null ∨ y.pointer = .predecessor i) ∨
         (y.item ∈ items bins[k] ∧ ¬ ∃ i, y.pointer = .null ∨ y.pointer = .predecessor i) := by
@@ -289,86 +364,56 @@ lemma soundPointers_of_updateBinAux (wlen : Nat) {k : Nat} (bins : EarleyBins T 
       have := List.getElem_of_mem hmem
       rcases this with ⟨j', hjI', heq⟩
       have hj' : j' < bins[k].length := by grind
+      have heq' : y.item = bins[k][j'].item := by
+        simp only [items, List.getElem_map] at heq
+        simp [heq]
       match hb : bins[k][j'].pointer with
       | .null =>
-        have := (hbins k (by grind)).left
-        have heq' : y.item = bins[k][j'].item := by
-          simp only [items, List.getElem_map] at heq
-          simp [heq]
-        have := updateBinAux_of_Red_of_eqItem bins[k] y j' 0 this (by grind) (by simp [hb]) heq'
+        have := updateBinAux_of_Red_of_eqItem bins[k] y j' 0 hbins (by grind) (by simp [hb]) heq'
         grind
       | .predecessor i =>
-        have := (hbins k (by grind)).left
-        have heq' : y.item = bins[k][j'].item := by
-          simp only [items, List.getElem_map] at heq
-          simp [heq]
-        have := updateBinAux_of_Red_of_eqItem bins[k] y j' i this (by grind) (by simp [hb]) heq'
+        have := updateBinAux_of_Red_of_eqItem bins[k] y j' i hbins (by grind) (by simp [hb]) heq'
         grind
       | .reduction bp bP =>
-        have hnDup := (hbins k (by grind)).left
-        have : y.item = bins[k][j'].item := by grind
-        have hupdRed := updateBinAux_of_updRed bins[k] (updateBinAux y bins[k]) y j' hnDup hj'
-            hb this hy (by simp)
+        have hupdRed := updateBinAux_of_updRed bins[k] (updateBinAux y bins[k]) y j' hbins hj'
+            hb heq' hy (by simp)
         grind
 
--- I cannot really simplify the goal and make the proof easier for me
--- since any item of ys can get merged into the bins and thus the `< j` would get problematic.
 omit [LawfulBEq T] [LawfulBEq N] in
-lemma soundPointers_of_updateBin (wlen : Nat) (k : Nat) (bins : EarleyBins T N (wlen + 1))
-    (hbins : ∀ k, (hk : k ≤ wlen) → (items bins[k]).Nodup ∧ ∀ j, (hj : j < bins[k].length)
-      → Pointer.isSound bins[k][j].pointer k j)
-    (ys : BinItems T N) (hk : k < wlen + 1)
-    (hwf : ∀ y ∈ ys, Pointer.isSound y.pointer k bins[k].length) :
-    ∀ j, (hj : j < (updateBin bins[k] ys).length) →
-    Pointer.isSound (updateBin bins[k] ys)[j].pointer k j := by
-  induction ys generalizing bins with
-  | nil => grind
-  | cons y ys ih =>
-    intro j hj
-    let bins' := Vector.set bins k (updateBinAux y bins[k]) hk
-    have hSaux := soundPointers_of_updateBinAux wlen bins hbins y hk (by grind)
-    have : ∀ y ∈ ys, Pointer.isSound y.pointer k bins'[k].length := by
-      clear ih
-      simp only [Pointer.isSound]
-      grind [length_le_lengthUpdateBinAux]
-    have hbins' : (∀ (k : ℕ) (hk : k ≤ wlen), (items bins'[k]).Nodup ∧
-        ∀ (j : ℕ) (hj : j < bins'[k].length), Pointer.isSound bins'[k][j].pointer k j) := by
-      clear this
-      intro k2 hk2
-      constructor
-      · grind [noDup_of_updateBinAux bins[k] y]
-      · grind
-    specialize ih bins' hbins' (by grind)
-    grind
-
-theorem pointerWF_of_updateBin (G : ContextFreeGrammarList T N) (w : Array T) {k : Nat}
-    (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins)
-    (hwf : EarleyBins.PointerWF bins)
-    (ys : BinItems T N) (hk : k < w.size + 1)
+theorem pointerWF_of_updateBin (w : Array T)
+    {bins : EarleyBins T N (w.size + 1)} (hwf : EarleyBins.PointerWF bins)
+    (k : Nat) (hk : k < w.size + 1) (hN : (items bins[k]).Nodup) (ys : BinItems T N)
     (hwfPy : ∀ y ∈ ys, Pointer.WF bins y k)
-    (hwfSy : ∀ y ∈ ys, Pointer.isSound y.pointer k bins[k].length) :
+    (hwfSy : ∀ y ∈ ys, Pointer.isSound y.pointer bins[k].length) :
     EarleyBins.PointerWF (updateBins bins k ys)  := by
   induction ys generalizing bins k with
   | nil =>
     have : Vector.modify bins k (fun x => x) = bins := by grind
     grind
   | cons y ys ih =>
-    simp [updateBins, EarleyBins.PointerWF]
-    --refine ⟨by grind [soundPointers_of_updateBinAux, wfBinPointers_of_updateBinAux]
-    sorry
+    let bins' := Vector.modify bins k (fun bin => updateBinAux y bin)
+    have : BinPointers.isSound bins' := by
+      grind [soundPointers_of_updateBinAux]
+    have : BinPointers.WF bins' := by
+      grind [wfBinPointers_of_updateBinAux]
+    have hN' := noDup_of_updateBinAux bins[k] y hN
+    have hwfP' : ∀ y ∈ ys, Pointer.WF bins' y k := by
+      clear ih
+      intro y hmemy
+      refine ⟨?_, ?_, ?_⟩
+      · grind
+      · grind [Pointer.PreWF]
+      · grind [Pointer.RedWF, length_le_lengthUpdateBinAux, updateBinAux_getElem_of_lower_idx]
+    have hwfS' : ∀ y ∈ ys, Pointer.isSound y.pointer bins'[k].length := by
+      clear ih
+      simp only [Pointer.isSound]
+      grind [length_le_lengthUpdateBinAux]
+    specialize ih (by grind) k hk (by grind) hwfP' hwfS'
+    have : (updateBins bins k (y :: ys)) = (updateBins bins' k  ys) := by
+      grind
+    grind
 
-    --· have ⟨h0,h1,h2,h3⟩ := hwf k (by lia)
-    --  simp only [heq]
-    --  have hwfb : BinPointers.WF bins (updateBins bins k ys)[k] k := by
-    --    have := wfBinPointers_of_updateBin w bins bins[k] h2 ys (by grind)
-    --    grind
-    --  have : ∀ (i : ℕ) (hi : i ≤ w.size), bins[i].length
-    --      ≤ (updateBins bins k ys)[i].length := by grind [lengthNth_le_lengthUpdateBinNth]
-    --  have := wfBinPointers_of_updatedBins w bins (updateBins bins k ys) hk this hwfb
-    --  grind
-    --· intro j hj
-    --  have := soundPointers_of_updateBin w.size k bins (by grind) ys
-    --  grind
+--------------------- OPs -------------------------------------
 
 lemma wfPointers_of_scanList {w : Array T} (j k : Nat) {a : T} {bins : EarleyBins T N (w.size + 1)}
     (x : EarleyItem T N) (hk : k < w.size) (hj : ¬ (j ≥ bins[k].length)) :
@@ -390,7 +435,7 @@ lemma wfPointers_of_scanList {w : Array T} (j k : Nat) {a : T} {bins : EarleyBin
 omit [BEq N] [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_scanList {w : Array T} (j k : Nat) {a : T}
     {bins : EarleyBins T N (w.size + 1)} (x : EarleyItem T N) (hk : k < w.size) :
-    ∀ y ∈ scanList w x a k hk j, Pointer.isSound y.pointer (k+1) bins[k+1].length := by
+    ∀ y ∈ scanList w x a k hk j, Pointer.isSound y.pointer bins[k+1].length := by
   grind [scanList]
 
 omit [BEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
@@ -402,7 +447,7 @@ lemma wfPointers_of_predictList (G : ContextFreeGrammarList T N) (w : Array T) (
 omit [BEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_predictList (G : ContextFreeGrammarList T N) (wlen k : Nat) (A : N)
     (bins : EarleyBins T N (wlen + 1)) (hk : k < wlen + 1) :
-    ∀ x ∈ predictList G A k, Pointer.isSound x.pointer k bins[k].length := by
+    ∀ x ∈ predictList G A k, Pointer.isSound x.pointer bins[k].length := by
   grind [predictList]
 
 lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) (j k : Nat)
@@ -421,7 +466,14 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) 
   have xP : x.pointer = Pointer.reduction ⟨y.startIdx, zIdx, j⟩ [] := by grind
   simp only [xP]
   intro p ps hps
-  refine ⟨by lia, by grind, ?_, by grind, ?_⟩
+  refine ⟨by lia, ?_, ?_, by grind, ?_⟩
+  · simp only [EarleyBins.WF, Order.lt_add_one_iff] at hbins
+    have : y.startIdx < k ∨ y.startIdx = k := by grind
+    rcases this with h | h
+    · grind
+    · have := filterWithIdx_le_length bins[k] P zIdx (by grind)
+      -- impossible heps case?
+      sorry
   · intro hbounds
     have : y.startIdx < w.size + 1 := by grind
     exact filterWithIdx_le_length bins[p.endIdxA]
@@ -433,7 +485,7 @@ omit [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) (j k : Nat)
     (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins) (y : EarleyItem T N)
     (hk : k < bins.size) (hmemy : y ∈ (items bins[k])) (hj : j < bins[k].length) :
-    ∀ x ∈ completeList y bins (by grind) j, Pointer.isSound x.pointer k bins[k].length := by
+    ∀ x ∈ completeList y bins (by grind) j, Pointer.isSound x.pointer bins[k].length := by
   simp only [Pointer.isSound]
   intro x hmemx
   simp only [completeList, List.mem_map, Prod.exists] at hmemx
@@ -444,25 +496,28 @@ lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array 
   rcases hmemx with ⟨z,zIdx,⟨hmemz,hx⟩⟩
   have xP : x.pointer = Pointer.reduction ⟨y.startIdx, zIdx, j⟩ [] := by grind
   simp only [xP]
-  refine ⟨?_, by grind⟩
-  simp only [EarleyBins.WF, Order.lt_add_one_iff] at hbins
-  have : y.startIdx < k ∨ y.startIdx = k := by grind
-  rcases this with h | h
-  · grind
-  · simp only [h, lt_self_iff_false, true_and, false_or, gt_iff_lt]
-    exact filterWithIdx_le_length bins[k] P zIdx (by grind)
+  grind
 
--- unclear which typeclasses I actually need
+--------------------- OPs -------------------------------------
+
+theorem pointerWF_of_earleyBinList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G.rules)
+    {bins : EarleyBins T G.NT (w.size + 1)} (hbins : EarleyBins.WF Gₗ bins)
+    (hwf : EarleyBins.PointerWF bins) (k : Nat) (hk : k < w.size + 1) (j : Nat) :
+    EarleyBins.PointerWF (earleyBinList bins k hk j hbins).bins := by
+  sorry
+
 theorem pointerWF_of_earleyBinsList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    [LawfulBEq (EarleyItem T G.NT)] (w : Array T)
-    {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G.rules)
-    (k : Nat) (hk : k < w.size + 1) :
+    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G.rules) (k : Nat) (hk : k < w.size + 1) :
     EarleyBins.PointerWF (earleyBinsList Gₗ w k hk).bins := by
   induction k with
   | zero =>
-    sorry
-  | succ k ih =>
-    sorry
+    have : EarleyBins.PointerWF (initBins Gₗ w).bins := by
+      grind [initList, Pointer.NullWF, Pointer.PreWF, Pointer.RedWF]
+    grind [pointerWF_of_earleyBinList]
+  | succ k ih => grind [pointerWF_of_earleyBinList]
 
 theorem pointerWF_of_earleyList (Gₗ : ContextFreeGrammarList T N) (w : Array T)
     (heps : isEpsilonFree Gₗ.rules) : EarleyBins.PointerWF (earleyList Gₗ w).bins := by
@@ -620,14 +675,11 @@ decreasing_by
       have := foldl_add_nth bins.toList 0 (k-1) (by grind)
       grind
     grind [preWF_of_pre]
-  · have : endIdxA < k ∨ (endIdxA = k ∧ pI < j) := by grind
-    rcases this with h | h
-    · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
-             ((bins.toList.map List.length).take k).foldl Add.add 0 := by
-        have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
-        grind
-      lia
-    · lia
+  · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
+           ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+      have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
+      grind
+    grind
   · rename Nat => pj
     have : pj < j := by grind
     simp [this]
