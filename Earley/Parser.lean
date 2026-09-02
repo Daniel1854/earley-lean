@@ -151,7 +151,7 @@ lemma scans_of_pre {w : Array T} {bins : EarleyBins T N (w.size + 1)}
 
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 @[grind →]
-lemma complete_of_red {w : Array T} {bins : EarleyBins T N (w.size + 1)}
+lemma completes_of_red {w : Array T} {bins : EarleyBins T N (w.size + 1)}
     (hwf : EarleyBins.PointerWF bins) {k : Nat} (hk : k < bins.size)
     {j : Nat} (hj : j < bins[k].length) {p : ReductionPointer} {ps : List ReductionPointer}
     (hp : bins[k][j].pointer = Pointer.reduction p ps)
@@ -166,8 +166,7 @@ lemma preWF_of_pre {w : Array T} {bins : EarleyBins T N (w.size + 1)}
     (hwf : EarleyBins.PointerWF bins) {i k : Nat} (hk : k < bins.size)
     {j : Nat} (hj : j < bins[k].length)
     (hp : bins[k][j].pointer = Pointer.predecessor i) :
-    k ≠ 0 ∧ k - 1 < w.size
-      ∧ ((hk : k - 1 < w.size) → i < bins[k-1].length ∧ i < bins[k - 1].length) := by
+    k ≠ 0 ∧ k - 1 < w.size ∧ ((hk : k - 1 < w.size) → i < bins[k-1].length) := by
   have : bins[k][j] ∈ bins[k] := by grind
   grind [Pointer.PreWF]
 

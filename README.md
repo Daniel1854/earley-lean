@@ -20,6 +20,7 @@ Following the work from Rau et al (<https://doi.org/10.4230/LIPIcs.ITP.2024.31>)
   - [x] Implementation
   - [x] Graphviz
   - [x] Termination Proof
+  - [x] Yield Proofs
   - [x] Correctness Proof
 - [x] Evaluation/Benchmark
   - [x] Cached Version without pointers w/ no proofs

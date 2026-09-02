@@ -197,26 +197,47 @@ def wfItemTree (G : ContextFreeGrammarList T N) (x : EarleyItem T N) : Tree T N 
   (d = Symbol.nonterminal x.rule.input ∧ (ts.map root = x.rule.output.take x.position))
   ∧ (∀ t ∈ ts, wfRuleTree G t)
 
+omit [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfItemTree_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
     (hwf : EarleyBins.PointerWF bins) (hk : k < w.size + 1)
     (hj : j < bins[k].length) (hw : w ≠ #[])
     {t : Tree T N} (ht : buildTree G w hw bins hbins hwf k hk j hj = some t) :
     wfItemTree G bins[k][j].item t := by
-  fun_induction buildTree G w hw bins hbins hwf k hk j hj with
-  | case1 k hk j hj x hpx => grind
-  | case2 k hk j hj x i hpx hk2 ih =>
-    -- 568 case Pre wf_item_tree_build_tree'
+  fun_induction buildTree G w hw bins hbins hwf k hk j hj generalizing t with
+  | case1 k hk j hj x => grind
+  | case2 k hk j hj x i hpx hk2 =>
+    rename_i ih
     simp only [wfItemTree]
     have hx : x = bins[k][j] := by grind
     have := someNode_of_buildTree G w i (k-1) hbins (by lia) (by lia) (by grind) hw
     rcases this with ⟨d,ts,ht'⟩
-    simp? [ht'] at ht
-    simp [← ht]
-    --refine ⟨by grind, by grind⟩
-    sorry
-  | case3 k hk j hj x endIdxA i j' ps hpx inv ih1 =>
-    sorry
+    simp only [ht', List.append_eq, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at ht
+    specialize ih ht'
+    have ⟨hknZ, hk', hi⟩ := preWF_of_pre hwf _ _ hpx
+    simp only [hk', forall_true_left] at hi
+    simp only [← ht, List.map_append, List.map_cons, List.map_nil, List.mem_append, List.mem_cons,
+      List.not_mem_nil, or_false]
+    refine ⟨⟨by grind, ?_⟩, by grind⟩
+    have := scans_of_pre hwf _ hk' hi _ hpx
+    have : List.take bins[k - 1][i].item.position bins[k][j].item.rule.output
+        ++ [Symbol.terminal w[k - 1]] =
+        List.take bins[k][j].item.position bins[k][j].item.rule.output := by
+      grind [List.take_concat_get]
+    grind
+  | case3 k hk j hj x endIdxA i j' ps hpx heq inv ih1 =>
+    rename_i ih2
+    simp only [wfItemTree]
+    have := someNode_of_buildTree G w i endIdxA hbins (by lia) (by lia) (by grind) hw
+    rcases this with ⟨dA, tsA, htA⟩
+    have := someNode_of_buildTree G w j' k hbins (by lia) (by lia) (by grind) hw
+    rcases this with ⟨dj', tsj', htj'⟩
+    simp only [htA, htj', List.append_eq, Option.bind_eq_bind, Option.bind_some,
+      Option.some.injEq] at ht
+    simp only [← ht, List.map_append, List.map_cons, List.map_nil, List.mem_append, List.mem_cons,
+      List.not_mem_nil, or_false]
+    have := completes_of_red hwf _ _ hpx (by lia) (by lia) (by lia)
+    grind [List.take_concat_get]
 
 /--
 The tree of an item is well-formed w.r.t. to yield iff it parses what it claims to parse.
@@ -225,19 +246,37 @@ The tree of an item is well-formed w.r.t. to yield iff it parses what it claims 
 def wfYield (w : List T) (x : EarleyItem T N) (t : Tree T N) : Prop :=
   yield t = slice w x.startIdx x.endIdx
 
+omit [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfYield_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins)
     (hwf : EarleyBins.PointerWF bins) (hk : k < w.size + 1)
     (hj : j < bins[k].length) (hw : w ≠ #[])
     {t : Tree T N} (ht : buildTree G w hw bins hbins hwf k hk j hj = some t) :
     wfYield w.toList bins[k][j].item t := by
-  fun_induction buildTree G w hw bins hbins hwf k hk j hj with
-  | case1 k hk j hj x hpx => grind
-  | case2 k hk j hj x i hpx hk2 ih =>
-    sorry
-  | case3 k hk j hj x endIdxA i j' ps hpx inv ih1 =>
-    sorry
+  fun_induction buildTree G w hw bins hbins hwf k hk j hj generalizing t with
+  | case1 k hk j hj x => grind
+  | case2 k hk j hj x i hpx hk2 =>
+    rename_i ih
+    have hx : x = bins[k][j] := by grind
+    have := someNode_of_buildTree G w i (k-1) hbins (by lia) (by lia) (by grind) hw
+    rcases this with ⟨d,ts,ht'⟩
+    simp only [ht', List.append_eq, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at ht
+    specialize ih ht'
+    have ⟨hknZ, hk', hi⟩ := preWF_of_pre hwf _ _ hpx
+    simp only [hk', forall_true_left] at hi
+    have := scans_of_pre hwf _ hk' hi _ hpx
+    grind
+  | case3 k hk j hj x endIdxA i j' ps hpx heq inv ih1 =>
+    simp only at inv
+    have := someNode_of_buildTree G w i endIdxA hbins (by lia) (by lia) (by grind) hw
+    rcases this with ⟨dA, tsA, htA⟩
+    have := someNode_of_buildTree G w j' k hbins (by lia) (by lia) (by grind) hw
+    rcases this with ⟨dj', tsj', htj'⟩
+    simp only [htA, htj', List.append_eq, Option.bind_eq_bind, Option.bind_some,
+      Option.some.injEq] at ht
+    grind [redWF_of_red]
 
+omit [LawfulBEq T] in
 public theorem yieldParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array T)
     {t : Tree T N} (ht : parse Gₗ w = some t) :
     wfRuleTree Gₗ t ∧ root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by
