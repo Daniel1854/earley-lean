@@ -36,7 +36,7 @@ their initial symbols and their rules match.
 @[grind]
 public def ContextFreeGrammarEqContextFreeGrammarList {T : Type}
   (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) : Prop :=
-  G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules
+  G.initial = Gₗ.initial ∧ ∀ r, r ∈ G.rules.toList ↔ r ∈ Gₗ.rules
 
 public abbrev CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T) (Gₗ : ContextFreeGrammarList T G.NT) :
     Prop :=
@@ -48,7 +48,7 @@ A CFG is equal to a CFGₗ iff their initial symbols and their rules match.
 @[simp, grind =]
 public theorem eq_of_CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T)
     (Gₗ : ContextFreeGrammarList T G.NT) : CFGEqCFGₗ G Gₗ ↔
-    G.initial = Gₗ.initial ∧ G.rules.toList = Gₗ.rules := by
+    G.initial = Gₗ.initial ∧ ∀ r, r ∈ G.rules.toList ↔ r ∈ Gₗ.rules := by
   grind
 
 public abbrev mapT {T N : Type} (w : Array T) : List (Symbol T N) :=

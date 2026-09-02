@@ -34,14 +34,14 @@ attribute [local grind .] List.append_cancel_left
 attribute [local grind =] List.getElem_cons_drop
 attribute [local grind =] List.drop_add_one_eq_tail_drop
 
-variable {T : Type}
+variable {T N : Type}
 
 /--
 Returns if the grammar contains a rule with an empty rhs.
 -/
 @[grind]
-def isEpsilonFree (G : ContextFreeGrammar T) : Prop :=
-  ∀ r ∈ G.rules, !r.output.isEmpty
+def isEpsilonFree {R : Type} (rules : R) [Membership (ContextFreeRule T N) R] : Prop :=
+  ∀ r ∈ rules, !r.output.isEmpty
 
 /--
 Returns if the grammar is able to produce epsilon.
@@ -267,8 +267,9 @@ theorem Derivation_cons_split (G : ContextFreeGrammar T) {a b c : List (Symbol T
       · rw [hb]
         exact hF
 
-lemma nonEmptyWordDerivation_of_isEpsilonFree (G : ContextFreeGrammar T) (heps : isEpsilonFree G)
-    {a : List (Symbol T G.NT)} (ha : a ≠ []) : ¬ ∃ D, Derivation G a D [] := by
+lemma nonEmptyWordDerivation_of_isEpsilonFree (G : ContextFreeGrammar T)
+    (heps : isEpsilonFree G.rules) {a : List (Symbol T G.NT)} (ha : a ≠ []) :
+    ¬ ∃ D, Derivation G a D [] := by
   intro h
   rcases h with ⟨D, hD⟩
   induction D generalizing a with
@@ -284,7 +285,7 @@ lemma nonEmptyWordDerivation_of_isEpsilonFree (G : ContextFreeGrammar T) (heps :
       grind
     | cons _ _ => grind
 
-lemma nonEmptyDerives_of_isEpsilonFree {G : ContextFreeGrammar T} (heps : isEpsilonFree G) :
+lemma nonEmptyDerives_of_isEpsilonFree {G : ContextFreeGrammar T} (heps : isEpsilonFree G.rules) :
     nonEmptyDerives G := by
   intro s
   have : [s] ≠ [] := by simp
@@ -292,7 +293,7 @@ lemma nonEmptyDerives_of_isEpsilonFree {G : ContextFreeGrammar T} (heps : isEpsi
   grind [derives_iff_Derivation]
 
 lemma isEpsilonFree_of_nonEmptyDerives (G : ContextFreeGrammar T) (h : nonEmptyDerives G) :
-    isEpsilonFree G := by
+    isEpsilonFree G.rules := by
   by_contra
   simp only [isEpsilonFree, Bool.not_eq_eq_eq_not, Bool.not_true, List.isEmpty_eq_false_iff, ne_eq,
     not_forall, exists_prop, Decidable.not_not] at this
@@ -301,8 +302,13 @@ lemma isEpsilonFree_of_nonEmptyDerives (G : ContextFreeGrammar T) (h : nonEmptyD
   grind
 
 theorem nonEmptyDerives_iff_isEpsilonFree (G : ContextFreeGrammar T) :
-    nonEmptyDerives G ↔ isEpsilonFree G := by
+    nonEmptyDerives G ↔ isEpsilonFree G.rules := by
   grind [nonEmptyDerives_of_isEpsilonFree, isEpsilonFree_of_nonEmptyDerives]
+
+theorem isEpsilonFree_of_isEpsilonFreeₗ (G : ContextFreeGrammar T)
+    (Gₗ : ContextFreeGrammarList T G.NT) (h : CFGEqCFGₗ G Gₗ)
+    (heps : isEpsilonFree Gₗ.rules) : isEpsilonFree G.rules := by
+  grind [Finset.mem_toList]
 
 end Utils
 end Earley

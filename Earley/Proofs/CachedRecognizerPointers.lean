@@ -109,8 +109,8 @@ public theorem soundnessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [Lawf
 
 public theorem completenessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
-    (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G)
-    (hgen : G.Generates (mapT w)) : recognizeCached Gₗ w := by
+    (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
+    (heps : isEpsilonFree G.rules) (hgen : G.Generates (mapT w)) : recognizeCached Gₗ w := by
   have hex := completenessEarleyList w h heps hgen
   grind [earleyCachedBins_eq_earleyListBins]
 
@@ -121,7 +121,7 @@ A word can be generated from the grammar iff the algorithm recognizes the word.
 public theorem correctnessEarleyCached {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)]
     (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
-    (heps : isEpsilonFree G) : G.Generates (mapT w) ↔ recognizeCached Gₗ w := by
+    (heps : isEpsilonFree G.rules) : G.Generates (mapT w) ↔ recognizeCached Gₗ w := by
   grind [soundnessEarleyCached, completenessEarleyCached]
 
 end CachedRecognizerPointers

@@ -5,6 +5,7 @@ Authors: Daniel Soukup
 -/
 module
 public import Earley.Model
+public import Earley.Proofs.Model
 public import Earley.Recognizer
 public import Earley.Proofs.Recognizer
 public import Earley.Filter
@@ -27,12 +28,13 @@ namespace Parser
 section Wellformed
 
 open Earley.Model
+open Earley.Proofs.Model
 open Earley.Model.EarleyItem
 open Earley.Recognizer
 open Earley.Proofs.Recognizer
 open Earley.Utils
 
-variable {T N : Type} [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)]
+variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
 
 /--
 If an `EarleyItem` stems from a prediction,
@@ -182,6 +184,7 @@ lemma redWF_of_red {w : Array T} {bins : EarleyBins T N (w.size + 1)}
   have : bins[k][j] ∈ bins[k] := by grind
   grind [Pointer.RedWF]
 
+omit [LawfulBEq T] [LawfulBEq N] in
 @[grind →]
 lemma updateBinAux_of_nullPre (xs : BinItems T N) (y : BinItem T N) {i : Nat}
     (hmem : y.item ∈ items xs) (hy : y.pointer = .null ∨ y.pointer = .predecessor i) :
@@ -190,6 +193,7 @@ lemma updateBinAux_of_nullPre (xs : BinItems T N) (y : BinItem T N) {i : Nat}
   | nil => grind
   | cons head tail ih => grind
 
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma eqLength_of_updateBinAux_of_mem (xs : BinItems T N) (y : BinItem T N)
     (hNoDup : (items xs).Nodup) (hmem : y.item ∈ items xs) :
     (updateBinAux y xs).length = xs.length := by
@@ -197,6 +201,7 @@ lemma eqLength_of_updateBinAux_of_mem (xs : BinItems T N) (y : BinItem T N)
   | nil => grind
   | cons x xs ih => grind
 
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma updateBinAux_of_Red_of_neqItemAux (xs : BinItems T N) (y : BinItem T N) (i : Nat)
     (hi : i < xs.length) (hneq : y.item ≠ xs[i].item) (hlen : i < (updateBinAux y xs).length) :
     (updateBinAux y xs)[i] = xs[i] := by
@@ -204,6 +209,7 @@ lemma updateBinAux_of_Red_of_neqItemAux (xs : BinItems T N) (y : BinItem T N) (i
   | nil => grind
   | cons x xs ih => grind
 
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma updateBinAux_of_Red_of_neqItem (xs : BinItems T N) (y : BinItem T N) (i j : Nat)
     (hNoDup : (items xs).Nodup) (hi : i < xs.length) (heq : y.item = xs[i].item) (hneq : i ≠ j)
     (hj : j < xs.length) (hlen : j < (updateBinAux y xs).length) :
@@ -215,6 +221,7 @@ lemma updateBinAux_of_Red_of_neqItem (xs : BinItems T N) (y : BinItem T N) (i j 
       grind [List.nodup_iff_getElem?_ne_getElem?]
     grind [updateBinAux_of_Red_of_neqItemAux]
 
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma updateBinAux_of_updRed (xs xs' : BinItems T N) (y : BinItem T N) (i : Nat)
     (hNoDup : (items xs).Nodup) {xp yp : ReductionPointer} {xP yP : List ReductionPointer}
     (hi : i < xs.length) (hx : xs[i].pointer = Pointer.reduction xp xP) (heq : y.item = xs[i].item)
@@ -234,6 +241,7 @@ lemma updateBinAux_of_updRed (xs xs' : BinItems T N) (y : BinItem T N) (i : Nat)
       have := updateBinAux_of_Red_of_neqItem (x::xs) y i j
       grind
 
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma updateBinAux_of_Red_of_eqItem (xs : BinItems T N) (y : BinItem T N) (i j : Nat)
     (hNoDup : (items xs).Nodup) (hi : i < xs.length)
     (hx : xs[i].pointer = .null ∨ xs[i].pointer = .predecessor j) (heq : y.item = xs[i].item) :
@@ -258,6 +266,7 @@ lemma wfBinPointers_of_updateBinAux' {w : Array T} {k : Nat} (bins : EarleyBins 
     · grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.PreWF]
     · grind [updateBinAux_getElem_of_lower_idx, length_le_lengthUpdateBinAux, Pointer.RedWF]
 
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma soundPointers_of_updateBinAux (wlen : Nat) {k : Nat} (bins : EarleyBins T N (wlen + 1))
     (hbins : ∀ k, (hk : k ≤ wlen) → (items bins[k]).Nodup ∧ ∀ j, (hj : j < bins[k].length)
       → Pointer.isSound bins[k][j].pointer k j)
@@ -304,6 +313,7 @@ lemma soundPointers_of_updateBinAux (wlen : Nat) {k : Nat} (bins : EarleyBins T 
 
 -- I cannot really simplify the goal and make the proof easier for me
 -- since any item of ys can get merged into the bins and thus the `< j` would get problematic.
+omit [LawfulBEq T] [LawfulBEq N] in
 lemma soundPointers_of_updateBin (wlen : Nat) (k : Nat) (bins : EarleyBins T N (wlen + 1))
     (hbins : ∀ k, (hk : k ≤ wlen) → (items bins[k]).Nodup ∧ ∀ j, (hj : j < bins[k].length)
       → Pointer.isSound bins[k][j].pointer k j)
@@ -360,7 +370,6 @@ theorem pointerWF_of_updateBin (G : ContextFreeGrammarList T N) (w : Array T) {k
     --  have := soundPointers_of_updateBin w.size k bins (by grind) ys
     --  grind
 
-omit [BEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_scanList {w : Array T} (j k : Nat) {a : T} {bins : EarleyBins T N (w.size + 1)}
     (x : EarleyItem T N) (hk : k < w.size) (hj : ¬ (j ≥ bins[k].length)) :
     ∀ y ∈ (scanList w x a k hk j), Pointer.WF bins y (k+1) := by
@@ -378,25 +387,24 @@ lemma wfPointers_of_scanList {w : Array T} (j k : Nat) {a : T} {bins : EarleyBin
     sorry
   · grind [scanList, Pointer.RedWF]
 
-omit [BEq N] [LawfulBEq (EarleyItem T N)] in
+omit [BEq N] [LawfulBEq T] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_scanList {w : Array T} (j k : Nat) {a : T}
     {bins : EarleyBins T N (w.size + 1)} (x : EarleyItem T N) (hk : k < w.size) :
     ∀ y ∈ scanList w x a k hk j, Pointer.isSound y.pointer (k+1) bins[k+1].length := by
   grind [scanList]
 
-omit [BEq T] [LawfulBEq (EarleyItem T N)] in
+omit [BEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_predictList (G : ContextFreeGrammarList T N) (w : Array T) (k : Nat)
     (A : N) {bins : EarleyBins T N (w.size + 1)} :
     ∀ x ∈ (predictList G A k), Pointer.WF bins x k := by
   grind [predictList, Pointer.NullWF, Pointer.PreWF, Pointer.RedWF]
 
-omit [BEq T] [LawfulBEq (EarleyItem T N)] in
+omit [BEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_predictList (G : ContextFreeGrammarList T N) (wlen k : Nat) (A : N)
     (bins : EarleyBins T N (wlen + 1)) (hk : k < wlen + 1) :
     ∀ x ∈ predictList G A k, Pointer.isSound x.pointer k bins[k].length := by
   grind [predictList]
 
-omit [LawfulBEq (EarleyItem T N)] in
 lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) (j k : Nat)
     {bins : EarleyBins T N (w.size + 1)} (hbins : EarleyBins.WF G bins) (y : EarleyItem T N)
     (hk : k < bins.size) (hmemy : y ∈ (items bins[k])) (hj : j < bins[k].length) :
@@ -421,7 +429,7 @@ lemma wfPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) 
   · intro h1 h2 h3 h4
     sorry
 
-omit [LawfulBEq (EarleyItem T N)] in
+omit [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array T) (j k : Nat)
     (bins : EarleyBins T N (w.size + 1)) (hbins : EarleyBins.WF G bins) (y : EarleyItem T N)
     (hk : k < bins.size) (hmemy : y ∈ (items bins[k])) (hj : j < bins[k].length) :
@@ -444,13 +452,25 @@ lemma soundPointers_of_completeList {G : ContextFreeGrammarList T N} (w : Array 
   · simp only [h, lt_self_iff_false, true_and, false_or, gt_iff_lt]
     exact filterWithIdx_le_length bins[k] P zIdx (by grind)
 
-theorem pointerWF_of_earleyBinsList (G : ContextFreeGrammarList T N) (w : Array T)
-    (k : Nat) (hk : k < w.size + 1) : EarleyBins.PointerWF (earleyBinsList G w k hk).bins := by
-  sorry
+-- unclear which typeclasses I actually need
+theorem pointerWF_of_earleyBinsList {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : Array T)
+    {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G.rules)
+    (k : Nat) (hk : k < w.size + 1) :
+    EarleyBins.PointerWF (earleyBinsList Gₗ w k hk).bins := by
+  induction k with
+  | zero =>
+    sorry
+  | succ k ih =>
+    sorry
 
-theorem pointerWF_of_earleyList (G : ContextFreeGrammarList T N) (w : Array T) :
-    EarleyBins.PointerWF (earleyList G w).bins := by
-  grind [pointerWF_of_earleyBinsList]
+theorem pointerWF_of_earleyList (Gₗ : ContextFreeGrammarList T N) (w : Array T)
+    (heps : isEpsilonFree Gₗ.rules) : EarleyBins.PointerWF (earleyList Gₗ w).bins := by
+  classical
+  let G : ContextFreeGrammar T := ⟨N, Gₗ.initial, Gₗ.rules.toFinset⟩
+  have : CFGEqCFGₗ G Gₗ := by simp [G]
+  have heps' := isEpsilonFree_of_isEpsilonFreeₗ G Gₗ this heps
+  apply pointerWF_of_earleyBinsList w this heps'
 
 end Wellformed
 
@@ -615,8 +635,9 @@ decreasing_by
 /--
 Tries to parse a word with given grammar, and returns a parse tree if succesful.
 -/
-public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (w : Array T) :
-    Option (Tree T N) :=
+public def parse [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
+    (G : ContextFreeGrammarList T N) (w : Array T)
+    (heps : isEpsilonFree G.rules) : Option (Tree T N) :=
   -- This could be inferred from the result of earleyList,
   -- but this is easier to reason about and performance-wise should be equal.
   if hw : w = #[] then
@@ -628,7 +649,7 @@ public def parse [LawfulBEq (EarleyItem T N)] (G : ContextFreeGrammarList T N) (
     match h : filterWithIdx wfBins.bins[w.size] P with
     | [] => none
     | (_, i)::_ =>
-      have inv := pointerWF_of_earleyList G w
+      have inv := pointerWF_of_earleyList G w heps
       have := filterWithIdx_le_length wfBins.bins[w.size] P i (by grind)
       buildTree G w hw wfBins.bins wfBins.inv inv w.size (by simp) i this
 
@@ -645,12 +666,13 @@ open Earley.Utils
 variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
   [Hashable N] [Hashable (EarleyItem T N)]
 
-theorem pointerWF_of_earleyCached (G : ContextFreeGrammarList T N) (w : Array T) :
-    EarleyBins.PointerWF (rawList (earleyCached G w).bins) := by
+theorem pointerWF_of_earleyCached (G : ContextFreeGrammarList T N) (w : Array T)
+    (heps : isEpsilonFree G.rules) : EarleyBins.PointerWF (rawList (earleyCached G w).bins) := by
   have inv := pointerWF_of_earleyList G w
   grind [earleyCachedBins_eq_earleyListBins]
 
-public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (Tree T N) :=
+public def parseCached (G : ContextFreeGrammarList T N) (w : Array T)
+    (heps : isEpsilonFree G.rules) : Option (Tree T N) :=
   -- This could be inferred from the result of earleyList,
   -- but this is easier to reason about and performance-wise should be equal.
   if hw : w = #[] then
@@ -664,7 +686,7 @@ public def parseCached (G : ContextFreeGrammarList T N) (w : Array T) : Option (
     match h : filterWithIdx bins[w.size] P with
     | [] => none
     | (_, i)::_ =>
-      have inv := pointerWF_of_earleyCached G w
+      have inv := pointerWF_of_earleyCached G w heps
       have := filterWithIdx_le_length bins[w.size] P i (by grind)
       buildTree G w (by grind) bins wfBins.inv inv w.size (by simp) i this
 

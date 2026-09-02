@@ -54,7 +54,8 @@ Given the existance of a parse tree for a word, the word can be generated from t
 -/
 public theorem soundnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (ht : ∃ t, parse Gₗ w = some t) : G.Generates (mapT w) := by
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) (ht : ∃ t, parse Gₗ w heps = some t) :
+    G.Generates (mapT w) := by
   simp only [parse, Option.dite_none_left_eq_some] at ht
   rcases ht with ⟨t, hnEmpty, ht⟩
   split at ht
@@ -135,12 +136,13 @@ Given a word can be generated from the grammar, then there also exists a parse t
 -/
 public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) (hgen : G.Generates (mapT w)) :
-    ∃ t, parse Gₗ w = some t := by
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) (hgen : G.Generates (mapT w)) :
+    ∃ t, parse Gₗ w heps = some t := by
+  have heps' := isEpsilonFree_of_isEpsilonFreeₗ G Gₗ h heps
   have hnEmpty : w ≠ #[] := by
-    have := nonEmptyDerives_of_isEpsilonFree heps
+    have := nonEmptyDerives_of_isEpsilonFree heps'
     grind [Generates]
-  have := completenessEarleyList w h heps hgen
+  have := completenessEarleyList w h heps' hgen
   simp only [recognizeList, decide_eq_true_eq] at this
   simp only [parse, hnEmpty, ↓reduceDIte]
   split
@@ -159,8 +161,8 @@ A word can be generated from the grammar iff there exists a parse tree for that 
 -/
 public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) :
-    G.Generates (mapT w) ↔ ∃ t, parse Gₗ w = some t := by
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) :
+    G.Generates (mapT w) ↔ ∃ t, parse Gₗ w heps = some t := by
   grind [soundnessParse, completenessParse]
 
 -- TODO: move these someplace else
@@ -278,7 +280,7 @@ lemma wfYield_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k :
 
 omit [LawfulBEq T] in
 public theorem yieldParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array T)
-    {t : Tree T N} (ht : parse Gₗ w = some t) :
+    {heps : isEpsilonFree Gₗ.rules} {t : Tree T N} (ht : parse Gₗ w heps = some t) :
     wfRuleTree Gₗ t ∧ root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by
   simp only [parse, Option.dite_none_left_eq_some] at ht
   rcases ht with ⟨hnEmpty, ht⟩
@@ -295,7 +297,7 @@ public theorem yieldParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array
     have hx : (earleyList Gₗ w).bins[w.size][j].item = x.item := by
       have := getElem_of_filterWithIdx finalBin P hmem
       grind
-    have hwf := pointerWF_of_earleyList Gₗ w
+    have hwf := pointerWF_of_earleyList Gₗ w heps
     have hbins := (earleyList Gₗ w).inv
     have h := wfYield_of_buildTree j w.size hbins hwf (by lia) hj hnEmpty ht
     simp only [wfYield, hx] at h
@@ -322,8 +324,8 @@ open Utils
 variable {T N : Type} [BEq T] [BEq N] [LawfulBEq T] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
   [Hashable N] [Hashable (EarleyItem T N)]
 
-public theorem parseCached_eq_parse {G : ContextFreeGrammarList T N} (w : Array T) :
-    parseCached G w = parse G w := by
+public theorem parseCached_eq_parse {G : ContextFreeGrammarList T N} (w : Array T)
+    {heps : isEpsilonFree G.rules} : parseCached G w heps = parse G w heps := by
   simp only [parseCached, parse]
   have : rawList (earleyCached G w).bins = (earleyList G w).bins := by
     grind [earleyCachedBins_eq_earleyListBins]
@@ -333,9 +335,9 @@ public theorem parseCached_eq_parse {G : ContextFreeGrammarList T N} (w : Array 
 A refinement proof of yield for the the same algorithm, but utilizing a cached implementation
 to compute the bins.
 -/
-public theorem yieldCachedParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array T)
-    {t : Tree T N} (ht : parseCached Gₗ w = some t) :
-    wfRuleTree Gₗ t ∧ root t = Symbol.nonterminal Gₗ.initial ∧ yield t = w.toList := by
+public theorem yieldCachedParse_eq_word {G : ContextFreeGrammarList T N} (w : Array T)
+    {heps : isEpsilonFree G.rules} {t : Tree T N} (ht : parseCached G w heps = some t) :
+    wfRuleTree G t ∧ root t = Symbol.nonterminal G.initial ∧ yield t = w.toList := by
   grind [parseCached_eq_parse, yieldParse_eq_word]
 
 /--
@@ -344,8 +346,8 @@ to compute the bins.
 -/
 public theorem correctnessCachedParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
     [LawfulBEq (EarleyItem T G.NT)] [Hashable G.NT] [Hashable (EarleyItem T G.NT)] (w : Array T)
-    {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree G) :
-    G.Generates (mapT w) ↔ ∃ t, parseCached Gₗ w = some t := by
+    {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) :
+    G.Generates (mapT w) ↔ ∃ t, parseCached Gₗ w heps = some t := by
   grind [parseCached_eq_parse, correctnessParse]
 
 end Cached
