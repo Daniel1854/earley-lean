@@ -348,7 +348,6 @@ public theorem correctnessCachedParse {G : ContextFreeGrammar T} [BEq G.NT] [Law
     G.Generates (mapT w) ↔ ∃ t, parseCached Gₗ w = some t := by
   grind [parseCached_eq_parse, correctnessParse]
 
-
 end Cached
 
 end Parser

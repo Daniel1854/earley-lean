@@ -200,7 +200,7 @@ while also merging any reduction pointers for duplicate items.
 Predecessor pointers are unique, so duplicate items can be safely discarded
 -/
 @[inline, grind]
-public def updateBinAux :  BinItem T N  → BinItems T N → BinItems T N
+public def updateBinAux : BinItem T N  → BinItems T N → BinItems T N
   | y, [] => [y]
   | y, x::xs =>
     if x.item == y.item then
