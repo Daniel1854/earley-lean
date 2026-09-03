@@ -531,9 +531,9 @@ lemma completeSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] 
   apply EarleySet.complete hx hmemx hy hmemy hcomp hnext
 
 lemma earleyBinListSet_sub_model {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT]
-    [LawfulBEq G.NT] [LawfulBEq (EarleyItem T G.NT)] (w : Array T)
+    [LawfulBEq G.NT] [LawfulBEq (EarleyItem T G.NT)] {w : Array T}
     {Gₗ : ContextFreeGrammarList T G.NT} (h : CFGEqCFGₗ G Gₗ)
-    (bins : EarleyBins T G.NT (w.size + 1))
+    {bins : EarleyBins T G.NT (w.size + 1)}
     (hbins : EarleyBins.WF Gₗ bins) (hsub : setOfBins bins ⊆ EarleySet G (mapT w))
     (k j : Nat) (hk : k < bins.size) :
     setOfBins (earleyBinList bins k hk j hbins).bins ⊆ EarleySet G (mapT w) := by
@@ -678,18 +678,16 @@ theorem earleyBinList_idem {G : ContextFreeGrammar T} [LawfulBEq T] [BEq G.NT] [
     have : setOfBins bins' ⊆ EarleySet G (mapT w) := by
       simp only [ge_iff_le, map_of_mapT, bins']
       match hnext : x.item.nextSymbol with
-      | some s =>
-        match s with
+      | some s => match s with
         | Symbol.nonterminal A =>
-          apply predictSet_sub_model h hbins k i hk (by lia) x (by simp [x]) A hsub hnext
+          exact predictSet_sub_model h hbins k i hk (by lia) x (by simp [x]) A hsub hnext
         | Symbol.terminal a =>
           if h : w.size ≤ k then
             grind
           else
             simp only [h, ↓reduceDIte]
-            apply scanSet_sub_model hbins k i (by lia) (by lia) x (by simp [x]) a hsub hnext h
-      | none =>
-        apply completeSet_sub_model hbins k i hk (by lia) x (by simp [x]) hsub hnext
+            exact scanSet_sub_model hbins k i (by lia) (by lia) x (by simp [x]) a hsub hnext h
+      | none => exact completeSet_sub_model hbins k i hk (by lia) x (by simp [x]) hsub hnext
     by_cases hij' : i + 1 ≤ j
     · apply ih j hij' this
     next =>
