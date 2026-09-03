@@ -122,11 +122,14 @@ decreasing_by
       grind
     lia
   · rename_i endIdxA pi pj _ _ _ _
-    have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
-           ((bins.toList.map List.length).take k).foldl Add.add 0 := by
-      have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
+    have : endIdxA < k ∨ (endIdxA = k ∧ pi < j) := by grind
+    rcases this with h | h
+    · have : ((bins.toList.map List.length).take endIdxA).foldl Add.add 0 + bins[endIdxA].length ≤
+             ((bins.toList.map List.length).take k).foldl Add.add 0 := by
+        have := foldl_le_of_le (bins.toList.map List.length) 0 k endIdxA (by grind)
+        grind
       grind
-    grind
+    · lia
   · rename Nat => pj
     have : pj < j := by grind
     simp [this]
