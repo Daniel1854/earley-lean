@@ -47,33 +47,45 @@ open ContextFreeGrammar
 
 variable {T N : Type} [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)]
 
-section Soundness
+/--
+Returns the terminals stored within the parse tree.
+-/
+@[grind]
+def yield : (Tree T N) → List T
+| Tree.leaf (Symbol.nonterminal _) => []
+| Tree.leaf (Symbol.terminal t) => [t]
+| Tree.node _ ts => (ts.map yield).flatten
+
+@[grind]
+def root : (Tree T N) → Symbol T N
+| Tree.leaf d => d
+| Tree.node d _ => d
 
 /--
-Given the existance of a parse tree for a word, the word can be generated from the grammar.
+Each node of the tree has to correspond to a rule of the grammar.
 -/
-public theorem soundnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) (ht : ∃ t, parse Gₗ w heps = some t) :
-    G.Generates (mapT w) := by
-  simp only [parse, Option.dite_none_left_eq_some] at ht
-  rcases ht with ⟨t, hnEmpty, ht⟩
-  split at ht
-  · simp at ht
-  · rename_i x idx bins hf
-    apply soundnessEarleyList w h
-    simp only [recognizeList, decide_eq_true_eq]
-    use x.item
-    let finalBin := (earleyList Gₗ w).bins[w.size]
-    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial w.size x.item
-    have hmem : (x, idx) ∈ (filterWithIdx finalBin P) := by grind
-    have := P_of_filterWithIdx finalBin P hmem
-    have := getElem_of_filterWithIdx finalBin P hmem
-    grind
+@[grind]
+def wfRuleTree (G : ContextFreeGrammarList T N) : Tree T N → Prop
+| Tree.leaf _ => True
+| Tree.node d ts => (∃ r ∈ G.rules, d = Symbol.nonterminal r.input ∧ (ts.map root = r.output))
+  ∧ (∀ t ∈ ts, wfRuleTree G t)
 
-end Soundness
+/--
+Each node of the tree has to correspond to an item of the grammar.
+-/
+@[grind]
+def wfItemTree (G : ContextFreeGrammarList T N) (x : EarleyItem T N) : Tree T N → Prop
+| Tree.leaf _ => True
+| Tree.node d ts =>
+  (d = Symbol.nonterminal x.rule.input ∧ (ts.map root = x.rule.output.take x.position))
+  ∧ (∀ t ∈ ts, wfRuleTree G t)
 
-section Completeness
+/--
+The tree of an item is well-formed w.r.t. to yield iff it parses what it claims to parse.
+-/
+@[grind]
+def wfYield (w : List T) (x : EarleyItem T N) (t : Tree T N) : Prop :=
+  yield t = slice w x.startIdx x.endIdx
 
 omit [BEq T] [BEq N] [LawfulBEq (EarleyItem T N)] in
 /--
@@ -128,73 +140,7 @@ lemma some_of_buildTree (G : ContextFreeGrammarList T N) (w : Array T) (j : Nat)
   rcases this with ⟨d, ts, h⟩
   use Tree.node d ts
 
-/--
-Given a word can be generated from the grammar, then there also exists a parse tree for that word.
--/
-public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) (hgen : G.Generates (mapT w)) :
-    ∃ t, parse Gₗ w heps = some t := by
-  have heps' := isEpsilonFree_of_isEpsilonFreeₗ G Gₗ h heps
-  have hnEmpty : w ≠ #[] := by
-    have := nonEmptyDerives_of_isEpsilonFree heps'
-    grind [Generates]
-  have := completenessEarleyList w h heps' hgen
-  simp only [recognizeList, decide_eq_true_eq] at this
-  simp only [parse, hnEmpty, ↓reduceDIte]
-  split
-  · rename_i heq
-    rcases this with ⟨x,hx⟩
-    let P := fun y : EarleyItem T G.NT => isFinished Gₗ.initial w.size y
-    grind [notP_of_emptyFilterWithIdx]
-  · rename_i x idx bins hf
-    apply some_of_buildTree Gₗ w idx
-
-end Completeness
-
-/--
-The correctness criteria for the parser:
-A word can be generated from the grammar iff there exists a parse tree for that word.
--/
-public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
-    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
-    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) :
-    G.Generates (mapT w) ↔ ∃ t, parse Gₗ w heps = some t := by
-  grind [soundnessParse, completenessParse]
-
--- TODO: move these someplace else
-/--
-Returns the terminals stored within the parse tree.
--/
-@[grind]
-def yield : (Tree T N) → List T
-| Tree.leaf (Symbol.nonterminal _) => []
-| Tree.leaf (Symbol.terminal t) => [t]
-| Tree.node _ ts => (ts.map yield).flatten
-
-@[grind]
-def root : (Tree T N) → Symbol T N
-| Tree.leaf d => d
-| Tree.node d _ => d
-
-/--
-Each node of the tree has to correspond to a rule of the grammar.
--/
-@[grind]
-def wfRuleTree (G : ContextFreeGrammarList T N) : Tree T N → Prop
-| Tree.leaf _ => True
-| Tree.node d ts => (∃ r ∈ G.rules, d = Symbol.nonterminal r.input ∧ (ts.map root = r.output))
-  ∧ (∀ t ∈ ts, wfRuleTree G t)
-
-/--
-Each node of the tree has to correspond to an item of the grammar.
--/
-@[grind]
-def wfItemTree (G : ContextFreeGrammarList T N) (x : EarleyItem T N) : Tree T N → Prop
-| Tree.leaf _ => True
-| Tree.node d ts =>
-  (d = Symbol.nonterminal x.rule.input ∧ (ts.map root = x.rule.output.take x.position))
-  ∧ (∀ t ∈ ts, wfRuleTree G t)
+section Yield
 
 omit [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfItemTree_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
@@ -237,13 +183,6 @@ lemma wfItemTree_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j 
       List.not_mem_nil, or_false]
     have := completes_of_red hwf _ _ hpx (by lia) (by lia) (by lia)
     grind [List.take_concat_get]
-
-/--
-The tree of an item is well-formed w.r.t. to yield iff it parses what it claims to parse.
--/
-@[grind]
-def wfYield (w : List T) (x : EarleyItem T N) (t : Tree T N) : Prop :=
-  yield t = slice w x.startIdx x.endIdx
 
 omit [BEq T] [LawfulBEq T] [BEq N] [LawfulBEq N] [LawfulBEq (EarleyItem T N)] in
 lemma wfYield_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j k : Nat)
@@ -306,6 +245,65 @@ public theorem yieldParse_eq_word {Gₗ : ContextFreeGrammarList T N} (w : Array
     have := wfItemTree_of_buildTree j w.size hbins hwf (by lia) hj hnEmpty ht
     grind
 
+end Yield
+
+section Correctness
+
+/--
+Given the existance of a parse tree for a word, the word can be generated from the grammar.
+-/
+public theorem soundnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) (ht : ∃ t, parse Gₗ w heps = some t) :
+    G.Generates (mapT w) := by
+  simp only [parse, Option.dite_none_left_eq_some] at ht
+  rcases ht with ⟨t, hnEmpty, ht⟩
+  split at ht
+  · simp at ht
+  · rename_i x idx bins hf
+    apply soundnessEarleyList w h
+    simp only [recognizeList, decide_eq_true_eq]
+    use x.item
+    let finalBin := (earleyList Gₗ w).bins[w.size]
+    let P := fun x : BinItem T G.NT => isFinished Gₗ.initial w.size x.item
+    have hmem : (x, idx) ∈ (filterWithIdx finalBin P) := by grind
+    have := P_of_filterWithIdx finalBin P hmem
+    have := getElem_of_filterWithIdx finalBin P hmem
+    grind
+
+/--
+Given a word can be generated from the grammar, then there also exists a parse tree for that word.
+-/
+public theorem completenessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) (hgen : G.Generates (mapT w)) :
+    ∃ t, parse Gₗ w heps = some t := by
+  have heps' := isEpsilonFree_of_isEpsilonFreeₗ G Gₗ h heps
+  have hnEmpty : w ≠ #[] := by
+    have := nonEmptyDerives_of_isEpsilonFree heps'
+    grind [Generates]
+  have := completenessEarleyList w h heps' hgen
+  simp only [recognizeList, decide_eq_true_eq] at this
+  simp only [parse, hnEmpty, ↓reduceDIte]
+  split
+  · rename_i heq
+    rcases this with ⟨x,hx⟩
+    let P := fun y : EarleyItem T G.NT => isFinished Gₗ.initial w.size y
+    grind [notP_of_emptyFilterWithIdx]
+  · rename_i x idx bins hf
+    apply some_of_buildTree Gₗ w idx
+
+/--
+The correctness criteria for the parser:
+A word can be generated from the grammar iff there exists a parse tree for that word.
+-/
+public theorem correctnessParse {G : ContextFreeGrammar T} [BEq G.NT] [LawfulBEq G.NT]
+    [LawfulBEq (EarleyItem T G.NT)] (w : Array T) {Gₗ : ContextFreeGrammarList T G.NT}
+    (h : CFGEqCFGₗ G Gₗ) (heps : isEpsilonFree Gₗ.rules) :
+    G.Generates (mapT w) ↔ ∃ t, parse Gₗ w heps = some t := by
+  grind [soundnessParse, completenessParse]
+
+end Correctness
 end Naive
 
 section Cached
