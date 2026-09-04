@@ -69,7 +69,6 @@ public def Pointer.PreWF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (ent
     (k : Nat) : Prop :=
   ∀ i, entry.pointer = Pointer.predecessor i → k ≠ 0 ∧ k - 1 < w.size
     ∧ ((hk : k - 1 < w.size) → i < bins[k-1].length
-      ∧ i < bins[k - 1].length
       ∧ ((hi : i < bins[k - 1].length) → scans w bins[k-1][i].item entry.item k hk))
 
 public def Pointer.RedWF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (entry : BinItem T N)
@@ -91,7 +90,7 @@ and difficult to reason about locally. This makes it too inconvenient to merge i
 the soundness property about pointers.
 
 We store the invariant about how the item of the pointer got created here
-since it isn't relevant to the recogner proofs.
+since it isn't relevant to the recognizer proofs.
 -/
 @[grind]
 public def Pointer.WF {w : Array T} (bins : EarleyBins T N (w.size + 1)) (entry : BinItem T N)
