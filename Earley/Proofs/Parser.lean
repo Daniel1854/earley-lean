@@ -71,14 +71,13 @@ def wfRuleTree (G : ContextFreeGrammarList T N) : Tree T N → Prop
   ∧ (∀ t ∈ ts, wfRuleTree G t)
 
 /--
-Each node of the tree has to correspond to an item of the grammar.
+Each node of the tree has to correspond to an EarleyItem of the grammar.
 -/
 @[grind]
 def wfItemTree (G : ContextFreeGrammarList T N) (x : EarleyItem T N) : Tree T N → Prop
 | Tree.leaf _ => True
-| Tree.node d ts =>
-  (d = Symbol.nonterminal x.rule.input ∧ (ts.map root = x.rule.output.take x.position))
-  ∧ (∀ t ∈ ts, wfRuleTree G t)
+| Tree.node d ts => d = Symbol.nonterminal x.rule.input ∧
+  ts.map root = x.rule.output.take x.position ∧ (∀ t ∈ ts, wfRuleTree G t)
 
 /--
 The tree of an item is well-formed w.r.t. to yield iff it parses what it claims to parse.
@@ -166,8 +165,8 @@ lemma wfItemTree_of_buildTree {G : ContextFreeGrammarList T N} {w : Array T} (j 
     simp only [hk', forall_true_left] at hi
     simp only [← ht, List.map_append, List.map_cons, List.map_nil, List.mem_append, List.mem_cons,
       List.not_mem_nil, or_false]
-    refine ⟨⟨by grind, ?_⟩, by grind⟩
     have := scans_of_pre hwf _ hk' hi _ hpx
+    refine ⟨by grind, ?_, by grind⟩
     have : List.take bins[k - 1][i].item.position bins[k][j].item.rule.output
         ++ [Symbol.terminal w[k - 1]] =
         List.take bins[k][j].item.position bins[k][j].item.rule.output := by
