@@ -81,14 +81,11 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
       let idx := bin.items[y.item]
       match (bin.raw[idx]!.pointer, y.pointer) with
       | (Pointer.reduction xp xP, Pointer.reduction yp yP) =>
-        let updItem : BinItem T N := ⟨y.item, Pointer.reduction xp (yp::yP.append xP)⟩
-        let newBin := ⟨bin.raw.set! idx updItem, bin.items⟩
-        updateBinCached newBin ys
+        updateBinCached
+          ⟨bin.raw.set! idx ⟨y.item, Pointer.reduction xp (yp::yP.append xP)⟩, bin.items⟩ ys
       | _ => updateBinCached bin ys
     else
-      let raw' := bin.raw.push y
-      let items' :=  bin.items.insert y.item bin.raw.size
-      updateBinCached ⟨raw', items'⟩ ys
+      updateBinCached ⟨bin.raw.push y, bin.items.insert y.item bin.raw.size⟩ ys
 
 /--
 Append `bins` at index `k` with non-duplicate items from `newBin` and return the updated bins.
