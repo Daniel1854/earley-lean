@@ -337,23 +337,22 @@ public def updateBinCached (bin : CachedEarleyBin T N) : BinItems T N → Cached
         updateBinCached newBin ys
       | _ => updateBinCached bin ys
     else
-      let raw' := bin.raw.push y
       let items' :=  bin.items.insert y.item bin.raw.size
-      have invItems' : ItemCache.WF raw' items' := itemCacheWF_of_push h
-        (by simp [raw']) (by simp [items'])
+      have invItems' : ItemCache.WF (bin.raw.push y) items' := itemCacheWF_of_push h
+        (by simp) (by simp [items'])
       match hnext : y.item.nextSymbol with
       | some (Symbol.nonterminal n) =>
         let completions' := bin.completions.alter n (fun zs => match zs with
           | some zs => zs.append [⟨y.item, bin.raw.size⟩]
           | none => ([⟨y.item, bin.raw.size⟩] : List (EarleyItem T N × Nat)))
-        have invCompletions' : CompletionCache.WF raw' completions' :=
-          completionCacheWF_of_push_of_nextA bin hnext (by simp [raw']) (by simp [completions'])
-        updateBinCached ⟨raw', items', invItems', completions', invCompletions'⟩ ys
+        have invCompletions' : CompletionCache.WF (bin.raw.push y) completions' :=
+          completionCacheWF_of_push_of_nextA bin hnext (by simp) (by simp [completions'])
+        updateBinCached ⟨(bin.raw.push y), items', invItems', completions', invCompletions'⟩ ys
       | some (Symbol.terminal t) | none =>
         -- If the next symbol isn't a non-terminal, the completion cache doesn't need to be touched.
-        have invCompletions' : CompletionCache.WF raw' bin.completions :=
+        have invCompletions' : CompletionCache.WF (bin.raw.push y) bin.completions :=
           completionCacheWF_of_push_of_nextNotA (by grind)
-        updateBinCached ⟨raw', items', invItems', bin.completions, invCompletions'⟩ ys
+        updateBinCached ⟨(bin.raw.push y), items', invItems', bin.completions, invCompletions'⟩ ys
 
 /--
 Append `bins` at index `k` with non-duplicate items from `newBin` and return the updated bins.
