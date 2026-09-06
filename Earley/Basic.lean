@@ -52,7 +52,7 @@ public theorem eq_of_CFGEqCFGₗ {T : Type} (G : ContextFreeGrammar T)
   grind
 
 public abbrev mapT {T N : Type} (w : Array T) : List (Symbol T N) :=
-  (w.toList).map Symbol.terminal
+  w.toList.map Symbol.terminal
 
 @[simp, grind =]
 public theorem map_of_mapT {T N : Type} (w : Array T) :
