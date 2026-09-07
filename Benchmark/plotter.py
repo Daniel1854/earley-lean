@@ -97,8 +97,8 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             variants = [
                 Variant.ISABELLE,
                 Variant.SCALA_NAIVE,
-                Variant.LEAN_NAIVE,
                 Variant.LEAN_SCALA,
+                Variant.LEAN_NAIVE,
             ]
         else:
             variants = [Variant.ISABELLE, Variant.SCALA_NAIVE, Variant.LEAN_SCALA]
@@ -111,17 +111,17 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
         ), "Called plot with grammar mode, but didnt supply a grammar!"
         if grammar in [Grammar.ONE, Grammar.TWO, Grammar.THREE]:
             variants = [
-                Variant.LEAN_OPT,
                 # Variant.LEAN_ITEM_POINTERS,
-                Variant.LEAN_OPT_POINTERS,
                 Variant.SCALA_OPT,
+                Variant.LEAN_OPT_POINTERS,
+                Variant.LEAN_OPT,
             ]
         else:
             variants = [
+                Variant.SCALA_OPT,
+                Variant.LEAN_OPT_POINTERS,
                 Variant.LEAN_OPT,
                 # Variant.LEAN_ITEM_POINTERS,
-                Variant.LEAN_OPT_POINTERS,
-                Variant.SCALA_OPT,
                 Variant.LEAN_NAIVE,
             ]
         experiments = [
@@ -147,24 +147,42 @@ def plot(mode: Mode, grammar: Optional[Grammar]):
             label = f"{grammar_to_bnf(experiment.grammar)}"
         if idx == 0:
             marker = "x"
+            color = "#1f77b4"
         elif idx == 1:
             marker = "^"
+            color = "#ff7f0e"
         elif idx == 2:
             marker = "o"
+            color = "#2ca02c"
         elif idx == 3:
             marker = "s"
+            color = "#9467bd"
         elif idx == 4:
             marker = "v"
+            color = "#d62728"
         elif idx == 5:
             marker = "D"
+            color = "#8c564b"
         elif idx == 6:
             marker = "<"
+            color = "#e377c2"
         elif idx == 7:
             marker = ">"
+            color = "#7f7f7f"
+            # color = #bcbd22
+            # color = #17becf
         else:
             assert False, "controlflow issue"
 
-        ax.plot(n, y, linestyle="-", marker=marker, fillstyle="none", label=label)
+        ax.plot(
+            n,
+            y,
+            linestyle="-",
+            color=color,
+            marker=marker,
+            fillstyle="none",
+            label=label,
+        )
         # TODO: Polyfit ?
         # ax.plot(n, y, linestyle=" ", marker=marker, fillstyle="none", label=label)
         # c, b, a = polyfit(n, y, 2)
